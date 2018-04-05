@@ -7,12 +7,12 @@ params:
         label: "Database Server Name:"
         value: cc-s-d05.ucdenver.pvt
         input: select
-        choices: [cc-s-d05.ucdenver.pvt, vwphbisql06, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01]
+        choices: [cc-s-d05.ucdenver.pvt, vwphbisql06, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01, vwedwtstsql04]
     DBName:
         label: "Database Name:"
         value: VDW_3_1_DH
         input: select
-        choices: [VDW_3_1_DH, VDW.dbo, VDW, CHORDS_VDW_CC_3.1, CHORDS_VDW_CT_3.1, CHORDS_VDW_HP_3.1, CHORDS_VDW_MC_3.1, CHORDS_VDW_SC_3.1, CHORDS_VDW_SS_3.1, CHORDSlive.dbo, vwedwtstsql04]
+        choices: [VDW_3_1_DH, VDW.dbo, VDW, CHORDS_VDW_CC_3.1, CHORDS_VDW_CT_3.1, CHORDS_VDW_HP_3.1, CHORDS_VDW_MC_3.1, CHORDS_VDW_SC_3.1, CHORDS_VDW_SS_3.1, CHORDSlive.dbo, VDW.aligned]
 ---
 
 ```{r setup, include=FALSE}
