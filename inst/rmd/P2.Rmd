@@ -2,8 +2,7 @@
 output:  
     word_document :
         reference_docx: QaTableStyle6.docx
-        toc: true
-        theme: united
+        toc: yes
 params: 
     DBServerName: 
         label: "Database Server Name:"
