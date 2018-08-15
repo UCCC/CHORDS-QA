@@ -330,7 +330,7 @@ fig1 <- odbc::dbGetQuery(con,
     year(result_dt) as year,
     count(*) as nrows
 	  from lab_results
-      where test_type in ('HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL')
+      where test_type in ('BNP', 'TROPONIN', 'BLOOD ALCOHOL CONTENT', 'TSPOT', 'TUBERCULIN SKIN TEST', 'QUANTIFERON', 'HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL')
 	    group by year(result_dt), month(result_dt), test_type") 
 
 fig1_sub <- fig1 %>% 
