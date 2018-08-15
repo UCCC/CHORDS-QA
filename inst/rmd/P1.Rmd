@@ -1093,7 +1093,7 @@ knitr::kable(vlst[c('variable','nobs','npats','minimum','q1','median','q3', 'max
 
 ```
 
-##T Table 16: Annual Trends in the Total Number of Recorded Vital Sign Records, the Mean Number of Encounters, the Mean Number of Patients and the Percent Change from the Previous Year, by Calendar Year
+## Table 16: Annual Trends in the Total Number of Recorded Vital Sign Records, the Mean Number of Encounters, the Mean Number of Patients and the Percent Change from the Previous Year, by Calendar Year
 
 This table examines the volume of vital signs over time and the number of patients with encounters represented in the VITAL_SIGNS table. Average number of vital signs per encounter, and per patient, are calculated to compare vital signs volume trends over time; and also to indicate whether or not vital signs are captured in one row or multiple rows for each encounter.
 
@@ -1179,6 +1179,80 @@ vitalsByMonYrTx <- gather(vitalsByMonYr, 'Vital_record','Count', 1:4)
 
 ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Vital type')
+
+```
+
+## Table 17: BENEFIT table information
+
+```{r tab16_res, echo = F}
+tab17_ben_null <- odbc::dbGetQuery(con, 
+  "SELECT COUNT DISTINCT(BENEFIT_ID) as total,
+   SUM(CASE WHEN LOAD_DATE IS NULL THEN 1 ELSE 0 END) as LOAD_DATE,
+   MIN(LOAD_DATE) as MIN_LOAD_DATE,
+   MAX(LOAD_DATE) as MAX_LOAD_DATE,
+   SUM(CASE WHEN REFRESH_DATE IS NULL THEN 1 ELSE 0 END) as REFRESH_DATE,
+   MIN(REFRESH_DATE) as MIN_REFRESH_DATE,
+   MAX(REFRESH_DATE) as MAX_REFRESH_DATE,
+   SUM(CASE WHEN START_DATE IS NULL THEN 1 ELSE 0 END) as START_DATE,
+   MIN(START_DATE) as MIN_START_DATE,
+   MAX(START_DATE) as MAX_START_DATE,
+   SUM(CASE WHEN END_DATE IS NULL THEN 1 ELSE 0 END) as END_DATE,
+   MIN(END_DATE) as MIN_END_DATE,
+   MAX(END_DATE) as MAX_END_DATE,
+      FROM BENEFITS")
+
+tab17_final <- tab17_ben_null %>% 
+  mutate(
+    perc_null_load = LOAD_DATE / total,
+    perc_null_refresh = REFRESH_DATE / total,
+    perc_null_start = START_DATE / total,
+    perc_null_end = END_DATE / total
+  )
+
+tab17_display  <- list(
+  "LOAD_DATE" =
+    list("Minimum" = ~ MIN_LOAD_DATE,
+         "Maximum" = ~ MAX_LOAD_DATE,
+         "Percent Null" = ~ paste0(perc_null_load, "%")),
+  "REFRESH_DATE" =
+    list("Minimum" = ~ MIN_REFRESH_DATE,
+         "Maximum" = ~ MAX_REFRESH_DATE,
+         "Percent Null" = ~ paste0(perc_null_refresh, "%")),
+  "END_DATE" =
+    list("Minimum" = ~ MIN_START_DATE,
+         "Maximum" = ~ MAX_START_DATE,
+         "Percent Null" = ~ paste0(perc_null_start, "%")),
+  "END_DATE" =
+    list("Minimum" = ~ MIN_END_DATE,
+         "Maximum" = ~ MAX_END_DATE,
+         "Percent Null" = ~ paste0(perc_null_end, "%")),
+  "BENEFIT_TYPE" =
+    list("Current insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CU", na_rm = T),
+         "Enrollment insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "EN", na_rm = T),
+         "Primary payer on a claim or encounter" = ~ qwraps2::perc_n(BENEFIT_TYPE == "PR", na_rm = T),
+         "Payer on a claim with unknown rank or order" = ~ qwraps2::perc_n(BENEFIT_TYPE == "PA", na_rm = T),
+         "Self-reported insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "SR", na_rm = T),
+         "No Benefit information available" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NI", na_rm = T),
+         "NULL" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NULL", na_rm = T),
+         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CU", "EN", "PR", "PA", "SR", "NI", "NULL"), na_rm = T))),
+  "BENEFIT_CAT" =
+    list("Correctional Care" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CC", na_rm = T),
+         "Commercial/Private Insurance" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CO", na_rm = T),
+         "Children’s Health Insurance Program " = ~ qwraps2::perc_n(BENEFIT_TYPE == "CP", na_rm = T),
+         "Medicare" = ~ qwraps2::perc_n(BENEFIT_TYPE == "MC", na_rm = T),
+         "Medicaid" = ~ qwraps2::perc_n(BENEFIT_TYPE == "MD", na_rm = T),
+         "Other government" = ~ qwraps2::perc_n(BENEFIT_TYPE == "OG", na_rm = T),
+         "Self-Pay/Uninsured/Private Pay " = ~ qwraps2::perc_n(BENEFIT_TYPE == "SP", na_rm = T),
+         "Other insurance" = ~ qwraps2::perc_n(BENEFIT_TYPE == "OT", na_rm = T),
+         "NULL" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NULL", na_rm = T),
+         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CC", "CO", "CP", "MC", "MD", "OG", "SP", "OT", "NULL"), na_rm = T)))
+) 
+
+```
+
+```{tab17_disp}
+
+qwraps2::summary_table(tab17_final, tab17_display)
 
 ```
 
