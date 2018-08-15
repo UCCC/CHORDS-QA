@@ -1186,7 +1186,7 @@ ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
 
 ```{r tab16_res, echo = F}
 tab17_ben_null <- odbc::dbGetQuery(con, 
-  "SELECT COUNT DISTINCT(BENEFIT_ID) as total,
+  "SELECT COUNT(*) as total,
    SUM(CASE WHEN LOAD_DATE IS NULL THEN 1 ELSE 0 END) as LOAD_DATE,
    MIN(LOAD_DATE) as MIN_LOAD_DATE,
    MAX(LOAD_DATE) as MAX_LOAD_DATE,
@@ -1203,28 +1203,28 @@ tab17_ben_null <- odbc::dbGetQuery(con,
 
 tab17_final <- tab17_ben_null %>% 
   mutate(
-    perc_null_load = LOAD_DATE / total,
-    perc_null_refresh = REFRESH_DATE / total,
-    perc_null_start = START_DATE / total,
-    perc_null_end = END_DATE / total
+    perc_null_load = 100* (LOAD_DATE / total),
+    perc_null_refresh = 100* (REFRESH_DATE / total),
+    perc_null_start = 100* (START_DATE / total),
+    perc_null_end = 100* (END_DATE / total)
   )
 
 tab17_display  <- list(
   "LOAD_DATE" =
-    list("Minimum" = ~ MIN_LOAD_DATE,
-         "Maximum" = ~ MAX_LOAD_DATE,
+    list("Minimum" = ~ min(MIN_LOAD_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_LOAD_DATE, na.rm = T),
          "Percent Null" = ~ paste0(perc_null_load, "%")),
   "REFRESH_DATE" =
-    list("Minimum" = ~ MIN_REFRESH_DATE,
-         "Maximum" = ~ MAX_REFRESH_DATE,
+    list("Minimum" = ~ min(MIN_REFRESH_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_REFRESH_DATE, na.rm = T),
          "Percent Null" = ~ paste0(perc_null_refresh, "%")),
   "END_DATE" =
-    list("Minimum" = ~ MIN_START_DATE,
-         "Maximum" = ~ MAX_START_DATE,
+    list("Minimum" = ~ min(MIN_START_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_START_DATE, na.rm = T),
          "Percent Null" = ~ paste0(perc_null_start, "%")),
   "END_DATE" =
-    list("Minimum" = ~ MIN_END_DATE,
-         "Maximum" = ~ MAX_END_DATE,
+    list("Minimum" = ~ min(MIN_END_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_END_DATE, na.rm = T),
          "Percent Null" = ~ paste0(perc_null_end, "%")),
   "BENEFIT_TYPE" =
     list("Current insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CU", na_rm = T),
@@ -1250,9 +1250,47 @@ tab17_display  <- list(
 
 ```
 
-```{tab17_disp}
+```{tab17_disp, results = "asis"}
 
-qwraps2::summary_table(tab17_final, tab17_display)
+qwraps2::summary_table(tab17_final, tab17_display, digits = 2)
+
+```
+
+## Table 18: CENSUS_LOCATIOn
+
+```{r tab1c_out, results="asis"}
+
+tab18a <- odbc::dbGetQuery(con, 
+                          "SELECT COUNTY_GEOCODE,
+                          COUNT(*) as num_county
+                          FROM CENSUS_LOCATION
+                          GROUP BY COUNTY_GEOCODE")
+
+tab18b <- odbc::dbGetQuery(con, 
+                          "SELECT ADDRESS_FLAG,
+                          COUNT(*) as num_add_flag
+                          FROM CENSUS_LOCATION
+                          GROUP BY ADDRESS_FLAG")
+
+tab18_all <- dplyr::bind_cols(tab18a, tab18b)
+
+knitr::kable(tab18_all, col.names = c("County Geocode", "Frequency County Geocode", "Address Flag", "Frequency Address Flag"), format.args = list(big.mark = ","))
+
+```
+
+## Table 19: LINKAGE table
+
+```{r, echo=FALSE}
+
+tab19 <- odbc::dbGetQuery(con, 
+                          "SELECT COUNT DISTINCT(PERSON_ID) as npats,
+                          COUNT DISTINCT(LINK_ID) as nlink")
+
+```
+
+```{r, results="asis"}
+
+knitr::kable(tab19, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
 
 ```
 
