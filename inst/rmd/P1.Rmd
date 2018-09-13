@@ -1272,9 +1272,19 @@ tab18b <- odbc::dbGetQuery(con,
                           FROM CENSUS_LOCATION
                           GROUP BY ADDRESS_FLAG")
 
-tab18_all <- dplyr::bind_cols(tab18a, tab18b)
+tab18_tot <- odbc::dbGetQuery(con, 
+                          "COUNT(*) n_census
+                           FROM CENSUS_LOCATION")
 
-knitr::kable(tab18_all, col.names = c("County Geocode", "Frequency County Geocode", "Address Flag", "Frequency Address Flag"), format.args = list(big.mark = ","))
+tab18_all <- dplyr::bind_cols(tab18a, tab18b) %>% 
+  mutate(
+  perc_county = paste0(round((num_county / n_census) * 100, "%"), 1),
+  perc_add_flag = paste0(round((num_add_flag / n_census) * 100, "%"), 1)
+  )
+
+tab18_all <- tab18_all[, c(1, 2, 5, 3, 4, 6)]
+
+knitr::kable(tab18_all, col.names = c("County Geocode", "Frequency County Geocode", "Percent County Geocode", "Address Flag", "Frequency Address Flag", "Percent Address Flag"), format.args = list(big.mark = ","))
 
 ```
 
