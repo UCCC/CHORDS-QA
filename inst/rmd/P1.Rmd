@@ -1184,7 +1184,7 @@ ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
 
 ## Table 17: BENEFIT table information
 
-```{r tab16_res, echo = F}
+```{r tab17_res, echo = F, eval=FALSE}
 tab17_ben_null <- odbc::dbGetQuery(con, 
   "SELECT COUNT(*) as total,
    SUM(CASE WHEN LOAD_DATE IS NULL THEN 1 ELSE 0 END) as LOAD_DATE,
@@ -1250,7 +1250,7 @@ tab17_display  <- list(
 
 ```
 
-```{tab17_disp, results = "asis"}
+```{tab17_disp, results = "asis", eval=FALSE}
 
 qwraps2::summary_table(tab17_final, tab17_display, digits = 2)
 
@@ -1258,7 +1258,7 @@ qwraps2::summary_table(tab17_final, tab17_display, digits = 2)
 
 ## Table 18: CENSUS_LOCATIOn
 
-```{r tab1c_out, results="asis"}
+```{r tab18_out, results="asis", eval=FALSE}
 
 tab18a <- odbc::dbGetQuery(con, 
                           "SELECT COUNTY_GEOCODE,
@@ -1290,7 +1290,7 @@ knitr::kable(tab18_all, col.names = c("County Geocode", "Frequency County Geocod
 
 ## Table 19: LINKAGE table
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 
 tab19 <- odbc::dbGetQuery(con, 
                           "SELECT COUNT DISTINCT(PERSON_ID) as npats,
@@ -1298,7 +1298,7 @@ tab19 <- odbc::dbGetQuery(con,
 
 ```
 
-```{r, results="asis"}
+```{r, results="asis", eval=FALSE}
 
 knitr::kable(tab19, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
 
