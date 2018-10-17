@@ -8,7 +8,7 @@ params:
         label: "Database Server Name:"
         value: cc-s-d05.ucdenver.pvt
         input: select
-        choices: [cc-s-d05.ucdenver.pvt, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01, uat.edwsql.hosp.dhha.org]
+        choices: [cc-s-d05.ucdenver.pvt, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01, uat.edwsql.hosp.dhha.org, DWPHSQL01]
     DBName:
         label: "Database Name:"
         value: VDW_3_1_CHCO_0618
