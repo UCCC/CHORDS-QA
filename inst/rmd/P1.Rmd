@@ -13,7 +13,7 @@ params:
         label: "Database Name:"
         value: VDW_3_1_DH
         input: select
-        choices: [VDW_3_1_DH, VDW.dbo, VDW, CHORDS_VDW_CC_3.1, CHORDS_VDW_CT_3.1, CHORDS_VDW_HP_3.1, CHORDS_VDW_MC_3.1, CHORDS_VDW_SC_3.1, CHORDS_VDW_SS_3.1, CHORDSlive.dbo, VDW.aligned, CHORDSlive]
+        choices: [VDW_3_1_DH, VDW, CHORDS_VDW_CC_3.1, CHORDS_VDW_CT_3.1, CHORDS_VDW_HP_3.1, CHORDS_VDW_MC_3.1, CHORDS_VDW_SC_3.1, CHORDS_VDW_SS_3.1, CHORDSlive.dbo, CHORDSlive, VDW_3_1_DH_0418, VDW_3_1_CHCO_0618, VDW_Aligned]
 ---
 
 ```{r setup, include=FALSE}
