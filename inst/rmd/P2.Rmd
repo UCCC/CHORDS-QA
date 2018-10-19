@@ -156,7 +156,6 @@ tab2_rx_null <- odbc::dbGetQuery(con,
    SUM(CASE WHEN RX_REFILLS IS NULL THEN 1 ELSE 0 END) as RX_REFILLS,
    SUM(CASE WHEN RXMD IS NULL THEN 1 ELSE 0 END) as RXMD,
    SUM(CASE WHEN RXNORM IS NULL THEN 1 ELSE 0 END) as RXNORM,
-   SUM(CASE WHEN RX_DOSE_ORDERED_UNIT  IS NULL THEN 1 ELSE 0 END) as RX_DOSE_ORDERED_UNIT
       FROM prescribing")
 
 tab2_rx_null2 <- data.frame(table = rep("PRESCRIBING", ncol(tab2_rx_null)), var = names(tab2_rx_null), records_null = t(tab2_rx_null)[,1])
