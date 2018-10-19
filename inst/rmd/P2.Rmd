@@ -11,7 +11,7 @@ params:
         choices: [cc-s-d05.ucdenver.pvt, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01, uat.edwsql.hosp.dhha.org, DWPHSQL01]
     DBName:
         label: "Database Name:"
-        value: VDW_3_1_CHCO_0618
+        value: VDW_3_1_DH
         input: select
         choices: [VDW_3_1_DH, VDW, CHORDS_VDW_CC_3.1, CHORDS_VDW_CT_3.1, CHORDS_VDW_HP_3.1, CHORDS_VDW_MC_3.1, CHORDS_VDW_SC_3.1, CHORDS_VDW_SS_3.1, CHORDSlive.dbo, CHORDSlive, VDW_3_1_DH_0418, VDW_3_1_CHCO_0618, VDW_Aligned]
 ---
@@ -330,7 +330,7 @@ fig1 <- odbc::dbGetQuery(con,
     year(result_dt) as year,
     count(*) as nrows
 	  from lab_results
-      where test_type in ('BNP', 'TROPONIN', 'BLOOD ALCOHOL CONTENT', 'TSPOT', 'TUBERCULIN SKIN TEST', 'QUANTIFERON', 'HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL')
+      where test_type in ('HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL')
 	    group by year(result_dt), month(result_dt), test_type") 
 
 fig1_sub <- fig1 %>% 
@@ -443,7 +443,7 @@ kable(tab6_all, col.names = c("Year", "Total Number of Prescriptions", "Percent 
 
 ##Table 7: Summary of the Ten Most Common Medications by Order Type
 
-This table displays the top ten most common orders including count of records and patients and the avgerage, minimum, and maximum dosage for each medication. 
+This table displays the top ten most common orders including count of records and patients. 
 
 ```{r tab7_res}
 
@@ -452,10 +452,7 @@ tab7_basis2 <- odbc::dbGetQuery(con,
     count(*) as nrows,
 	  count(distinct person_id) as npats,
     avg(RX_DAYS_SUPPLY) as avg_days_sup,
-    avg(RX_QUANTITY_NUM) as avg_rx_quant,
-    avg(RX_DOSE_ORDERED) as avg_dose,
-    min(RX_DOSE_ORDERED) as min_dose,
-    max(RX_DOSE_ORDERED) as min_dose
+    avg(RX_QUANTITY_NUM) as avg_rx_quant
 	  from prescribing
       where RX_BASIS = '02'
 	    group by GENERIC_MED_NAME
@@ -466,10 +463,7 @@ tab7_basis1 <- odbc::dbGetQuery(con,
     count(*) as nrows,
 	  count(distinct person_id) as npats,
     avg(RX_DAYS_SUPPLY) as avg_days_sup,
-    avg(RX_QUANTITY_NUM) as avg_rx_quant,
-    avg(RX_DOSE_ORDERED) as avg_dose,
-    min(RX_DOSE_ORDERED) as min_dose,
-    max(RX_DOSE_ORDERED) as min_dose
+    avg(RX_QUANTITY_NUM) as avg_rx_quant
 	  from prescribing
       where RX_BASIS = '01'
 	    group by GENERIC_MED_NAME
@@ -480,18 +474,12 @@ tab7_basis_oth <- odbc::dbGetQuery(con,
     count(*) as nrows,
 	  count(distinct person_id) as npats,
     avg(RX_DAYS_SUPPLY) as avg_days_sup,
-    avg(RX_QUANTITY_NUM) as avg_rx_quant,
-    avg(RX_DOSE_ORDERED) as avg_dose,
-    min(RX_DOSE_ORDERED) as min_dose,
-    max(RX_DOSE_ORDERED) as min_dose
+    avg(RX_QUANTITY_NUM) as avg_rx_quant
 	  from prescribing
       where RX_BASIS in ('NI', 'UN', 'OT')
 	    group by GENERIC_MED_NAME
       order by nrows DESC") 
 
-tab7 <- odbc::dbGetQuery(con, 
-                          "SELECT COUNT DISTINCT(PERSON_ID) as npats,
-                          COUNT DISTINCT(LINK_ID) as nlink")
 
 ```
 
@@ -500,41 +488,23 @@ tab7 <- odbc::dbGetQuery(con,
 #rows. If not, then an error message is written indicating so.
 
 if (nrow(tab7_basis2) != 0){
-  kable(tab7_basis2, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity", "Average Dose", "Minimum Dose", "Maximum Dose"), caption = "Order to Administer (RX_BASIS = 02)", format.args = list(big.mark = ","))
+  kable(tab7_basis2, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity"), caption = "Order to Administer (RX_BASIS = 02)", format.args = list(big.mark = ","))
 } else {
   cat(noquote(paste0("Table had zero rows.  RX_BASIS = 02 likely isn't a category for this variable.", "\n")))
 } 
 
 
 if (nrow(tab7_basis1) != 0){
-  kable(tab7_basis1, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity", "Average Dose", "Minimum Dose", "Maximum Dose"), caption = "Order to Administer (RX_BASIS = 01)", format.args = list(big.mark = ","))
+  kable(tab7_basis1, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity"), caption = "Order to Administer (RX_BASIS = 01)", format.args = list(big.mark = ","))
 } else {
   cat(noquote(paste0("Table had zero rows.  RX_BASIS = 01 likely isn't a category for this variable.", "\n")))
 } 
 
 if (nrow(tab7_basis_oth) != 0){
-  kable(tab7_basis_oth, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity", "Average Dose", "Minimum Dose", "Maximum Dose"), caption = "Order to Administer (RX_BASIS = 01)", format.args = list(big.mark = ","))
+  kable(tab7_basis_oth, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity"), caption = "Order to Administer (RX_BASIS = 01)", format.args = list(big.mark = ","))
 } else {
    cat(noquote(paste0("Table had zero rows.  RX_BASIS = NI, UN, or OT likely aren't categories for this variable.", "\n")))
 } 
-
-```
-
-```{r}
-
-dose_unit <- odbc::dbGetQuery(con, 
-   "SELECT RX_DOSE_ORDERED_UNIT,
-   COUNT(*) as num_units
-   FROM prescribing
-   GROUP BY RX_DOSE_ORDERED_UNIT")
-
-```
-
-## Table 7b: Count of dose units in PRESCRIBING table
-
-```{r, results="asis"}
-
-knitr::kable(dose_unit, col.names = c("Dose Unit", "Frequency"), format.args = list(big.mark = ","))
 
 ```
 
@@ -960,79 +930,6 @@ tab17$year <- as.character(tab17$year)
 kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), format.args = list(big.mark = ","))
 
 ```
-
-##Examination of the PHARMACY Table (dispensed medications from outpatient pharmacy setting)
-
-The following tables explore the contents of the PHARMACY table with a focus on trends over time and most common types of medications dispensed. 
-
-##Table 18: Annual Trends in Pharmacy Data - the Total Number of Recorded Medication Dispenses, the Percent Change from the Previous Year, the Total Number of Patients and the Mean, Maximum and Minimum Numbers of Dispenses per Patient
-
-This table displays trends in PHARMACY record volume over time as well as patient volume represented in the table. PHARMACY records are attributed to a year based on RXDATE.
-
-
-```{r tab18_res}
-
-tab18 <- odbc::dbGetQuery(con, 
-  "select year(RXDATE) as year,
-    count(*) as nrows, 
-	  count(distinct person_id) as npats
-	  from PHARMACY
-	    group by year(RXDATE)
-      order by year(RXDATE)")
-
-tab18_avg_pats <- odbc::dbGetQuery(con, 
-  "select year(RXDATE) as year,
-    count(*) as nrows
-	  from PHARMACY
-	    group by year(RXDATE), person_id
-      order by year(RXDATE)") %>% 
-  arrange(year) %>% 
-  group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max))%>% 
-  mutate(
-    pats_val = paste0(median, "(", min, ", ", max, ")")
-  )
-
-tab18_all <- left_join(tab6, tab18_avg_pats, by = "year") %>% 
-  mutate(
-    ptc_rec = if_else(is.na(nrows / dplyr::lag(nrows)), "--", paste0(round(nrows / dplyr::lag(nrows) * 100, 0), "%"))
-  ) %>% 
-  select(year, nrows, ptc_rec, npats, median, min, max)
-
-tab6_all$year <- as.character(tab18_all$year)
-
-```
-
-```{r tab18_disp, results="asis"}
-
-kable(tab18_all, col.names = c("Year", "Total Number of Prescriptions", "Percent Change From Last Year", "Total Number of Patients", "Median number of Prescriptions per patient", "Minimum Number of Prescriptions Per Patient", "Maximum Number of Prescriptions Per Patient"), format.args = list(big.mark = ","))
-
-```
-
-##Table 19: Summary of the Ten Most Common Medications
-
-This table displays the top ten most common orders including count of records and patients. 
-
-```{r tab19_res}
-
-tab19 <- odbc::dbGetQuery(con, 
-  "select top 10 NDC,
-    count(*) as nrows,
-	  count(distinct person_id) as npats,
-    avg(RXSUP) as avg_days_sup,
-    avg(RXAMT) as avg_rx_quant
-	  from PHARMACY
-	    group by NDC
-      order by nrows DESC") 
-
-```
-
-```{r tab19_disp, results="asis"}
-
-kable(select, col.names = c("Medication Name (NDC)", "Records", "Patients", "Average Days Supply", "Average Quantity"), format.args = list(big.mark = ","))
-
-```
-
 
 ####Total program run time:
 ```{r calc_runtime}
