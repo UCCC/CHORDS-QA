@@ -6,14 +6,24 @@ output:
 params: 
     DBServerName: 
         label: "Database Server Name:"
-        value: cc-s-d05.ucdenver.pvt
-        input: select
-        choices: [cc-s-d05.ucdenver.pvt, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01, uat.edwsql.hosp.dhha.org, DWPHSQL01]
+        input: text
+        value: ""
+        placeholder: "Enter your VDW Database Server Name"
     DBName:
         label: "Database Name:"
-        value: VDW_3_1_DH
-        input: select
-        choices: [VDW_3_1_DH, VDW, CHORDS_VDW_CC_3.2, CHORDS_VDW_CT_3.2, CHORDS_VDW_HP_3.2, CHORDS_VDW_MC_3.2, CHORDS_VDW_SC_3.2, CHORDS_VDW_SS_3.2, CHORDSlive.dbo, CHORDSlive, VDW_3_1_DH_0418, VDW_3_1_CHCO_0618, VDW_Aligned]
+        input: text
+        value: ""
+        placeholder: "Enter your VDW Database Name"
+    DBUser:
+        label: "Database User Name"
+        input: text
+        value: ""
+        placeholder: "leave blank if using windows authentication for your server"
+    DBPassword:
+        label: "Database Password"
+        input: password
+        value: ""
+        placeholder: "leave blank if using windows authentication for your server"
 ---
 
 ```{r setup, include=FALSE}
@@ -27,11 +37,25 @@ startTime <- Sys.time()
 library(knitr)
 library(tidyverse)
 
-# connection to sql server
-con <- DBI::dbConnect(odbc::odbc(),
+	# connection to sql server
+if (nchar(params$DBUser) == 0)
+{
+	con <- DBI::dbConnect(odbc::odbc(),
                       Driver = "SQL Server",
                       Server = params$DBServerName,
                       Database = params$DBName)
+
+	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+} else {
+	con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = "SQL Server",
+                      Server = params$DBServerName,
+                      Database = params$DBName,
+                      UID = params$DBUser,
+                      PWD = params$DBPassword)
+
+	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$UserName,';pwd=',params$Password,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+}
 
 ```
 
