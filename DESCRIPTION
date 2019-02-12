@@ -8,7 +8,7 @@ Authors@R: c(
 Maintainer: Matthew Cox-Martin <matthew.cox-martin@ucdenver.edu>
 Description: This package contains the function, .RMD files, and data files necessary for generating all CHORDS priority tables.
 Depends:
-    R (>= 3.0.2),
+    R (>= 3.5.1),
     httr (>= 1.3.1)
 Imports: 
     tidyverse,
