@@ -32,14 +32,33 @@ knitr::opts_chunk$set(echo = TRUE,
                 warning = FALSE)
 startTime <- Sys.time()
 
-# Names of database tables
-demographics    <- "demographics"
-encounters      <- "encounters"
-census_location <- "census_location"
-diagnoses       <- "diagnoses"
-vital_signs     <- "vital_signs"
-lab_results     <- "lab_results"
-procedures      <- "procedures"
+tableReplaces <- paste0("C:\\ChordsQA", "\\tablereplace.csv")
+if (file.exists(tableReplaces)){
+  print("updating for QA using tablereplace.csv")
+  df <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
+  
+  demographics <- ifelse("demographics" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("demographics"), tolower(df$ORG_NAME))], "demographics")
+  encounters <- ifelse("encounters" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("encounters"), tolower(df$ORG_NAME))], "encounters")
+  census_location <- ifelse("census_location" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("census_location"), tolower(df$ORG_NAME))], "census_location")
+  diagnoses <- ifelse("diagnoses" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("diagnoses"), tolower(df$ORG_NAME))], "diagnoses")
+  vital_signs <- ifelse("vital_signs" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("vital_signs"), tolower(df$ORG_NAME))], "vital_signs")
+  lab_results <- ifelse("lab_results" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("lab_results"), tolower(df$ORG_NAME))], "lab_results")
+  procedures <- ifelse("procedures" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("procedures"), tolower(df$ORG_NAME))], "procedures")
+  benefit <- ifelse("benefit" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("benefit"), tolower(df$ORG_NAME))], "benefit")
+  linkage <- ifelse("linkage" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("linkage"), tolower(df$ORG_NAME))], "linkage")
+  
+} else {
+  # Names of database tables
+  demographics    <- "demographics"
+  encounters      <- "encounters"
+  census_location <- "census_location"
+  diagnoses       <- "diagnoses"
+  vital_signs     <- "vital_signs"
+  lab_results     <- "lab_results"
+  procedures      <- "procedures"
+  benefit        <- "benefit"
+  linkage        <- "linkage"
+}
 
 # set to zero for full read of the database
 # set to a positive number to limit the number of rows read from each table
@@ -156,9 +175,9 @@ This table contains summary counts and date ranges by table. Distinct encounters
 
 ```{r tab1_sum_stats, echo = F}
 
-tab1_dem <- odbc::dbGetQuery(con, "select count(*) as nrows, 
+tab1_dem <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats
-	from demographics")
+	from ", demographics))
 
 tab1_dem <- data.frame(nrows = tab1_dem$nrows, 
                        npats = tab1_dem$npats, 
@@ -168,35 +187,35 @@ tab1_dem <- data.frame(nrows = tab1_dem$nrows,
                        maxdt = NA)
 
 
-tab1_enc <- odbc::dbGetQuery(con, "select count(*) as nrows, 
+tab1_enc <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
 	count(distinct person_id) as npats,
   count(distinct enc_id) as nencts,
   'ADATE' as fieldname,
 	min(ADATE) as mindt,
 	max(ADATE) as maxdt
-	from encounters")
+	from ", encounters))
 
 
-tab1_loc <- odbc::dbGetQuery(con, "select count(*) as nrows, 
+tab1_loc <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats
-	from census_location")
+	from ", census_location))
 
 
-tab1_dx <- odbc::dbGetQuery(con, "select count(*) as nrows, 
+tab1_dx <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
   'ADATE' as fieldname,
   count(distinct enc_id) as nencts,
 	min(ADATE) as mindt,
 	max(ADATE) as maxdt
-	from diagnoses")
+	from ", diagnoses))
 
-tab1_vs <- odbc::dbGetQuery(con, "select count(*) as nrows,
+tab1_vs <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
   count(distinct person_id) as npats,
   'MEASURE_DATE' as fieldname,
   count(distinct enc_id) as nencts,
 	min(measure_date) as mindt,
 	max(measure_date) as maxdt
-	from vital_signs")
+	from ", vital_signs))
 
 tab1_loc <- data.frame(nrows = tab1_loc$nrows, npats = tab1_loc$npats, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
 
@@ -218,7 +237,7 @@ This table contains record counts for null and unknown values across P1 tables.
 
 ```{r tab2_res, echo = F}
 tab2_demo_null <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN BIRTH_DATE IS NULL THEN 1 ELSE 0 END) as BIRTH_DATE,
+  paste0("SELECT SUM(CASE WHEN BIRTH_DATE IS NULL THEN 1 ELSE 0 END) as BIRTH_DATE,
    SUM(CASE WHEN GENDER IS NULL THEN 1 ELSE 0 END) as GENDER,
    SUM(CASE WHEN PRIMARY_LANGUAGE IS NULL THEN 1 ELSE 0 END) as PRIMARY_LANGUAGE,
    SUM(CASE WHEN NEEDS_INTERPRETER IS NULL THEN 1 ELSE 0 END) as NEEDS_INTERPRETER,
@@ -226,42 +245,42 @@ tab2_demo_null <- odbc::dbGetQuery(con,
    SUM(CASE WHEN HISPANIC IS NULL THEN 1 ELSE 0 END) as HISPANIC,
    SUM(CASE WHEN SEXUAL_ORIENTATION IS NULL THEN 1 ELSE 0 END) as SEXUAL_ORIENTATION,
    SUM(CASE WHEN GENDER_IDENTITY IS NULL THEN 1 ELSE 0 END) as GENDER_IDENTITY
-      FROM DEMOGRAPHICS")
+      FROM ", demographics))
 
 tab2_demo_null2 <- data.frame(table = rep("DEMOGRAPHICS", ncol(tab2_demo_null)), var = names(tab2_demo_null), records_null = t(tab2_demo_null)[,1])
 row.names(tab2_demo_null2) <- NULL
 
 tab2_enc_null <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN ADATE IS NULL THEN 1 ELSE 0 END) as ADATE,
+  paste0("SELECT SUM(CASE WHEN ADATE IS NULL THEN 1 ELSE 0 END) as ADATE,
    SUM(CASE WHEN DDATE IS NULL THEN 1 ELSE 0 END) as DDATE,
    SUM(CASE WHEN PROVIDER IS NULL THEN 1 ELSE 0 END) as PROVIDER,
    SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCOUNTER_SUBTYPE
-      FROM ENCOUNTERS")
+      FROM ", encounters))
 
 tab2_enc_null2 <- data.frame(table = rep("ENCOUNTERS", ncol(tab2_enc_null)), var = names(tab2_enc_null), records_null = t(tab2_enc_null)[,1])
 row.names(tab2_enc_null2) <- NULL
 
 tab2_cl_null <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN GEOCODE IS NULL THEN 1 ELSE 0 END) as GEOCODE,
+  paste0("SELECT SUM(CASE WHEN GEOCODE IS NULL THEN 1 ELSE 0 END) as GEOCODE,
    SUM(CASE WHEN CITY_GEOCODE IS NULL THEN 1 ELSE 0 END) as CITY_GEOCODE
-      FROM CENSUS_LOCATION")
+      FROM ", census_location))
 
 tab2_cl_null2 <- data.frame(table = rep("CENSUS_LOCATION", ncol(tab2_cl_null)), var = names(tab2_cl_null), records_null = t(tab2_cl_null)[,1])
 row.names(tab2_cl_null2) <- NULL
 
 tab2_dx_null <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
+  paste0("SELECT SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
    SUM(CASE WHEN ADATE IS NULL THEN 1 ELSE 0 END) as ADATE,
    SUM(CASE WHEN DX IS NULL THEN 1 ELSE 0 END) as DX,
    SUM(CASE WHEN PRINCIPAL_DX IS NULL THEN 1 ELSE 0 END) as PRINCIPAL_DX,
    SUM(CASE WHEN PRIMARY_DX IS NULL THEN 1 ELSE 0 END) as PRIMARY_DX
-      FROM DIAGNOSES")
+      FROM ", diagnoses))
 
 tab2_dx_null2 <- data.frame(table = rep("DIAGNOSES", ncol(tab2_dx_null)), var = names(tab2_dx_null), records_null = t(tab2_dx_null)[,1])
 row.names(tab2_dx_null2) <- NULL
 
 tab2_vs_null <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
+  paste0("SELECT SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
    SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCTYPE,
    SUM(CASE WHEN HT IS NULL THEN 1 ELSE 0 END) as HT,
    SUM(CASE WHEN WT IS NULL THEN 1 ELSE 0 END) as WT,
@@ -278,7 +297,7 @@ tab2_vs_null <- odbc::dbGetQuery(con,
    SUM(CASE WHEN RESPIR_RAW IS NULL THEN 1 ELSE 0 END) as RESPIR_RAW,
    SUM(CASE WHEN TEMP_RAW IS NULL THEN 1 ELSE 0 END) as TEMP_RAW,
    SUM(CASE WHEN PULSE_RAW IS NULL THEN 1 ELSE 0 END) as PULSE_RAW
-      FROM VITAL_SIGNS")
+      FROM ", vital_signs))
 
 tab2_vs_null2 <- data.frame(table = rep("VITAL_SIGNS", ncol(tab2_vs_null)), var = names(tab2_vs_null), records_null = t(tab2_vs_null)[,1])
 row.names(tab2_vs_null2) <- NULL
@@ -293,21 +312,21 @@ tab2_null <- bind_rows(tab2_demo_null2, tab2_enc_null2, tab2_cl_null2, tab2_dx_n
   )
 
 tab2_demo_uk <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN GENDER = 'U' THEN 1 ELSE 0 END) as GENDER,
+  paste0("SELECT SUM(CASE WHEN GENDER = 'U' THEN 1 ELSE 0 END) as GENDER,
    SUM(CASE WHEN PRIMARY_LANGUAGE = 'UNK' THEN 1 ELSE 0 END) as PRIMARY_LANGUAGE,
    SUM(CASE WHEN NEEDS_INTERPRETER = 'U' THEN 1 ELSE 0 END) as NEEDS_INTERPRETER,
    SUM(CASE WHEN RACE1 = 'UN' THEN 1 ELSE 0 END) as RACE1,
    SUM(CASE WHEN HISPANIC = 'U' THEN 1 ELSE 0 END) as HISPANIC,
    SUM(CASE WHEN SEXUAL_ORIENTATION = 'UN' THEN 1 ELSE 0 END) as SEXUAL_ORIENTATION,
    SUM(CASE WHEN GENDER_IDENTITY = 'UN' THEN 1 ELSE 0 END) as GENDER_IDENTITY
-      FROM DEMOGRAPHICS")
+      FROM ", demographics))
 
 tab2_demo_uk2 <- data.frame(table = rep("DEMOGRAPHICS", ncol(tab2_demo_uk)), var = names(tab2_demo_uk), records_uk = t(tab2_demo_uk)[,1])
 row.names(tab2_demo_uk2) <- NULL
 
 tab2_enc_uk <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN PROVIDER = 'UNKNOWN' THEN 1 ELSE 0 END) as PROVIDER
-      FROM ENCOUNTERS")
+  paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNKNOWN' THEN 1 ELSE 0 END) as PROVIDER
+      FROM ", encounters))
 
 tab2_enc_uk2 <- data.frame(table = rep("ENCOUNTERS", ncol(tab2_enc_uk)), var = names(tab2_enc_uk), records_uk = t(tab2_enc_uk)[,1])
 row.names(tab2_enc_uk2) <- NULL
@@ -333,7 +352,7 @@ kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of R
 ##Table 3. Overall demographics
 
 ```{r Demographic table, include=F}
-nDemogRows <- sqlQuery(sqldb, 'select  count(*) as nDemogRows FROM  demographics') 
+nDemogRows <- sqlQuery(sqldb, paste0("select  count(*) as nDemogRows FROM ",   demographics)) 
 
 demogSummary <- sqlQuery(sqldb, 
                   paste('select  count(*) as nDemogRows ',
@@ -344,11 +363,11 @@ demogSummary <- sqlQuery(sqldb,
 		                            ', sum(nPatsWithVital) as nPatsWithVital' ,
 		                            '  FROM (select distinct',
 		                                          ' person_id',
-		                                         ', case when person_id in (select distinct person_id from', encounters,' ) then 1 else 0 end as nPatsWithEncs ',
-		                                        ',  case when person_id in (select distinct person_id from', census_location,' ) then 1 else 0 end as nPatsWithLoc ',
-		                                        ',  case when person_id in (select distinct person_id from', diagnoses,' ) then 1 else 0 end as nPatsWithDiag ',
+		                                         ', case when person_id in (select distinct person_id from ', encounters,' ) then 1 else 0 end as nPatsWithEncs ',
+		                                        ',  case when person_id in (select distinct person_id from ', census_location,' ) then 1 else 0 end as nPatsWithLoc ',
+		                                        ',  case when person_id in (select distinct person_id from ', diagnoses,' ) then 1 else 0 end as nPatsWithDiag ',
 		                                        ',  case when person_id in (select distinct person_id from', vital_signs,' ) then 1 else 0 end as nPatsWithVital ',
-		                                        '  FROM',  demographics,') as q',
+		                                        '  FROM ',  demographics,') as q',
                         sep=" "
                  ),
                  max=maxQryRows
@@ -459,10 +478,10 @@ knitr::kable(race[    c('race1', 'decode','count','countPct')],
 
 ```{r ethnicity , echo=F}
 ethn <- odbc::dbGetQuery(con, 
-  "SELECT SUM(CASE WHEN HISPANIC = 'Y' THEN 1 ELSE 0 END) as Yes,
+  paste0("SELECT SUM(CASE WHEN HISPANIC = 'Y' THEN 1 ELSE 0 END) as Yes,
    SUM(CASE WHEN HISPANIC = 'N' THEN 1 ELSE 0 END) as No,
    SUM(CASE WHEN HISPANIC = 'U' THEN 1 ELSE 0 END) as Unknown
-      FROM DEMOGRAPHICS")
+      FROM ", demographics))
 
 ethn2 <- data.frame(Value = c("Y", "N", "U"),
                     Label = names(ethn), 
@@ -484,7 +503,7 @@ gc()
 nada_ <- sqlQuery(sqldb,
                   paste('SELECT a.*, floor(DATEDIFF(day, b.birth_date, a.ADATE)/365.25) as age, b.birth_date, month(a.adate) as aMon, year(a.adate) as aYear, month(b.birth_date) as dobMon, year(b.birth_date) as dobYear',
                         'INTO #encTmp',
-                        'FROM',encounters, ' as a left join (select distinct person_id, birth_date from ',demographics,') as b on a.person_id = b.person_id',
+                        'FROM ',encounters, ' as a left join (select distinct person_id, birth_date from  ',demographics,') as b on a.person_id = b.person_id',
                         sep=" "
                         )
                   )
@@ -590,19 +609,19 @@ ggplot(data = encPersonAgeYear, aes(x =aYear, y = Freq, fill = ageCat)) +
 ```{r tab9_res, echo = F}
 
 tab9 <- odbc::dbGetQuery(con, 
-  "select year(adate) as year,
+  paste0("select year(adate) as year,
     count(*) as nrows, 
 	  count(distinct person_id) as npats
-	  from encounters
+	  from ", encounters, "
 	    group by year(adate)
-      order by year(adate)")
+      order by year(adate)"))
 
 tab9_avg_pats <- odbc::dbGetQuery(con, 
-  "select year(adate) as year,
+  paste0("select year(adate) as year,
     count(*) as nrows
-	  from encounters
+	  from ", encounters, "
 	    group by year(adate), person_id
-      order by year(adate)") %>% 
+      order by year(adate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
   summarise_all(funs(mean, median, min, max))%>% 
@@ -764,7 +783,7 @@ tmpLastLoc_ <- sqlQuery(sqldb,
                         paste('SELECT distinct a.*',
                               "INTO #tmpLastLoc",
                               "FROM ",census_location," AS a INNER JOIN ",
-                              "(SELECT person_id, max(loc_start) as loc_start FROM",census_location,"group by person_id) AS b",
+                              "(SELECT person_id, max(loc_start) as loc_start FROM ",census_location,"group by person_id) AS b",
                               "ON a.person_id = b.person_id and a.loc_start=b.loc_start",
                               sep=' '
                               ),
@@ -852,20 +871,19 @@ This table examines the volume of diagnoses over time and the number of patients
 ```{r tab12_res, echo = FALSE}
 
 tab12 <- odbc::dbGetQuery(con, 
-  "select year(adate) as year,
+  paste0("select year(adate) as year,
     count(*) as nrows, 
     count(distinct enc_id) as nencts,
 	  count(distinct person_id) as npats
-	  from diagnoses
+	  from ", diagnoses, "
 	    group by year(adate)
-      order by year(adate)")
-
+      order by year(adate)"))
 tab12_avg_encts <- odbc::dbGetQuery(con, 
-  "select year(adate) as year,
+  paste0("select year(adate) as year,
     count(*) as nrows
-	  from diagnoses
+	  from ", diagnoses, "
 	    group by year(adate), enc_id
-      order by year(adate)") %>% 
+      order by year(adate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
   summarise_all(funs(mean, median, min, max)) %>% 
@@ -873,13 +891,12 @@ tab12_avg_encts <- odbc::dbGetQuery(con,
     enct_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
   select(enct_val)
-
 tab12_avg_pats <- odbc::dbGetQuery(con, 
-  "select year(adate) as year,
+  paste0("select year(adate) as year,
     count(*) as nrows
-	  from diagnoses
+	  from ", diagnoses, "
 	    group by year(adate), person_id
-      order by year(adate)") %>% 
+      order by year(adate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
   summarise_all(funs(mean, median, min, max))%>% 
@@ -887,14 +904,12 @@ tab12_avg_pats <- odbc::dbGetQuery(con,
     pats_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
   select(pats_val)
-
 tab12_add <- tab12 %>% 
   bind_cols(., tab12_avg_encts, tab12_avg_pats) %>% 
   mutate(
     ptc_rec = if_else(is.na(nrows / dplyr::lag(nrows)), "--", paste0(round(nrows / dplyr::lag(nrows) * 100, 0), "%"))
   ) %>% 
   select(year, nrows, ptc_rec, nencts, npats, enct_val, pats_val)
-
 tab12_add$year <- as.character(tab12_add$year)
 
 ```
@@ -912,12 +927,12 @@ These tables includes information on the ten most common diagnoses recorded in y
 ```{r tab13_res, echo = FALSE}
 
 tab13_dxall <- odbc::dbGetQuery(con, 
-  "select dx,
+  paste0("select dx,
     dx_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
-	  from diagnoses
-	    group by dx, dx_codetype") %>% 
+	  from ", diagnoses, "
+	    group by dx, dx_codetype")) %>% 
   arrange(desc(nrows_all)) %>% 
   head(., 10) %>% 
   mutate(
@@ -925,15 +940,14 @@ tab13_dxall <- odbc::dbGetQuery(con,
   ) %>% 
   left_join(., icdLU, by = "dxCdTp") %>% 
   select(dx, dx_codetype, dxDesc, nrows_all, npats)
-
 tab13_dxav <- odbc::dbGetQuery(con, 
-  "select dx as dx_av,
+  paste0("select dx as dx_av,
     dx_codetype as dx_codetype_av,
     count(*) as nrows_av,
     count(distinct person_id) as npats_av
-	  from diagnoses
+	  from ", diagnoses, "
       where ENCTYPE = 'AV'
-	    group by dx, dx_codetype") %>% 
+	    group by dx, dx_codetype")) %>% 
   arrange(desc(nrows_av)) %>% 
   head(., 10) %>% 
   mutate(
@@ -941,7 +955,6 @@ tab13_dxav <- odbc::dbGetQuery(con,
   ) %>% 
   left_join(., icdLU, by = "dxCdTp") %>% 
   select(dx_av, dx_codetype_av, dxDesc, nrows_av, npats_av)
-
 tab13_all <- bind_cols(tab13_dxall, tab13_dxav)
 
 ```
@@ -965,22 +978,22 @@ This table includes information on the ten most common diagnoses recorded in you
 ```{r tab14_res, echo=FALSE}
 
 tab14_09 <- odbc::dbGetQuery(con, 
-  "select top 10 dx,
+  paste0("select top 10 dx,
     count(*) as nrows_all,
     count(distinct person_id) as npats
-	  from diagnoses
+	  from ", diagnoses, "
 	    where dx_codetype = '09'
       group by dx
-      order by nrows_all DESC") 
+      order by nrows_all DESC"))
 
 tab14_10 <- odbc::dbGetQuery(con, 
-  "select top 10 dx,
+  paste0("select top 10 dx,
     count(*) as nrows_all,
     count(distinct person_id) as npats
-	  from diagnoses
+	  from ", diagnoses, "
 	    where dx_codetype = '10'
       group by dx
-      order by nrows_all DESC") 
+      order by nrows_all DESC")) 
 
 ```
 
@@ -1025,7 +1038,7 @@ dxByMonEncTp <- within(dxByMonEncTp,{decode <- ifelse(!is.na(decode),decode, ife
 
 ## Figure 5a. Count of diagnoses by year and month in ambulatory encounters , Dataset: DIAGNOSES 
 
-```{r echo=F}
+```{r Count of diagnoses by year and month in ambulatory encounters, echo=F}
 
 ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -1033,7 +1046,7 @@ ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line() +
 
 ## Figure 5b. Count of diagnoses by year and month, other encounter types , Dataset: DIAGNOSES 
 
-```{r echo=F}
+```{r Count of diagnoses by year and month other encounter types, echo=F}
 ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')
 
@@ -1044,7 +1057,7 @@ ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + 
 
 # Examination of the VITAL_SIGNS Table
 
-```{r echo=F}
+```{r vital_signs table Table, echo=F}
 
 vitalSumm  <- sqlQuery(sqldb,
                  paste('SELECT count(*) as rowCnt, COUNT(DISTINCT person_id+CAST(measure_date AS varchar(10))+CAST(measure_time AS varchar(20)) ) as primKeyCnt, count(distinct person_id) as personCnt, min(measure_date) as firstDT, max(measure_date) as lastDT',
@@ -1072,7 +1085,7 @@ Month and year of last record: `r format(as.Date(vitalSumm$lastDT),"%B %Y")`
 
 ##Table 15. Vital Signs Summary
 
-```{r echo=F}
+```{r vital signs summary, echo=F}
 
 # be sure to include space breaks in any re-design
 vitalVarSumm <- function(var,label){
@@ -1121,23 +1134,22 @@ knitr::kable(vlst[c('variable','nobs','npats','minimum','q1','median','q3', 'max
 
 This table examines the volume of vital signs over time and the number of patients with encounters represented in the VITAL_SIGNS table. Average number of vital signs per encounter, and per patient, are calculated to compare vital signs volume trends over time; and also to indicate whether or not vital signs are captured in one row or multiple rows for each encounter.
 
-```{r tab16_res, echo = FALSE}
+```{r trends in the number of recorded vital signs, tab16_res, echo = FALSE}
 
 tab16 <- odbc::dbGetQuery(con, 
-  "select year(measure_date) as year,
+  paste0("select year(measure_date) as year,
     count(*) as nrows, 
     count(distinct enc_id) as nencts,
 	  count(distinct person_id) as npats
-	  from vital_signs
+	  from ", vital_signs, "
 	    group by year(measure_date)
-      order by year(measure_date)")
-
+      order by year(measure_date)"))
 tab16_avg_encts <- odbc::dbGetQuery(con, 
-  "select year(measure_date) as year,
+  paste0("select year(measure_date) as year,
     count(*) as nrows
-	  from vital_signs
+	  from ", vital_signs, "
 	    group by year(measure_date), enc_id
-      order by year(measure_date)") %>% 
+      order by year(measure_date)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
   summarise_all(funs(mean, median, min, max)) %>% 
@@ -1145,13 +1157,12 @@ tab16_avg_encts <- odbc::dbGetQuery(con,
     enct_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
   select(enct_val)
-
 tab16_avg_pats <- odbc::dbGetQuery(con, 
-  "select year(measure_date) as year,
+ paste0( "select year(measure_date) as year,
     count(*) as nrows
-	  from vital_signs
+	  from ", vital_signs, "
 	    group by year(measure_date), person_id
-      order by year(measure_date)") %>% 
+      order by year(measure_date)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
   summarise_all(funs(mean, median, min, max))%>% 
@@ -1159,14 +1170,12 @@ tab16_avg_pats <- odbc::dbGetQuery(con,
     pats_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
   select(pats_val)
-
 tab16_add <- tab16 %>% 
   bind_cols(., tab16_avg_encts, tab16_avg_pats) %>% 
   mutate(
     ptc_rec = if_else(is.na(nrows / dplyr::lag(nrows)), "--", paste0(round(nrows / dplyr::lag(nrows) * 100, 0), "%"))
   ) %>% 
   select(year, nrows, ptc_rec, nencts, npats, enct_val, pats_val)
-
 tab16_add$year <- as.character(tab16_add$year)
 
 ```
@@ -1180,7 +1189,7 @@ kable(tab16_add, col.names = c("Year", "Total Number of Recorded Vitals", "Perce
 
 ##Figure 6. Count of vital signs by year and month, Dataset: VITAL_SIGNS
 
-```{r echo=F}
+```{r Count of vital signs by year and month, echo=F}
 
 vitalsByMonYr <- sqlQuery(sqldb,
                  paste('SELECT year(measure_date) as year, month(measure_date) as month',
@@ -1208,9 +1217,9 @@ ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
 
 ## Table 17: BENEFIT table information
 
-```{r tab17_res, echo = F, eval=FALSE}
+```{r tab17_res, eval = F}
 tab17_ben_null <- odbc::dbGetQuery(con, 
-  "SELECT COUNT(*) as total,
+  paste0("SELECT COUNT(*) as total,
    SUM(CASE WHEN LOAD_DATE IS NULL THEN 1 ELSE 0 END) as LOAD_DATE,
    MIN(LOAD_DATE) as MIN_LOAD_DATE,
    MAX(LOAD_DATE) as MAX_LOAD_DATE,
@@ -1222,8 +1231,8 @@ tab17_ben_null <- odbc::dbGetQuery(con,
    MAX(START_DATE) as MAX_START_DATE,
    SUM(CASE WHEN END_DATE IS NULL THEN 1 ELSE 0 END) as END_DATE,
    MIN(END_DATE) as MIN_END_DATE,
-   MAX(END_DATE) as MAX_END_DATE,
-      FROM BENEFITS")
+   MAX(END_DATE) as MAX_END_DATE
+      FROM ", benefit))
 
 tab17_final <- tab17_ben_null %>% 
   mutate(
@@ -1258,7 +1267,7 @@ tab17_display  <- list(
          "Self-reported insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "SR", na_rm = T),
          "No Benefit information available" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NI", na_rm = T),
          "NULL" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NULL", na_rm = T),
-         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CU", "EN", "PR", "PA", "SR", "NI", "NULL"), na_rm = T))),
+         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CU", "EN", "PR", "PA", "SR", "NI", "NULL")), na_rm = T)),
   "BENEFIT_CAT" =
     list("Correctional Care" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CC", na_rm = T),
          "Commercial/Private Insurance" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CO", na_rm = T),
@@ -1269,60 +1278,64 @@ tab17_display  <- list(
          "Self-Pay/Uninsured/Private Pay " = ~ qwraps2::perc_n(BENEFIT_TYPE == "SP", na_rm = T),
          "Other insurance" = ~ qwraps2::perc_n(BENEFIT_TYPE == "OT", na_rm = T),
          "NULL" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NULL", na_rm = T),
-         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CC", "CO", "CP", "MC", "MD", "OG", "SP", "OT", "NULL"), na_rm = T)))
+         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CC", "CO", "CP", "MC", "MD", "OG", "SP", "OT", "NULL")), na_rm = T))
 ) 
 
 ```
 
-```{tab17_disp, results = "asis", eval=FALSE}
+```{tab17_disp, results = "asis", eval=F}
 
-qwraps2::summary_table(tab17_final, tab17_display, digits = 2)
+tab17_final <- qwraps2::summary_table(tab17_final, tab17_display, digits = 2)
+
 
 ```
 
-## Table 18: CENSUS_LOCATIOn
+## Table 18: CENSUS_LOCATION
 
-```{r tab18_out, results="asis", eval=FALSE}
+```{r tab18_out, results="asis", echo=F}
 
 tab18a <- odbc::dbGetQuery(con, 
-                          "SELECT COUNTY_GEOCODE,
-                          COUNT(*) as num_county
-                          FROM CENSUS_LOCATION
-                          GROUP BY COUNTY_GEOCODE")
+                           paste0("SELECT GEOCODE_COUNTY,
+                                  COUNT(*) as num_county
+                                  FROM ", census_location, "
+                                  GROUP BY GEOCODE_COUNTY"))
 
 tab18b <- odbc::dbGetQuery(con, 
-                          "SELECT ADDRESS_FLAG,
-                          COUNT(*) as num_add_flag
-                          FROM CENSUS_LOCATION
-                          GROUP BY ADDRESS_FLAG")
+                           paste0("SELECT ADDRESS_TYPE_CODE,
+                                  COUNT(*) as num_add_flag
+                                  FROM ", census_location, "
+                                  GROUP BY ADDRESS_TYPE_CODE"))
 
 tab18_tot <- odbc::dbGetQuery(con, 
-                          "COUNT(*) n_census
-                           FROM CENSUS_LOCATION")
-
-tab18_all <- dplyr::bind_cols(tab18a, tab18b) %>% 
+                              paste0("SELECT COUNT(*) n_census
+                                     FROM ", census_location))
+tab18_allCounty <- tab18a %>%
   mutate(
-  perc_county = paste0(round((num_county / n_census) * 100, "%"), 1),
-  perc_add_flag = paste0(round((num_add_flag / n_census) * 100, "%"), 1)
+    perc_county = paste0(round((num_county / tab18_tot$n_census) * 100, 1), "%")
   )
 
-tab18_all <- tab18_all[, c(1, 2, 5, 3, 4, 6)]
+tab18_allAddType <- tab18b %>%
+  mutate(
+    perc_add_type_code = paste0(round((num_add_flag / tab18_tot$n_census) * 100, 1), "%")
+  )
 
-knitr::kable(tab18_all, col.names = c("County Geocode", "Frequency County Geocode", "Percent County Geocode", "Address Flag", "Frequency Address Flag", "Percent Address Flag"), format.args = list(big.mark = ","))
+knitr::kable(tab18_allCounty, col.names = c("County Geocode", "Frequency County Geocode", "Percent County Geocode"), format.args = list(big.mark = ","))
+knitr::kable(tab18_allAddType, col.names = c("Address Flag Type Code", "Frequency Address Type Code", "Percent Address Type Code"), format.args = list(big.mark = ","))
 
 ```
 
 ## Table 19: LINKAGE table
 
-```{r, echo=FALSE, eval=FALSE}
+```{r, echo=FALSE, echo = F}
 
 tab19 <- odbc::dbGetQuery(con, 
-                          "SELECT COUNT DISTINCT(PERSON_ID) as npats,
-                          COUNT DISTINCT(LINK_ID) as nlink")
+                          paste0("SELECT COUNT(DISTINCT PERSON_ID) as npats,
+                          COUNT(DISTINCT LINK_ID) as nlink
+                          FROM ", linkage))
 
 ```
 
-```{r, results="asis", eval=FALSE}
+```{r, results="asis", echo = F}
 
 knitr::kable(tab19, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
 
