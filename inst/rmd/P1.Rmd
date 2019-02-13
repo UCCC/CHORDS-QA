@@ -32,7 +32,7 @@ knitr::opts_chunk$set(echo = TRUE,
                 warning = FALSE)
 startTime <- Sys.time()
 
-tableReplaces <- paste0("C:\\ChordsQA", "\\tablereplace.csv")
+tableReplaces <-  paste0(outputdir, "\\tablereplace.csv")
 if (file.exists(tableReplaces)){
   print("updating for QA using tablereplace.csv")
   df <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
