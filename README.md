@@ -19,11 +19,11 @@ install.packages("devtools")
 Once you have download and installed R, RStudio.  You can download the `chordsTables` package from ([here](https://github.com/UCCC/CHORDS-QA)). You can download the package by running the following code in RStudio:
 
 ```{r, eval=FALSE}
-devtools::install_github("UCCC/CHORDS-QA")
+devtools::install_github("UCCC/CHORDS-QA", ref="PMN")
 ```
 
-
 For both lines of code above, you only need to run this code for the initial install or to update the respective packages.  It is probably good practice to update both packages each time you open a new RStudio session.
+
 
 ## Step 2
 
@@ -36,9 +36,9 @@ chordsTables::run_report("P1")
 
 ## Step 3
 
-After the code above is run, a window will open in your default internet browser.  The page that is opened will prompt you to select the `Database Server Name` and the `Database Name`.  Simply click on the respective empty field and select the appropriate server and database name.  Once you've selected the appropriate names, click "Save".
+After the code above is run, a window will open in your default internet browser.  The page that is opened will prompt you to enter your connection information.  Enter your `Database Server Name` and the `Database Name`.  Enter the `Database User Name` and `Database Password` if you are using SQL Authentication.  If you are using Windows authentication, leave the `Database User Name` and `Database Password` blank. Once you have entered the appropriate values, click "Save".
 
 ## Step 4
 
-After you have selected the server and database names, RStudio will generate the requested report. You can see that the report is being generated, because messages will be printed to the Console in RStudio.  This could take 20-50 minutes depending on the computer you are using and the amount of data that is being returned by the report.  When the report is generated, the Console in RStudio will indicate that the report was created and its location.  By default, the report is stored in the following directory `C:/Users/<username>/Documents` (the My Documents folder for the current user), and the file name is the name of the argument passed to `run_report()` (e.g., `P1.docx`).
+After you have clicked "Save," RStudio will generate the requested report. You can see that the report is being generated, because messages will be printed to the Console in RStudio.  This could take 20-50 minutes depending on the computer you are using and the amount of data that is being returned by the report.  When the report is generated, the Console in RStudio will indicate that the report was created and its location.  By default, the report is stored in the following directory `C:/Users/<username>/Documents` (the My Documents folder for the current user), and the file name is the name of the argument passed to `run_report()` (e.g., `P1.docx`).
 

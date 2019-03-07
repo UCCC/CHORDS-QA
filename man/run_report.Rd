@@ -4,14 +4,24 @@
 \alias{run_report}
 \title{Run code to generate priority tables.}
 \usage{
-run_report(priority, dbserver, dbname)
+run_report(priority, dbserver = "NONE", dbname = "NONE",
+  dbuser = "NONE", dbpassword = "NONE", outputdir = NULL,
+  batchmode = "FALSE")
 }
 \arguments{
 \item{priority}{A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".}
 
-\item{dbserver}{A string vector.  The name of the database server name. This is selected via an html window and contains the following options \code{cc-s-d05.ucdenver.pvt}, \code{vwphbisql06}, \code{ihrsql1.ihr.or.kp.org}, \code{PRDVDWSQL01}, \code{SQL01}, \code{BI01}, and \code{vwedwtstsql04}}
+\item{dbserver}{A string vector.  The name of the database server name. This is selected via an html window.}
 
-\item{dbname}{A string vector.  The name of the database.  This is selected via an html window and contains the following options \code{VDW_3_1_DH}, \code{VDW.dbo}, \code{VDW}, \code{CHORDS_VDW_CC_3.1}, \code{CHORDS_VDW_CT_3.1}, \code{CHORDS_VDW_HP_3.1}, \code{CHORDS_VDW_MC_3.1}, \code{CHORDS_VDW_SC_3.1}, \code{CHORDS_VDW_SS_3.1}, \code{CHORDSlive.dbo}, \code{VDW.aligned}, and \code{CHORDSlive}}
+\item{dbname}{A string vector.  The name of the database.  This is selected via an html window.}
+
+\item{dbuser}{A string vector. The username that is used to connect to the database. Should be an empty string for windows authentication}
+
+\item{dbpassword}{A string vector.  The password used to connect to the database.  Should be an empty string for windows authentication}
+
+\item{outputdir}{A string vector.  The directory for the output document.  If none is specified, default is \code{C:/Users/<username>/Documents}}
+
+\item{batchmode}{A string vector.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters}
 }
 \value{
 Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)
