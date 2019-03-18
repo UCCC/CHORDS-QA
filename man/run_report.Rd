@@ -4,9 +4,8 @@
 \alias{run_report}
 \title{Run code to generate priority tables.}
 \usage{
-run_report(priority, dbserver = "NONE", dbname = "NONE",
-  dbuser = "NONE", dbpassword = "NONE", outputdir = NULL,
-  batchmode = "FALSE")
+run_report(priority, dbserver = NULL, dbname = NULL, dbuser = NULL,
+  dbpassword = NULL, outputdir = NULL, batchmode = FALSE)
 }
 \arguments{
 \item{priority}{A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".}
@@ -21,7 +20,7 @@ run_report(priority, dbserver = "NONE", dbname = "NONE",
 
 \item{outputdir}{A string vector.  The directory for the output document.  If none is specified, default is \code{C:/Users/<username>/Documents}}
 
-\item{batchmode}{A string vector.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters}
+\item{batchmode}{A boolean value.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters}
 }
 \value{
 Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)

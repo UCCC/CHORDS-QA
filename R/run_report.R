@@ -6,7 +6,7 @@
 #' @param dbuser A string vector. The username that is used to connect to the database. Should be an empty string for windows authentication
 #' @param dbpassword A string vector.  The password used to connect to the database.  Should be an empty string for windows authentication
 #' @param outputdir A string vector.  The directory for the output document.  If none is specified, default is \code{C:/Users/<username>/Documents}
-#' @param batchmode A string vector.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters
+#' @param batchmode A boolean value.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters
 #' @return Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)
 #' @examples
 #' \dontrun{
@@ -22,11 +22,11 @@
 #' @import httr
 #' @export
 
-run_report <- function(priority, dbserver = "NONE", dbname = "NONE", dbuser = "NONE", dbpassword = "NONE", outputdir = NULL, batchmode = "FALSE") {
-  if(dbuser == "NONE"){
+run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE) {
+  if(is.null(dbuser)){
     dbuser = ""
   }
-  if(dbpassword == "NONE"){
+  if(is.null(dbpassword)){
     dbpassword = ""
   }
 
@@ -34,7 +34,7 @@ run_report <- function(priority, dbserver = "NONE", dbname = "NONE", dbuser = "N
 	  outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
   }
   if (priority == "P1"){
-	  if (!is.null(batchmode) && batchmode == "TRUE"){
+	  if (!is.null(batchmode) && batchmode == TRUE){
 		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"),
 		                    params = list(
 		                        DBServerName = dbserver,
@@ -48,7 +48,7 @@ run_report <- function(priority, dbserver = "NONE", dbname = "NONE", dbuser = "N
 	  }
   }
   else if (priority == "P2"){
-	  if (!is.null(batchmode) && batchmode == "TRUE"){
+	  if (!is.null(batchmode) && batchmode == TRUE){
 		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"),
 		                    params = list(
 		                      DBServerName = dbserver,
@@ -62,7 +62,7 @@ run_report <- function(priority, dbserver = "NONE", dbname = "NONE", dbuser = "N
 	  }
   }
   else if (priority == "P3"){
-    if (!is.null(batchmode) && batchmode == "TRUE"){
+    if (!is.null(batchmode) && batchmode == TRUE){
 		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"),
 		                    params = list(
 		                      DBServerName = dbserver,
