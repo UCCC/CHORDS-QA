@@ -1,0 +1,4 @@
+select * from (
+select PERSON_ID, LOC_END, COUNT(GEOCODE) NUM_ADDRESSES from CENSUS_LOCATION
+group by PERSON_ID, LOC_END) recs
+where NUM_ADDRESSES > 1 AND recs.LOC_END IS NULL;
