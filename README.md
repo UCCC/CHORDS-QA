@@ -41,7 +41,7 @@ chordsTables::run_report("P1", dbserver = "cc-s-d05", dbname = "VDW_3_2_1_DH_011
 
 ## Step 3
 
-If `batchmode = FASLE` or is unspecified when `run_report` is called, a window will open in your default internet browser.  The page that is opened will prompt you to enter your connection information.  Enter your `Database Server Name` and the `Database Name`.  Enter the `Database User Name` and `Database Password` if you are using SQL Authentication.  If you are using Windows authentication, leave the `Database User Name` and `Database Password` blank. Once you have entered the appropriate values, click "Save".
+If `batchmode = FALSE` or is unspecified when `run_report` is called, a window will open in your default internet browser.  The page that is opened will prompt you to enter your connection information.  Enter your `Database Server Name` and the `Database Name`.  Enter the `Database User Name` and `Database Password` if you are using SQL Authentication.  If you are using Windows authentication, leave the `Database User Name` and `Database Password` blank. Once you have entered the appropriate values, click "Save".
 
 If `batchmode = TRUE`, the report starts to run with the values already specified and no browser window will open.
 
