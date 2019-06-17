@@ -56,8 +56,8 @@ if (file.exists(tableReplaces)){
   vital_signs     <- "vital_signs"
   lab_results     <- "lab_results"
   procedures      <- "procedures"
-  benefit        <- "benefit"
-  linkage        <- "linkage"
+  benefit         <- "benefit"
+  linkage         <- "linkage"
   
 }
 # set to zero for full read of the database
@@ -510,7 +510,7 @@ knitr::kable(race5[    c('race5', 'decode','count','countPct')],
 ```{r race1xrace2 , echo=F}
 demogCounts2 <- sqlQuery(sqldb, 
                   paste('SELECT race1, race2, race3, race4, race5, Hispanic, primary_language
-                        FROM demographics'))
+                        FROM ', demographics))
                   
 race1xrace2 <- table(demogCounts2$race1,demogCounts2$race2)
 rsum <- rowSums(race1xrace2)
@@ -727,17 +727,18 @@ knitr::kable(race5xethnicity,
 ```   
 ## Table 7.11 Unknown or missing race1 and Hispanic ethnicity over time
 ```{r missing race/ethnicity over time, include=FALSE}
-enc <- sqlQuery(sqldb,'select a.person_id, a.adate, b.person_id, b.race1, b.Hispanic
-from encounters as a
-left join demographics as b
-on a.person_id=b.person_id
-where b.race1==UN and b.Hispanic==U'
-                  )
+enc <- sqlQuery(sqldb, paste0('
+  select a.person_id, a.adate, b.person_id, b.race1, b.Hispanic,
+  from ', encounters, ' as a 
+  left join ', demographics,' as b
+    on a.person_id=b.person_id
+  where b.race1==UN and b.Hispanic==U'
+                  ))
 enc
 demogCounts2 <- sqlQuery(sqldb, 
-                  paste('SELECT person_id, ADATE FROM encounters as a
+                  paste0('SELECT person_id, ADATE FROM ', encounters, ' as a
                   left join demographics, person_id, race1, Hispanic,
-                        FROM demographics'))
+                        FROM ', demographics))
 ```
 
 ## Table 7.12 Unknown or missing race1 and Hispanic ethnicity by gender
@@ -1507,11 +1508,14 @@ knitr::kable(tab19, col.names = c("Number of unique patient IDs", "Number of uni
  close(sqldb)
 endTime <- Sys.time()
 endTime - startTime 
-```title: "P1 QA with new REL questions"
+```
+
+title: "P1 QA with new REL questions"
 author: "Emily Bacon"
 date: "6/4/2019"
 output: word_document
 ---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
