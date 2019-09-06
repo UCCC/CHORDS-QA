@@ -32,43 +32,14 @@ knitr::opts_chunk$set(#cache   = TRUE,
                results = "hide",
                message = FALSE,
                warning = FALSE) 
-startTime <- Sys.time()
-
-tableReplaces <- paste0(outputdir, "\\tablereplace.csv")
-if (file.exists(tableReplaces)){
-  print("updating for QA using tablereplace.csv")
-  df <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
-  
-  lab_results <- ifelse("lab_results" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("lab_results"), tolower(df$ORG_NAME))], "lab_results")
-  encounters <- ifelse("encounters" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("encounters"), tolower(df$ORG_NAME))], "encounters")
-  prescribing <- ifelse("prescribing" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("prescribing"), tolower(df$ORG_NAME))], "prescribing")
-  procedures <- ifelse("procedures" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("procedures"), tolower(df$ORG_NAME))], "procedures")
-  social_history <- ifelse("social_history" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("social_history"), tolower(df$ORG_NAME))], "social_history")
-  provider_specialty <- ifelse("provider_specialty" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("provider_specialty"), tolower(df$ORG_NAME))], "provider_specialty")
-  diagnoses <- ifelse("diagnoses" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("diagnoses"), tolower(df$ORG_NAME))], "diagnoses")
-  vital_signs <- ifelse("vital_signs" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("vital_signs"), tolower(df$ORG_NAME))], "vital_signs")
-  census_location <- ifelse("census_location" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("census_location"), tolower(df$ORG_NAME))], "census_location")
-  demographics <- ifelse("demographics" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("demographics"), tolower(df$ORG_NAME))], "demographics")
-  
-} else {
-  # Names of database tables
-  lab_results    <- "LAB_RESULTS"
-  encounters      <- "ENCOUNTERS"
-  prescribing <- "PRESCRIBING"
-  procedures     <- "PROCEDURES"
-  social_history  <- "SOCIAL_HISTORY"
-  provider_specialty <- "PROVIDER_SPECIALTY"
-  diagnoses <- "DIAGNOSES"
-  vital_signs <- "VITAL_SIGNS"
-  census_location <- "CENSUS_LOCATION"
-  demographics <- "DEMOGRAPHIC"
-}
-
 
 library(knitr)
 library(tidyverse)
+library(RODBC)
 
-	# connection to sql server
+startTime <- Sys.time()
+
+# connection to sql server
 if (nchar(params$DBUser) == 0)
 {
 	con <- DBI::dbConnect(odbc::odbc(),
@@ -88,6 +59,57 @@ if (nchar(params$DBUser) == 0)
 	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$UserName,';pwd=',params$Password,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 }
 
+#Checks to see if partner is using table replacements.
+#Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
+dfChordsTbls <- odbc::dbGetQuery(con, "                    
+    IF EXISTS
+    (
+        SELECT
+            *
+        FROM  SYSOBJECTS
+        WHERE XTYPE = 'U' AND
+              NAME = 'CHORDS_TableNames'
+    )
+    BEGIN
+        SELECT
+            [ORG_NAME],
+            [NEW_NAME]
+        FROM[CHORDS_TABLENAMES];
+    END; ")
+
+if (nrow(dfChordsTbls) == 0  && exists("outputdir")){
+  tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
+  if (file.exists(tableReplaceFile)){
+    print("updating for QA using tablereplace.csv")
+    dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
+  }
+}
+
+if (nrow(dfChordsTbls) > 0){
+  lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
+  encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
+  prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
+  procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
+  social_history <- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
+  provider_specialty <- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
+  diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
+  vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
+  census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
+  demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
+  
+} else {
+  # Names of database tables
+  lab_results    <- "LAB_RESULTS"
+  encounters      <- "ENCOUNTERS"
+  prescribing <- "PRESCRIBING"
+  procedures     <- "PROCEDURES"
+  social_history  <- "SOCIAL_HISTORY"
+  provider_specialty <- "PROVIDER_SPECIALTY"
+  diagnoses <- "DIAGNOSES"
+  vital_signs <- "VITAL_SIGNS"
+  census_location <- "CENSUS_LOCATION"
+  demographics <- "DEMOGRAPHIC"
+}
 ```
 
 #CHORDS QA Report: VDW P2 Tables
