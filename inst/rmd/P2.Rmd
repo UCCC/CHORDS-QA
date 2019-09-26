@@ -133,23 +133,12 @@ sh_db <-  tbl(con, social_history)
 prov_spec_db <-  tbl(con, provider_specialty)
 
 tab1_lab <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
-	count(distinct person_id) as npats,
+  count(distinct person_id) as npats,
+  null as nencts,
   'RESULT_DT' as fieldname,
   cast(min(result_dt) as varchar) as mindt,
   cast(max(result_dt) as varchar) as maxdt
-	from ", lab_results))
-	
-tab1_lab2 <- data.frame(nrows = tab1_lab$nrows, 
-                       npats = tab1_lab$npats, 
-                       nencts = NA, 
-                       fieldname = tab1_lab$fieldname, 
-                       mindt1 = as.Date(tab1_lab$mindt, format = "%B %d %Y"), 
-                       mindt = as.character(tab1_lab2$mindt1),
-                       maxdt1 = as.Date(tab1_lab$maxdt, format = "%B %d %Y"),
-                       maxdt = as.character(tab1_lab2$maxdt1))
-
-tab1_lab <- tab1_lab2[-c(5,7)]
-
+  from ", lab_results))
 tab1_rx <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
   count(distinct enc_id) as nencts,
@@ -171,8 +160,15 @@ tab1_sh <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
 	cast(min(contact_date) as varchar) as mindt,
 	cast(max(contact_date) as varchar) as maxdt
   from ", social_history))
-tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh) %>% 
-  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY"), .)
+tab1_ps <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
+	null as npats,
+  null as fieldname,
+  null as nencts,
+	null as mindt,
+	null as maxdt
+	from ", provider_specialty))
+tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh, tab1_ps) %>% 
+  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY", "PROVIDER_SPECIALTY"), .)
 ```
 
 ```{r tab1_disp, results="asis"}
