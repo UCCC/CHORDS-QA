@@ -106,10 +106,11 @@ if (nrow(dfChordsTbls) > 0){
 
 ## CHORDS QA Report: VDW P2 Tables
 
-The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 2 (P2) tables.  The P2 tables include the following: LAB_RESULTS, PRESCRIBING, PROCEDURES, PROVIDER_SPECIALTY, and SOCIAL_HISTORY. The program uses a series of SQL queries operationalized using RStudio to produce this report.  These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness.
+The purpose of the data quality program is to characterize the data in a second set of CHORDS VDW tables (previously referred to as Priority 2 or "P2" tables).  The P2 tables include the following: LAB_RESULTS, PRESCRIBING, PROCEDURES, PROVIDER_SPECIALTY, SOCIAL_HISTORY, PRO_SURVEYS, PRO_QUESTIONS, and PRO_RESPONSES . The program uses a series of SQL queries operationalized using RStudio to produce this report.  These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness.
+
 This data quality report was generated from CHORDS `r params$DBName`.
 
-###Information about the QA program 
+## Information about the QA program 
 Data Partner: 
 Analyst: 
 Query Run Date:  `r Sys.Date()`
@@ -125,13 +126,12 @@ prov_type <- chordsTables::prov_type
 This table contains summary counts and date ranges by table. Distinct encounters and patients are shown for applicable tables. Date ranges should be used to compare data time windows between tables.
 
 ```{r tab1_sum_stats}
+
 lab_res_db <- tbl(con, lab_results)
 encounters_db <-  tbl(con, encounters)
 rx_db <-  tbl(con, prescribing)
 px_db <-  tbl(con, procedures)
 sh_db <-  tbl(con, social_history)
-prov_spec_db <-  tbl(con, provider_specialty)
-
 tab1_lab <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
   count(distinct person_id) as npats,
   null as nencts,
@@ -160,15 +160,9 @@ tab1_sh <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
 	cast(min(contact_date) as varchar) as mindt,
 	cast(max(contact_date) as varchar) as maxdt
   from ", social_history))
-tab1_ps <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
-	null as npats,
-  null as fieldname,
-  null as nencts,
-	null as mindt,
-	null as maxdt
-	from ", provider_specialty))
-tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh, tab1_ps) %>% 
-  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY", "PROVIDER_SPECIALTY"), .)
+tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh) %>% 
+  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY"), .)
+
 ```
 
 ```{r tab1_disp, results="asis"}
@@ -247,30 +241,21 @@ tab2_lab_uk <- odbc::dbGetQuery(con,
       FROM ", lab_results))
 tab2_lab_uk2 <- data.frame(table = rep("LAB_RESULTS", ncol(tab2_lab_uk)), var = names(tab2_lab_uk), records_uk = t(tab2_lab_uk)[,1])
 row.names(tab2_lab_uk2) <- NULL
-
-
 tab2_px_uk <- odbc::dbGetQuery(con, 
   paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNK' THEN 1 ELSE 0 END) as PROVIDER
       FROM ", procedures))
 tab2_px_uk2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_uk)), var = names(tab2_px_uk), records_uk = t(tab2_px_uk)[,1])
 row.names(tab2_px_uk2) <- NULL
-
-
 tab2_px_uk <- odbc::dbGetQuery(con, 
   paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNK' THEN 1 ELSE 0 END) as PROVIDER
       FROM ", procedures))
 tab2_px_uk2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_uk)), var = names(tab2_px_uk), records_uk = t(tab2_px_uk)[,1])
 row.names(tab2_px_uk2) <- NULL
-
-
 tab2_rx_uk <- odbc::dbGetQuery(con, 
   paste0("SELECT SUM(CASE WHEN RXMD = 'UNK' THEN 1 ELSE 0 END) as RXMD
       FROM ", prescribing))
 tab2_rx_uk2 <- data.frame(table = rep("PRESCRIBING", ncol(tab2_rx_uk)), var = names(tab2_rx_uk), records_uk = t(tab2_rx_uk)[,1])
 row.names(tab2_rx_uk2) <- NULL
-
-
-
 tab2_ps_uk <- odbc::dbGetQuery(con, 
   paste0("SELECT SUM(CASE WHEN SPECIALTY = 'UNK' THEN 1 ELSE 0 END) as SPECIALTY,
    SUM(CASE WHEN PROVIDER_TYPE = 999 THEN 1 ELSE 0 END) as PROVIDER_TYPE,
@@ -360,7 +345,8 @@ tab4 <- tab4 %>%
 ```
 
 ```{r tab4_disp, results="asis"}
-kable(tab4, col.names = c("Test Type", "Number of Recorded Lab Tests", "Percentage of All Recorded Tests", "Number of Unique Patients Tested", "Percentage of All Patients", "Mean Result Value", "Minimum Result Value", "Maximum Result Value"), digits = 2, format.args = list(big.mark = ",")) 
+
+kable(tab4 [c("test_type", "nrows", "pct_rec", "npats", "pct_pat", "avg_resval", "min_resval", "max_resval")], col.names = c("Test Type", "Number of Recorded Lab Tests", "Percentage of All Recorded Tests", "Number of Unique Patients Tested", "Percentage of All Patients", "Mean Result Value", "Minimum Result Value", "Maximum Result Value"), digits = 2, align = 'c', format.args = list(big.mark = ",")) 
 ```
 
 ## Figures 1a-1i: Temporal Trends in the Number of CHORDS Priority Lab Tests, by Select TEST_TYPE Values
@@ -369,39 +355,43 @@ These figures shows temporal trends in the number of records for CHORDS priority
 
 
 ```{r fig1_res, fig.height=10, fig.width=15}
-
 fig1 <- odbc::dbGetQuery(con, 
   paste0("select test_type, 
+    month(result_dt) as month,
     year(result_dt) as year,
     count(*) as nrows
 	  from ", lab_results, "
       where test_type in ('HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL')
-	    group by test_type, year(result_dt)")) 
+	    group by test_type, year(result_dt), month(result_dt)")) 
+
 
 #some lab results have training whitespace - trim this if applicable	    
 trim.trailing <- function(x) sub("\\s+$", "", x)
 trim <- function(x) gsub("\\s+$", "", x)
 fig1$test_type <- trim(fig1$test_type)
 
-fig1_wide <- spread(fig1, key = test_type, value = nrows)
-
-
-
+fig1_sub <- fig1 %>% 
+  arrange(year, month, test_type) %>% 
+  mutate(
+    date = as.Date(paste(year, month, "01", sep = "-"))
+  ) %>% 
+  select(-month, -year)
+fig1_wide <- spread(fig1_sub, key = test_type, value = nrows)
 lapply(2:ncol(fig1_wide), function(x) 
-  ggplot(data = fig1_wide, aes(x = year, y = fig1_wide[[x]])) +
+  ggplot(data = fig1_wide, aes(x = date, y = fig1_wide[[x]])) +
          geom_line() +
     ggtitle(names(fig1_wide)[x]) +
     theme(axis.text.x = element_text(angle=45, margin(b = .5), vjust = .5)) +
-    xlab("Year") + ylab("Number of Records") +
+    scale_x_date(date_labels = "%b %y",date_breaks='1 year') +
+    xlab("Date") + ylab("Number of Records") +
     theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),  
         axis.line = element_line(colour = "black"),
-        axis.title = element_text(size = 16, face = "bold", family="TT Arial"),
-        axis.text = element_text(size = 14, face = "bold", family="TT Arial"),
-        plot.title = element_text(hjust = 0.5, size = 20, family="TT Arial"))
+        axis.title = element_text(size = 10, face = "bold"),
+        axis.text = element_text(size = 8, face = "bold"),
+        plot.title = element_text(hjust = 0.5, size = 12))
     ) 
-
 
 ```
 
@@ -411,7 +401,7 @@ This table illustrates the number (and percent) of the data partner's ten most c
 
 ```{r tab5_res}
 tab5 <- odbc::dbGetQuery(con, 
-   paste0("select battery_cd,
+                         paste0("select battery_cd,
     count(*) as nrows, 
 	  count(distinct person_id) as npats
 	  from ", lab_results, "
@@ -431,25 +421,25 @@ tab5_sub <- tab5 %>%
 kable(tab5_sub, col.names = c("BATTERY_CD", "Number of Recorded Lab Tests", "Percentage of All Lab Tests", "Number of Patients Tested", "Percentage of All Patients with a Lab Test"), format.args = list(big.mark = ","))
 ```
 
-##Examination of the PRESCRIBING Table (Medication Orders and Prescriptions Combined)
+## Examination of the PRESCRIBING Table (Medication Orders and Prescriptions Combined)
 
 The following tables explore the contents of the PRESCRIBING table with a focus on trends over time and most common types of medications ordered. 
 
-##Table 6: Annual Trends in Prescribing Data - the Total Number of Recorded Medication Orders, the Percent Change from the Previous Year, the Total Number of Patients and the Mean, Maximum and Minimum Numbers of Orders & Prescriptions per Patient
+## Table 6: Annual Trends in Prescribing Data - the Total Number of Recorded Medication Orders, the Percent Change from the Previous Year, the Total Number of Patients and the Mean, Maximum and Minimum Numbers of Orders & Prescriptions per Patient
 
 This table displays trends in PRESCRIBING record volume over time as well as patient volume represented in the table. PRESCRIBING records are attributed to a year based on RX_ORDER_DATE.
 
 
 ```{r tab6_res}
 tab6 <- odbc::dbGetQuery(con, 
-  paste0("select year(rx_order_date) as year,
+                         paste0("select year(rx_order_date) as year,
     count(*) as nrows, 
 	  count(distinct person_id) as npats
 	  from ", prescribing, "
 	    group by year(rx_order_date)
       order by year(rx_order_date)"))
 tab6_avg_pats <- odbc::dbGetQuery(con, 
-   paste0("select year(rx_order_date) as year,
+                                  paste0("select year(rx_order_date) as year,
     count(*) as nrows
 	  from ", prescribing, "
 	    group by year(rx_order_date), person_id
@@ -472,24 +462,26 @@ tab6_all$year <- as.character(tab6_all$year)
 kable(tab6_all, col.names = c("Year", "Total Number of Prescriptions", "Percent Change From Last Year", "Total Number of Patients", "Median number of Prescriptions per patient", "Minimum Number of Prescriptions Per Patient", "Maximum Number of Prescriptions Per Patient"), align = "c" , format.args = list(big.mark = ","))
 ```
 
-##Table 7: Summary of the Ten Most Common Medications by Order Type
+## Table 7: Summary of the Ten Most Common Medications by Order Type
 
 This table displays the top ten most common orders including count of records and patients. 
 
 ```{r tab7_res}
 tab7<- odbc::dbGetQuery(con, 
-  paste0("select top 10 GENERIC_MED_NAME,
+                        paste0("select top 10 GENERIC_MED_NAME,
     count(*) as nrows,
 	  count(distinct person_id) as npats,
-    avg(RX_DAYS_SUPPLY) as avg_days_sup,
-    avg(RX_QUANTITY_NUM) as avg_rx_quant
+    round(avg(RX_DAYS_SUPPLY),1) as avg_days_sup,
+    round(avg(RX_QUANTITY_NUM),1) as avg_rx_quant
 	  from ", prescribing, "
 	    group by GENERIC_MED_NAME
       order by nrows DESC"))
+
+
 ```
 
 ```{r tab7_disp, results="asis"}
- kable(tab7, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity"), format.args = list(big.mark = ","))
+kable(tab7, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity"), format.args = list(big.mark = ","))
 ```
 
 ## Examination of the PROCEDURES Table 
@@ -503,7 +495,7 @@ This table examines the volume of procedures over time and the number of encount
 
 ```{r tab8_res}
 tab8 <- odbc::dbGetQuery(con, 
-  paste0("select year(procdate) as year,
+                         paste0("select year(procdate) as year,
     count(*) as nrows, 
     count(distinct enc_id) as nencts,
 	  count(distinct person_id) as npats
@@ -511,7 +503,7 @@ tab8 <- odbc::dbGetQuery(con,
 	    group by year(procdate)
       order by year(procdate)"))
 tab8_avg_encts <- odbc::dbGetQuery(con, 
-  paste("select year(procdate) as year,
+                                   paste("select year(procdate) as year,
     count(*) as nrows
 	  from ", procedures, "
 	    group by year(procdate), enc_id
@@ -524,7 +516,7 @@ tab8_avg_encts <- odbc::dbGetQuery(con,
   ) %>% 
   select(enct_val)
 tab8_avg_pats <- odbc::dbGetQuery(con, 
-  paste0("select year(procdate) as year,
+                                  paste0("select year(procdate) as year,
     count(*) as nrows
 	  from ", procedures, "
 	    group by year(procdate), person_id
@@ -555,28 +547,28 @@ This table compares the distribution of procedures, diagnoses and encounters by 
 
 ```{r tab9_res}
 tab9_enct1 <- odbc::dbGetQuery(con, 
-  paste0("select enctype,
+                               paste0("select enctype,
     count(*) as nrows_enct
 	  from ", encounters, "
 	    group by enctype"))
 tab9_enct2 <- odbc::dbGetQuery(con, 
-  paste0("select count(*) as enct_tot
+                               paste0("select count(*) as enct_tot
 	  from ", encounters))
 tab9_diag1 <- odbc::dbGetQuery(con, 
-  paste0("select enctype,
+                               paste0("select enctype,
     count(*) as nrows_diag
 	  from ", diagnoses, "
 	    group by enctype"))
 tab9_diag2 <- odbc::dbGetQuery(con, 
-  paste0("select count(*) as diag_tot
+                               paste0("select count(*) as diag_tot
 	  from ", diagnoses))
 tab9_px1 <- odbc::dbGetQuery(con, 
-  paste0("select enctype,
+                             paste0("select enctype,
     count(*) as nrows_px
 	  from ", procedures, "
 	    group by enctype"))
 tab9_px2 <- odbc::dbGetQuery(con, 
-  paste0("select count(*) as px_tot
+                             paste0("select count(*) as px_tot
 	  from ", procedures))
 tab9_tot <- data.frame(enctype = "Total", nrows_enct = tab9_enct2$enct_tot, nrows_diag = tab9_diag2$diag_tot, nrows_px = tab9_px2$px_tot, pct_enct = NA, pct_diag = NA, pct_px = NA)
 tab9_all <- tab9_enct1 %>% 
@@ -595,13 +587,13 @@ tab9_all <- tab9_enct1 %>%
 kable(tab9_all[1:7, c( "enctype", "nrows_enct", "pct_enct", "nrows_enct", "pct_diag", "nrows_px", "pct_px")], col.names = c("Encounter Type", "Number of Encounters", "Percent of Total Encounters", "Number of Diagnoses", "Percent of Total Diagnoses", "Number of Procedures", "Percent of Total Procedures"), digits = 2, format.args = list(big.mark = ","))
 ```
 
-##Table 10: Summary of the Ten Most Common Procedures - Procedure Code, Procedure Type, Total Number of Recorded Procedures and Total Number of Recorded Patients, by All or Ambulatory Encounter Type 
+## Table 10: Summary of the Ten Most Common Procedures - Procedure Code, Procedure Type, Total Number of Recorded Procedures and Total Number of Recorded Patients, by All or Ambulatory Encounter Type 
 
 This table includes information on the ten most common procedures recorded in your PROCEDURE table.  Data on procedure codes, types, counts and patients are presented for all encounters and for ambulatory only encounters (ENCTYPE='AV'). 
 
 ```{r tab10_res}
 tab10_pxall <- odbc::dbGetQuery(con, 
- paste0("select px,
+                                paste0("select px,
     px_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
@@ -610,7 +602,7 @@ tab10_pxall <- odbc::dbGetQuery(con,
   arrange(desc(nrows_all)) %>% 
   head(., 10)
 tab10_pxav <- odbc::dbGetQuery(con, 
-   paste0("select px as px_av,
+                               paste0("select px as px_av,
     px_codetype as px_codetype_av,
     count(*) as nrows_av,
     count(distinct person_id) as npats_av
@@ -626,13 +618,13 @@ tab10_all <- bind_cols(tab10_pxall, tab10_pxav)
 kable(tab10_all, col.names = c("Procedure Code", "Procedure Type", "Number of Recorded Procedures", "Number of Patients", "Procedure Code for AV", "Procedure Type for AV", "Number of Recorded Procedures for AV", "Number of Patients for AV"), align = 'c', format.args = list(big.mark = ","))
 ```
 
-##Table 11: Summary of the Ten Most Common Procedures by Procedure Code Type, Total Number of Recorded Procedures and Total Number of Recorded Patients 
+## Table 11: Summary of the Ten Most Common Procedures by Procedure Code Type, Total Number of Recorded Procedures and Total Number of Recorded Patients 
 
 This table includes information on the ten most common procedures recorded in your PROCEDURE table.  Data on procedure codes, counts and patients are presented for CPT, HCPCS, and other code types. 
 
 ```{r tab11_res}
 tab11_pxc4 <- odbc::dbGetQuery(con, 
- paste0("select top 10 px,
+                               paste0("select top 10 px,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", procedures, "
@@ -640,7 +632,7 @@ tab11_pxc4 <- odbc::dbGetQuery(con,
       group by px
       order by nrows_all DESC"))
 tab11_pxh4 <- odbc::dbGetQuery(con, 
- paste0("select top 10 px,
+                               paste0("select top 10 px,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", procedures, "
@@ -648,7 +640,7 @@ tab11_pxh4 <- odbc::dbGetQuery(con,
       group by px
       order by nrows_all DESC"))
 tab11_px_oth <- odbc::dbGetQuery(con, 
- paste0("select top 10 px,
+                                 paste0("select top 10 px,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", procedures, "
@@ -678,37 +670,37 @@ if (nrow(tab11_px_oth) != 0){
 ```
 
 
-##Examination of the PROVIDER_SPECIALTY Table
+## Examination of the PROVIDER_SPECIALTY Table
 
 The following tables explore the contents of the PROVIDER_SPECIALTY table with a focus on demographic data and representativeness of providers across tables.  Note that in some systems providers can be listed multiple times with multiple provider types/specialties. 
 
-##Table 12: Number and Percent of Providers represented in ENCOUNTERS, DIAGNOSIS, LAB_RESULTS, PRESCRIBING, AND PROCEDURES Tables 
+## Table 12: Number and Percent of Providers represented in ENCOUNTERS, DIAGNOSIS, LAB_RESULTS, PRESCRIBING, AND PROCEDURES Tables 
 
 This table includes information on the number and percent of providers represented in various CHORDS VDW 3.1 tables.
 
 ```{r tab12_res}
 tab12_ps <- odbc::dbGetQuery(con, 
-  paste0("select 'PROVIDER_SPECIALTY' as from_tab,
+                             paste0("select 'PROVIDER_SPECIALTY' as from_tab,
    count(distinct provider) as num_prov
      from ", provider_specialty))
 tab12_dx <- odbc::dbGetQuery(con, 
-  paste0("select 'DIAGNOSES' as from_tab,
+                             paste0("select 'DIAGNOSES' as from_tab,
    count(distinct provider) as num_prov
      from ", diagnoses))
 tab12_enct <- odbc::dbGetQuery(con, 
-  paste0("select 'ENCOUNTERS' as from_tab,
+                               paste0("select 'ENCOUNTERS' as from_tab,
    count(distinct provider) as num_prov
      from ", encounters))
 tab12_lab <- odbc::dbGetQuery(con, 
-  paste0("select 'LAB_RESULTS' as from_tab,
+                              paste0("select 'LAB_RESULTS' as from_tab,
    count(distinct order_prov) as num_prov 
      from ", lab_results))
 tab12_rx <- odbc::dbGetQuery(con, 
-  paste0("select 'PRESCRIBING' as from_tab,
+                             paste0("select 'PRESCRIBING' as from_tab,
    count(distinct rxmd) as num_prov 
      from ", prescribing))
 tab12_px <- odbc::dbGetQuery(con, 
-  paste0("select 'PROCEDURES' as from_tab,
+                             paste0("select 'PROCEDURES' as from_tab,
    count(distinct provider) as num_prov
      from ", procedures))
 tab12_all <- bind_rows(tab12_ps, tab12_dx, tab12_enct, tab12_lab, tab12_rx, tab12_px) %>% 
@@ -722,12 +714,13 @@ kable(tab12_all, col.names = c("Table", "Number of Providers*", "Percent of All 
 ```
 *Excludes Provider = 'Unknown'
 
+## Table 13: Number and Percent of Providers by Specialty
 
-##Table 13: Number and Percent of Providers by Specialty
-This table includes information on the distribution of providers by specialty
+This table includes information on the distribution of providers by specialty.
+
 ```{r tab13_res}
 tab13 <- odbc::dbGetQuery(con, 
- paste0("select specialty as spec,
+                          paste0("select specialty as spec,
    count(distinct provider) as num_prov
      from ", provider_specialty, "
        group by specialty
@@ -743,11 +736,13 @@ tab13 <- tab13[, c(1,4,2,3)]
 kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Providers", "Percent of All Providers"), digits = 2, format.args = list(big.mark = ","))
 ```
 
-##Table 14: Number and Percent of Provider by Provider Type 
+## Table 14: Number and Percent of Provider by Provider Type 
+
 This table includes information on the distribution of providers by type.
+
 ```{r tab14_res}
 tab14 <- odbc::dbGetQuery(con, 
- paste0("select provider_type as prov_type,
+                          paste0("select provider_type as prov_type,
    count(distinct provider) as num_prov
      from ", provider_specialty, "
        group by provider_type
@@ -756,7 +751,6 @@ tab14 <- odbc::dbGetQuery(con,
   mutate(
     pct_prov = num_prov / tab12_ps$num_prov * 100
   ) 
-
 tab14$prov_type <- as.numeric(tab14$prov_type)
 tab14$spec_full <- prov_type$V2[match(tab14$prov_type, prov_type$V1)]
 tab14$spec_full[is.na(tab14$spec_full)] <- "Unknown"
@@ -766,12 +760,13 @@ tab14 <- tab14[, c(1,4,2,3)]
 kable(tab14, col.names = c("Provider Abbreviation", "Provider Type", "Number of Providers", "Percent of All Providers"), digits = 2, align = 'l', format.args = list(big.mark = ","))
 ```
 
+## Table 15: Annual Trends in Self-Reported Tobacco Use
 
-##Table 15: Annual Trends in Self-Reported Tobacco Use - the Distribution of Responses by Tobacco Behavior Categories, by Calendar Year	
 This table includes information on the distribution of SOCIAL_HISTORY records by TOBACCO_USER value.
+
 ```{r tab15_res}
 tab15 <- odbc::dbGetQuery(con, 
- paste0("select year(contact_date) as year,
+                          paste0("select year(contact_date) as year,
    count(*) as num_rec,
    SUM(CASE WHEN TOBACCO_USER = 'Y' THEN 1 ELSE 0 END) as smoker,
    SUM(CASE WHEN TOBACCO_USER = 'I' THEN 1 ELSE 0 END) as infreq,
@@ -800,14 +795,14 @@ tab15$year <- as.character(tab15$year)
 kable(tab15, col.names = c("Year", "Records", "Yes/Current (%)", "Infrequent(%) ", "Quit/Former (%)", "Passive/Second Hand Smoke Exposure (%)", "Never (%)", "Not Asked/Unknown (%)", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
 
-##Table 16: Annual Trends in Self-Reported Alcohol Use - the Distribution of Responses by Alcohol Behavior Categories, by Calendar Year	
+## Table 16: Annual Trends in Self-Reported Alcohol Use
 
 This table includes information on the distribution of SOCIAL_HISTORY records by ALCOHOL_USER value.
 
 
 ```{r tab16_res}
 tab16 <- odbc::dbGetQuery(con, 
- paste0("select year(contact_date) as year,
+                          paste0("select year(contact_date) as year,
    count(*) as num_rec,
    SUM(CASE WHEN ALCOHOL_USER = 'Y' THEN 1 ELSE 0 END) as alc_use,
    SUM(CASE WHEN ALCOHOL_USER = 'Q' THEN 1 ELSE 0 END) as former,
@@ -817,29 +812,25 @@ tab16 <- odbc::dbGetQuery(con,
      from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
-
 #Add percents to each tobacco user type
 tab16$alc_use <- paste0(format(tab16$alc_use, big.mark = ","), " (", round(100* tab16$alc_use/tab16$num_rec,1), "%)")
 tab16$former <- paste0(format(tab16$former, big.mark = ","), " (", round(100* tab16$former/tab16$num_rec,1), "%)")
 tab16$never <- paste0(format(tab16$never, big.mark = ","), " (", round(100* tab16$never/tab16$num_rec,1), "%)")
 tab16$unknown <- paste0(format(tab16$unknown, big.mark = ","), " (", round(100* tab16$unknown/tab16$num_rec,1), "%)")
-
-
 tab16$year <- as.character(tab16$year)
-
 ```
 
 ```{r tab16_disp, results="asis"}
 kable(tab16, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
 
-##Table 17: Annual Trends in Self-Reported Illicit Drug Use - the Distribution of Responses by Illicit Drug Use Behavior Categories, by Calendar Year	
+## Table 17: Annual Trends in Self-Reported Illicit Drug Use
 
 This table includes information on the distribution of SOCIAL_HISTORY records by ILL_DRUG_USER value.
 
 ```{r tab17_res}
 tab17 <- odbc::dbGetQuery(con, 
- paste0("select year(contact_date) as year,
+                          paste0("select year(contact_date) as year,
    count(*) as num_rec,
    SUM(CASE WHEN ILL_DRUG_USER = 'Y' THEN 1 ELSE 0 END) as ill_drug,
    SUM(CASE WHEN ILL_DRUG_USER = 'Q' THEN 1 ELSE 0 END) as former,
@@ -849,12 +840,10 @@ tab17 <- odbc::dbGetQuery(con,
      from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
-
 tab17$ill_drug <- paste0(format(tab17$ill_drug, big.mark = ","), " (", round(100* tab17$ill_drug/tab17$num_rec,1), "%)")
 tab17$former <- paste0(format(tab17$former, big.mark = ","), " (", round(100* tab17$former/tab17$num_rec,1), "%)")
 tab17$never <- paste0(format(tab17$never, big.mark = ","), " (", round(100* tab17$never/tab17$num_rec,1), "%)")
 tab17$unknown <- paste0(format(tab17$unknown, big.mark = ","), " (", round(100* tab17$unknown/tab17$num_rec,1), "%)")
-
 tab17$year <- as.character(tab17$year)
 ```
 
