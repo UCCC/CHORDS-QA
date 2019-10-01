@@ -190,7 +190,8 @@ tab2_lab_null <- odbc::dbGetQuery(con,
 tab2_lab_null2 <- data.frame(table = rep("LAB_RESULTS", ncol(tab2_lab_null)), var = names(tab2_lab_null), records_null = t(tab2_lab_null)[,1])
 row.names(tab2_lab_null2) <- NULL
 tab2_rx_null <- odbc::dbGetQuery(con, 
-  paste0("SELECT SUM(CASE WHEN GENERIC_MED_NAME IS NULL THEN 1 ELSE 0 END) as GENERIC_MED_NAME,
+  paste0("SELECT SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
+   SUM(CASE WHEN GENERIC_MED_NAME IS NULL THEN 1 ELSE 0 END) as GENERIC_MED_NAME,
    SUM(CASE WHEN RX_DAYS_SUPPLY IS NULL THEN 1 ELSE 0 END) as RX_DAYS_SUPPLY,
    SUM(CASE WHEN RX_END_DATE IS NULL THEN 1 ELSE 0 END) as RX_END_DATE,
    SUM(CASE WHEN RX_START_DATE IS NULL THEN 1 ELSE 0 END) as RX_START_DATE,
@@ -237,7 +238,9 @@ tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_nul
                                              ifelse(table == "SOCIAL_HISTORY", (records_null / tab1_sh$nrows * 100), NA)))))
   )
 tab2_lab_uk <- odbc::dbGetQuery(con, 
-  paste0("SELECT SUM(CASE WHEN TEST_TYPE = 'Unknown' THEN 1 ELSE 0 END) as TEST_TYPE
+  paste0("SELECT SUM(CASE WHEN TEST_TYPE = 'Unknown' THEN 1 ELSE 0 END) as TEST_TYPE,
+    SUM(CASE WHEN RESULT_UNIT = 'UN' THEN 1 ELSE 0 END) AS RESULT_UNIT,
+    SUM(CASE WHEN SPECIMEN_SOURCE = 'NS' OR SPECIMEN_SOURCE = 'OTHER' THEN 1 ELSE 0 END) as SPECIMEN_SOURCE
       FROM ", lab_results))
 tab2_lab_uk2 <- data.frame(table = rep("LAB_RESULTS", ncol(tab2_lab_uk)), var = names(tab2_lab_uk), records_uk = t(tab2_lab_uk)[,1])
 row.names(tab2_lab_uk2) <- NULL
@@ -388,9 +391,9 @@ lapply(2:ncol(fig1_wide), function(x)
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),  
         axis.line = element_line(colour = "black"),
-        axis.title = element_text(size = 10, face = "bold"),
-        axis.text = element_text(size = 8, face = "bold"),
-        plot.title = element_text(hjust = 0.5, size = 12))
+        axis.title = element_text(size = 16, face = "bold"),
+        axis.text = element_text(size = 14, face = "bold"),
+        plot.title = element_text(hjust = 0.5, size = 20))
     ) 
 
 ```
