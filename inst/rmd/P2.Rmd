@@ -1,53 +1,84 @@
 
 ---
+---
   output:  
   word_document :
   reference_docx: QaTableStyle6.docx
 toc: yes
+output:  
+    word_document :
+        reference_docx: QaTableStyle6.docx
+        toc: yes
 params: 
   DBServerName: 
   label: "Database Server Name:"
-input: text
-value: ""
-placeholder: "Enter your VDW Database Server Name"
+value: DWPHSQL01
+input: select
+choices: [cc-s-d05.ucdenver.pvt, ihrsql1.ihr.or.kp.org, PRDVDWSQL01, SQL01, BI01, uat.edwsql.hosp.dhha.org, DWPHSQL01]
 DBName:
   label: "Database Name:"
-input: text
-value: ""
-placeholder: "Enter your VDW Database Name"
-DBUser:
-  label: "Database User Name"
-input: text
-value: ""
-placeholder: "leave blank if using windows authentication for your server"
-DBPassword:
-  label: "Database Password"
-input: password
-value: ""
-placeholder: "leave blank if using windows authentication for your server"
+value: VDW_Aligned
+input: select
+choices: [VDW_3_1_DH, VDW, CHORDS_VDW_CC_3.2, CHORDS_VDW_CT_3.2, CHORDS_VDW_HP_3.2, CHORDS_VDW_MC_3.2, CHORDS_VDW_SC_3.2, CHORDS_VDW_SS_3.2, CHORDSlive.dbo, CHORDSlive, VDW_3_1_DH_0418, VDW_3_1_CHCO_0618, VDW_Aligned]
+    DBServerName: 
+        label: "Database Server Name:"
+        input: text
+        value: ""
+        placeholder: "Enter your VDW Database Server Name"
+    DBName:
+        label: "Database Name:"
+        input: text
+        value: ""
+        placeholder: "Enter your VDW Database Name"
+    DBUser:
+        label: "Database User Name"
+        input: text
+        value: ""
+        placeholder: "leave blank if using windows authentication for your server"
+    DBPassword:
+        label: "Database Password"
+        input: password
+        value: ""
+        placeholder: "leave blank if using windows authentication for your server"
 ---
   
   ```{r setup, include=FALSE}
+
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(#cache   = TRUE,
   echo    = FALSE,
   results = "hide",
   message = FALSE,
   warning = FALSE) 
+startTime <- Sys.time()
+               echo    = FALSE,
+               results = "hide",
+               message = FALSE,
+               warning = FALSE) 
 library(knitr)
+library(RODBC)
 library(tidyverse)
 library(RODBC)
 startTime <- Sys.time()
 # connection to sql server
+con <- DBI::dbConnect(odbc::odbc(),
 if (nchar(params$DBUser) == 0)
 {
-  con <- DBI::dbConnect(odbc::odbc(),
-                        Driver = "SQL Server",
-                        Server = params$DBServerName,
-                        Database = params$DBName)
-  sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+	con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = "SQL Server",
+                      Server = params$DBServerName,
+                      Database = params$DBName)
+# connection to sql server
+sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 } else {
-
-
+	con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = "SQL Server",
+                      Server = params$DBServerName,
+                      Database = params$DBName,
+                      UID = params$DBUser,
+                      PWD = params$DBPassword)
+	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$UserName,';pwd=',params$Password,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 }
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
@@ -98,7 +129,7 @@ if (nrow(dfChordsTbls) > 0){
   census_location <- "CENSUS_LOCATION"
   demographics <- "DEMOGRAPHICS"
 }
-```
+---
 
 ## CHORDS QA Report: VDW P2 Tables
 
