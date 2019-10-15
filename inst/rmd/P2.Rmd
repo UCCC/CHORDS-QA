@@ -1,37 +1,38 @@
 ---
-output:  
-    word_document :
-        reference_docx: QaTableStyle6.docx
-        toc: yes
-params: 
-    DBServerName: 
-        label: "Database Server Name:"
-        input: text
-        value: ""
-        placeholder: "Enter your VDW Database Server Name"
-    DBName:
-        label: "Database Name:"
-        input: text
-        value: ""
-        placeholder: "Enter your VDW Database Name"
-    DBUser:
-        label: "Database User Name"
-        input: text
-        value: ""
-        placeholder: "leave blank if using windows authentication for your server"
-    DBPassword:
-        label: "Database Password"
-        input: password
-        value: ""
-        placeholder: "leave blank if using windows authentication for your server"
 ---
-
-```{r setup, include=FALSE}
+  output:  
+  word_document :
+  reference_docx: QaTableStyle6.docx
+toc: yes
+params: 
+  DBServerName: 
+  label: "Database Server Name:"
+input: text
+value: ""
+placeholder: "Enter your VDW Database Server Name"
+DBName:
+  label: "Database Name:"
+input: text
+value: ""
+placeholder: "Enter your VDW Database Name"
+DBUser:
+  label: "Database User Name"
+input: text
+value: ""
+placeholder: "leave blank if using windows authentication for your server"
+DBPassword:
+  label: "Database Password"
+input: password
+value: ""
+placeholder: "leave blank if using windows authentication for your server"
+---
+  
+  ```{r setup, include=FALSE}
 knitr::opts_chunk$set(#cache   = TRUE,
-               echo    = FALSE,
-               results = "hide",
-               message = FALSE,
-               warning = FALSE) 
+  echo    = FALSE,
+  results = "hide",
+  message = FALSE,
+  warning = FALSE) 
 library(knitr)
 library(tidyverse)
 library(RODBC)
@@ -39,19 +40,14 @@ startTime <- Sys.time()
 # connection to sql server
 if (nchar(params$DBUser) == 0)
 {
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+  con <- DBI::dbConnect(odbc::odbc(),
+                        Driver = "SQL Server",
+                        Server = params$DBServerName,
+                        Database = params$DBName)
+  sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 } else {
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      UID = params$DBUser,
-                      PWD = params$DBPassword)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$UserName,';pwd=',params$Password,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+
+
 }
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
@@ -136,8 +132,8 @@ tab1_lab <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
   count(distinct person_id) as npats,
   null as nencts,
   'RESULT_DT' as fieldname,
-  cast(min(result_dt) as varchar) as mindt,
-  cast(max(result_dt) as varchar) as maxdt
+  cast(cast(min(result_dt)as date) as varchar) as mindt,
+  cast(cast(max(result_dt)as date) as varchar) as maxdt
   from ", lab_results))
 tab1_rx <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
@@ -276,6 +272,11 @@ tab2_sh_uk <- odbc::dbGetQuery(con,
       FROM ", social_history))
 tab2_sh_uk2 <- data.frame(table = rep("SOCIAL_HISTORY", ncol(tab2_sh_uk)), var = names(tab2_sh_uk), records_uk = t(tab2_sh_uk)[,1])
 row.names(tab2_sh_uk2) <- NULL
+
+tab1_ps <- odbc::dbGetQuery(con, "select count(*) as nrows
+	from provider_specialty")
+tab1_ps <- data.frame(nrows = tab1_ps$nrows, npats = NA, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
+
 tab2_uk <- bind_rows(tab2_lab_uk2, tab2_rx_uk2, tab2_px_uk2, tab2_ps_uk2, tab2_sh_uk2) %>% 
   mutate(
     pct_rec_uk = ifelse(table == "LAB_RESULTS", (records_uk / tab1_lab$nrows * 100), 
@@ -357,14 +358,14 @@ kable(tab4 [c("test_type", "nrows", "pct_rec", "npats", "pct_pat", "avg_resval",
 These figures shows temporal trends in the number of records for CHORDS priority lab tests.
 
 
-```{r fig1_res, fig.height=10, fig.width=15}
+```{r fig1_res, fig.height=4, fig.width=7}
 fig1 <- odbc::dbGetQuery(con, 
   paste0("select test_type, 
     month(result_dt) as month,
     year(result_dt) as year,
     count(*) as nrows
 	  from ", lab_results, "
-      where test_type in ('HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL')
+      where test_type in ('HGBA1C', 'PREGNANCY', 'HDL', 'LDL', 'TRIGLYCERIDE', 'GLUCOSE', 'CREATININE', 'HEP_C_RNA', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'IGE', 'EOSINOPHIL', 'BNP', 'TROPONIN', 'BLOOD ALCOHOL CONTENT', 'TSPOT', 'QUANTIFERON', 'TUBERCULIN SKIN TEST', 'HEP_C_ANTIBODY', 'HEP_C_GENOTYPE', 'CHLAMYDIA', 'GONORRHEA', 'SYPHILIS','HIV', 'HPV')
 	    group by test_type, year(result_dt), month(result_dt)")) 
 
 
