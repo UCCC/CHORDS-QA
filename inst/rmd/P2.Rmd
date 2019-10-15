@@ -42,7 +42,6 @@ choices: [VDW_3_1_DH, VDW, CHORDS_VDW_CC_3.2, CHORDS_VDW_CT_3.2, CHORDS_VDW_HP_3
         placeholder: "leave blank if using windows authentication for your server"
 ---
   
-  ```{r setup, include=FALSE}
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(#cache   = TRUE,
