@@ -735,7 +735,7 @@ knitr::kable(race5[    c('race5', 'decode','count','countPct')],
 
 
 ## Table 6.6. Race1 by Race2 Bivariate Distribution
-```{r race1xrace2_alt , echo=T}
+```{r race1xrace2_alt , echo=F}
 
 demographics <- "demographics"
  
@@ -2430,7 +2430,7 @@ ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
 
 ## Table 17. BENEFIT Table Information
 
-```{r tab17_res, eval = F}
+```{r tab17_res, echo=F}
  
 tab17 <-  odbc::dbGetQuery(con, 
                           paste0("select year(benefit_date) as year,
