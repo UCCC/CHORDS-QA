@@ -1732,7 +1732,7 @@ tab7.13_combined$rowPct <- round(100*tab7.13_combined$count/tab7.13_combined$tab
 
 ```
 
-```{r tab7.12_disp, echo = F}
+```{r tab7.13_disp, echo = F}
 knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','countPct', 'rowPct')], 
             col.names = c("Age Group","Frequency Missing Race1 & Hispanic","Total Frequency","Column Percent", "Row Percent"), row.names=FALSE, 
             format.args = list(big.mark = ","))
