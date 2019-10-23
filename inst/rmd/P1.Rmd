@@ -2049,9 +2049,6 @@ tab_enc_subtype$UC = paste0(format(tab_enc_subtype$UC,big.mark = ",") ,' (',roun
 
 encsubLabels <-c('AI: Acute Inpatient Stay', 'DI: Dialysis','HH: Home Health','HA: Hospital Ambulatory', 'HS: Hospice', 'NH: Nursing Home','OB: Observation Bed','OC: Outpatient Clinic Visit', 'RH: Rehab','SD: Same Day Surgery', 'SN: SNF','UC: Urgent Care', 'Total' )
 
-#Renaming for final table
-colnames (tab_enc_subtype) <- encsubLabels
-rownames(tab_enc_subtype) [10] <- "Total"
 
 tab_enc_subtype <- tab_enc_subtype %>%
   rownames_to_column((var="Encounter Type"))
