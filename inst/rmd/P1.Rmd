@@ -2468,7 +2468,7 @@ tab17$year <- as.character(tab17$year)
 ```
 
 
-```{r tab17.1, results="asis"}
+```{r tab17.1, echo = FALSE}
 kable(tab17, col.names = c("Year", "Records", "Correctional Care", "Commercial/Private Insurance",  "CHIP", "Medicare", "Medicaid", "Other Govt. Insurance", "No Coverage", "Other Insurance", "Unknown", "Workers Comp", "NA"), align = 'c', format.args = list(big.mark = ","))
 ```
 
