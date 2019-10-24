@@ -2146,7 +2146,7 @@ tab12_avg_encts <- odbc::dbGetQuery(con,
       order by year(adate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max)) %>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.))) %>% 
   mutate(
     enct_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
@@ -2159,7 +2159,7 @@ tab12_avg_pats <- odbc::dbGetQuery(con,
       order by year(adate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max))%>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.)))%>% 
   mutate(
     pats_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
@@ -2381,7 +2381,7 @@ tab16_avg_encts <- odbc::dbGetQuery(con,
       order by year(measure_date)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max)) %>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.))) %>% 
   mutate(
     enct_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
@@ -2394,7 +2394,7 @@ tab16_avg_pats <- odbc::dbGetQuery(con,
       order by year(measure_date)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max))%>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.)))%>% 
   mutate(
     pats_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
