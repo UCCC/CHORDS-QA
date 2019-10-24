@@ -734,8 +734,6 @@ knitr::kable(race5[    c('race5', 'decode','count','countPct')],
 
 ## Table 6.6. Race1 by Race2 Bivariate Distribution
 ```{r race1xrace2_alt , echo=F}
-
-demographics <- "demographics"
  
 tab_race1race2 <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
