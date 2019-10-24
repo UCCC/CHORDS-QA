@@ -19,7 +19,7 @@ install.packages("devtools")
 Once you have download and installed R, RStudio.  You can download the `chordsTables` package from ([here](https://github.com/UCCC/CHORDS-QA)). You can download the package by running the following code in RStudio or an R Command window:
 
 ```{r, eval=FALSE}
-devtools::install_github("UCCC/CHORDS-QA", ref="PMN_QA_Dev")
+devtools::install_github("UCCC/CHORDS-QA", ref="PMN")
 ```
 
 For both lines of code above, you only need to run this code for the initial install or to update the respective packages.  It is probably good practice to update both packages each time you open a new RStudio session.  The `install_github` has a ref parameter to install different branches of the code from Github.
