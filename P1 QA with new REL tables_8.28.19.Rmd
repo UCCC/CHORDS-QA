@@ -1,4 +1,5 @@
 ---
+---
 output:  
     word_document :
         reference_docx: QaTableStyle6.docx
@@ -27,64 +28,24 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-library(RODBC)
-library(knitr)
-library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE)
 startTime <- Sys.time()
-# connection to sql server
-if (nchar(params$DBUser) == 0)
-{
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
-} else {
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      UID = params$DBUser,
-                      PWD = params$DBPassword)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$UserName,';pwd=',params$Password,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
-}
-#Checks to see if partner is using table replacements.
-#Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
-dfChordsTbls <- odbc::dbGetQuery(con, "                    
-    IF EXISTS
-    (
-        SELECT
-            *
-        FROM  SYSOBJECTS
-        WHERE XTYPE = 'U' AND
-              NAME = 'CHORDS_TableNames'
-    )
-    BEGIN
-        SELECT
-            [ORG_NAME],
-            [NEW_NAME]
-        FROM[CHORDS_TABLENAMES];
-    END; ")
-if (nrow(dfChordsTbls) == 0  && exists("outputdir")){
-  tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
-  if (file.exists(tableReplaceFile)){
-    print("updating for QA using tablereplace.csv")
-    dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
-  }
-}
-if (nrow(dfChordsTbls) > 0){
-  demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
-  encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
-  census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
-  diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
-  vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
-  lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
-  procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
-  benefit <- ifelse("benefit" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("benefit"), tolower(dfChordsTbls$ORG_NAME))], "benefit")
-  linkage <- ifelse("linkage" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("linkage"), tolower(dfChordsTbls$ORG_NAME))], "linkage")
+tableReplaces <-  paste0(outputdir, "\\tablereplace.csv")
+if (file.exists(tableReplaces)){
+  print("updating for QA using tablereplace.csv")
+  df <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
+  
+  demographics <- ifelse("demographics" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("demographics"), tolower(df$ORG_NAME))], "demographics")
+  encounters <- ifelse("encounters" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("encounters"), tolower(df$ORG_NAME))], "encounters")
+  census_location <- ifelse("census_location" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("census_location"), tolower(df$ORG_NAME))], "census_location")
+  diagnoses <- ifelse("diagnoses" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("diagnoses"), tolower(df$ORG_NAME))], "diagnoses")
+  vital_signs <- ifelse("vital_signs" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("vital_signs"), tolower(df$ORG_NAME))], "vital_signs")
+  lab_results <- ifelse("lab_results" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("lab_results"), tolower(df$ORG_NAME))], "lab_results")
+  procedures <- ifelse("procedures" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("procedures"), tolower(df$ORG_NAME))], "procedures")
+  benefit <- ifelse("benefit" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("benefit"), tolower(df$ORG_NAME))], "benefit")
+  linkage <- ifelse("linkage" %in% tolower(df$ORG_NAME),  df$NEW_NAME[match(tolower("linkage"), tolower(df$ORG_NAME))], "linkage")
   
 } else {
   # Names of database tables
@@ -97,6 +58,8 @@ if (nrow(dfChordsTbls) > 0){
   procedures      <- "procedures"
   benefit        <- "benefit"
   linkage        <- "linkage"
+  
+
 }
 # set to zero for full read of the database
 # set to a positive number to limit the number of rows read from each table
@@ -105,13 +68,27 @@ maxQryRows <- 0
 # install.packages("RODBC")
 # install.packages("knitr")
 # install.packages("tidyverse")
+library(RODBC)
+library(knitr)
+library(tidyverse)
+
+# connection to sql server
+con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = "SQL Server",
+                      Server = params$DBServerName,
+                      Database = params$DBName)
+# connection to sql server
+sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+
+# run this to close the connection to the database
+# close(sqldb)
 ```
 
 ## CHORDS QA Report: VDW P1 Tables
 
-The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner’s VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
+The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, and VITAL_SIGNS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner’s VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
 
-## Information about the QA Program 
+## Information about the QA program 
 Data Partner: TEST
 Analyst: Emily Bacon
 Query Run Date:  `r Sys.Date()`
@@ -180,7 +157,6 @@ tab1_dem <- data.frame(nrows = tab1_dem$nrows,
                        fieldname = NA, 
                        mindt = NA,
                        maxdt = NA)
-
 tab1_enc <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
 	count(distinct person_id) as npats,
   count(distinct enc_id) as nencts,
@@ -188,17 +164,9 @@ tab1_enc <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
 	min(ADATE) as mindt,
 	max(ADATE) as maxdt
 	from ", encounters))
-
 tab1_loc <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats
 	from ", census_location))
-tab1_loc <- data.frame(nrows = tab1_loc$nrows, 
-                       npats = tab1_loc$npats, 
-                       nencts = NA, 
-                       fieldname = NA, 
-                       mindt = NA, 
-                       maxdt = NA)
-
 tab1_dx <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
   'ADATE' as fieldname,
@@ -213,37 +181,17 @@ tab1_vs <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
 	min(measure_date) as mindt,
 	max(measure_date) as maxdt
 	from ", vital_signs))
-
-
-tab1_ben <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,
-  count(distinct person_id) as npats,
-  'BENEFIT_DATE' as fieldname,
-  count(distinct enc_id) as nencts,
-	cast(min(benefit_date) as varchar) as mindt,
-	cast(max(benefit_date) as varchar) as maxdt
-	from ", benefit))
-
-
-
-
-
-tab1_all <- bind_rows(tab1_dem, tab1_enc, tab1_loc, tab1_dx, tab1_vs, tab1_ben) %>% 
-  bind_cols(Table = c("DEMOGRAPHICS", "ENCOUNTERS", "CENSUS_LOCATION", "DIAGNOSES", "VITAL_SIGNS", "BENEFITS"), .)
-
-
-
-
-
-
-
+tab1_loc <- data.frame(nrows = tab1_loc$nrows, npats = tab1_loc$npats, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
+tab1_all <- bind_rows(tab1_dem, tab1_enc, tab1_loc, tab1_dx, tab1_vs) %>% 
+  bind_cols(Table = c("DEMOGRAPHICS", "ENCOUNTERS", "CENSUS_LOCATION", "DIAGNOSES", "VITAL_SIGNS"), .)
 ```
 
 ```{r tab1_disp, echo = F}
-kable(tab1_all, col.names = c("Table", "Records", "Patients", "Encounters", "Date Field", "Min Date", "Max Date"), align = 'c', format.args = list(big.mark = ",")) 
+kable(tab1_all, col.names = c("Table", "Records", "Patients", "Encounters", "Date Field", "Min Date", "Max Date"), format.args = list(big.mark = ",")) 
   
 ```
 
-## Table 2. Missingness Variables across P1 Tables
+## Table 2: Missingness Variables across P1 Tables
 
 This table contains record counts for null and unknown values across P1 tables.
 
@@ -352,7 +300,7 @@ kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of R
 
 ## Examination of the DEMOGRAPHICS Table
 
-## Table 3. Overall Demographics
+## Table 3. Overall demographics
 
 ```{r Demographic table, include=F}
 nDemogRows <- sqlQuery(sqldb, paste0("select  count(*) as nDemogRows FROM ",   demographics)) 
@@ -431,7 +379,7 @@ knitr::kable(primLang[1:5, c('primary_language', 'InEnglish','langCnt','langPct'
             format.args = list(big.mark = ","))
 ```
 
-## Table 4.1. Other and Unknown Language Count 
+## Table 4.1. Other and unknown language count 
 
 ```{r other/missing primary language, echo=F}
 
@@ -481,7 +429,7 @@ knitr::kable(gender[    c('gender', 'decode','count','countPct')],
             format.args = list(big.mark = ","))
 ```
 
-## Table 5.1. Gender Identity Distribution 
+## Table 5.1 Gender Indetity Distribution 
 
 ```{r gender_identity , echo=F}
 gender_identity <-   demogCounts %>% 
@@ -513,9 +461,7 @@ knitr::kable(gender_identity[c( 'Gender Identity','count','countPct')],
             row.names=F, 
             format.args = list(big.mark = ","))
 ```
-
-
-## Table 5.2. Gender Identity by Gender Distribution 
+## Table 5.2 Gender Indetity by Gender Distribution 
 
 ```{r gender_by_gender_identity , echo=F}
 demographics <- "demographics"
@@ -587,9 +533,11 @@ knitr::kable(tab_gender_identity[c('Gender Identity','Male','Percent_Male', 'Fem
             col.names = c('Gender Identity','Male','Percent Male', 'Female', 'Percent Female', 'Unknown Gender', 'Total Frequency'), 
             row.names=F, 
             format.args = list(big.mark = ","))
+
+
 ```
 
-## Table 5.3. Sexual Orientation Distribution 
+## Table 5.3 Sexual Orientation Distribution 
 
 ```{r sexual_orientation , echo=F}
 sexual_orientation <-   demogCounts %>% 
@@ -622,7 +570,7 @@ knitr::kable(sexual_orientation[c( 'Sexual Orientation','count','countPct')],
             format.args = list(big.mark = ","))
 ```
 
-## Table 6. Race Distribution: Race1
+## Table 6. Race Distribution:Race1
 
 ```{r race , echo=F}
 race <-   demogCounts %>% 
@@ -644,7 +592,7 @@ knitr::kable(race[    c('race1', 'decode','count','countPct')],
             format.args = list(big.mark = ","))
 ```
 
-## Table 6.2. Race Distribution: Race2
+## Table 6.2. Race Distribution:Race2
 
 ```{r race2 , echo=F}
 race2 <-   demogCounts %>% 
@@ -666,7 +614,7 @@ knitr::kable(race2[    c('race2', 'decode','count','countPct')],
             format.args = list(big.mark = ","))
 ```
 
-## Table 6.3. Race Distribution: Race3
+## Table 6.3. Race Distribution:Race3
 ```{r race3 , echo=F}
 race3 <-   demogCounts %>% 
             group_by(race3) %>% 
@@ -688,7 +636,7 @@ knitr::kable(race3[    c('race3', 'decode','count','countPct')],
 ```
 
 
-## Table 6.4. Race Distribution: Race4
+## Table 6.4. Race Distribution:Race4
 
 ```{r race4 , echo=F}
 race4 <-   demogCounts %>% 
@@ -711,7 +659,7 @@ knitr::kable(race4[    c('race4', 'decode','count','countPct')],
 ```
 
 
-## Table 6.5. Race Distribution: Race5
+## Table 6.5. Race Distribution:Race5
 ```{r race5 , echo=F}
 race5 <-   demogCounts %>% 
             group_by(race5) %>% 
@@ -734,8 +682,8 @@ knitr::kable(race5[    c('race5', 'decode','count','countPct')],
 
 
 
-## Table 6.6. Race1 by Race2 Bivariate Distribution
-```{r race1xrace2_alt , echo=F}
+## Table 6.6. Race1 by Race2 bivariate distribution
+```{r race1xrace2_alt , echo=T}
 
 demographics <- "demographics"
  
@@ -803,7 +751,7 @@ knitr::kable(tab_race1race2,
 
 ```
 
-## Table 6.7. Race1 by Race3 Bivariate Distribution
+## Table 6.7. Race1 by Race3 bivariate distribution
 ```{r race1xrace3 , echo=F}
 
 tab_race1race3 <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -871,7 +819,7 @@ knitr::kable(tab_race1race3,
 
 
 
-## Table 6.8. Race1 by Race4 Bivariate Distribution
+## Table 6.8. Race1 by Race4 bivariate distribution
 ```{r race1xrace4 , echo=F}
 
 tab_race1race4 <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -937,10 +885,7 @@ knitr::kable(tab_race1race4,
              format.args = list(big.mark = ","))
 
 ```
-
-
-## Table 6.9. Race1 by Race5 Bivariate Distribution
-
+## Table 6.9. Race1 by Race5 bivariate distribution
 ```{r race1xrace5 , echo=F}
 
 tab_race1race5 <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -1027,7 +972,7 @@ knitr::kable(ethn2, digits = 2,
 ```
 
 
-## Table 7.1. Race by Hispanic Ethnicity Distribution
+## Table 7.1 Race by Hispanic Ethnicity Distribution
 ```{r race1xethnicity , echo=F}
 tab_race1hispanic <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
@@ -1078,9 +1023,7 @@ tab_race1hispanic <- tab_race1hispanic %>%
 knitr::kable(tab_race1hispanic,
              format.args = list(big.mark = ","))
 ```             
-
-## Table 7.2. Race2 by Hispanic Ethnicity where Race1 is Unknown
-
+## Table 7.2 Race2 by Hispanic Ethnicity where Race1 is unknown
 ```{r race2xethnicity , echo=F}
 
 tab_race2hispanic <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -1135,9 +1078,7 @@ tab_race2hispanic <- tab_race2hispanic %>%
 knitr::kable(tab_race2hispanic,
              format.args = list(big.mark = ","))
 ```        
-
-## Table 7.3. Race3 by Hispanic Ethnicity where Race1 is Unknown
-
+## Table 7.3 Race3 by Hispanic Ethnicity where Race1 is unknown
 ```{r race3xethnicity , echo=F}
 
 tab_race3hispanic <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -1194,8 +1135,7 @@ knitr::kable(tab_race3hispanic,
 ```        
 
 
-## Table 7.4. Race4 by Hispanic Ethnicity where Race1 is Unknown
-
+## Table 7.4 Race4 by Hispanic Ethnicity where Race1 is unknown
 ```{r race4xethnicity , echo=F}
 
 tab_race4hispanic <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -1250,9 +1190,7 @@ tab_race4hispanic <- tab_race4hispanic %>%
 knitr::kable(tab_race4hispanic,
              format.args = list(big.mark = ","))
 ```        
-
-## Table 7.5. Race5 by Hispanic Ethnicity where Race1 is Unknown
-
+## Table 7.5 Race5 by Hispanic Ethnicity where Race1 is unknown
 ```{r race5xethnicity , echo=F}
 
 tab_race5hispanic <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -1307,9 +1245,7 @@ tab_race5hispanic <- tab_race5hispanic %>%
 knitr::kable(tab_race5hispanic,
              format.args = list(big.mark = ","))
 ```
-
-## Table 7.6. Race1 by Hispanic Ethnicity where Primary Language is Spanish
-
+## Table 7.6 Race1 by Hispanic Ethnicity where primary language is Spanish
 ```{r race1xethnicityxlang , echo=F}
 
 tab_race1lang <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
@@ -1364,9 +1300,7 @@ tab_race1lang <- tab_race1lang %>%
 knitr::kable(tab_race1lang,
              format.args = list(big.mark = ","))
 ```   
-
-## Table 7.7. Race2 by Hispanic Ethnicity where Primary Language is Spanish
-
+## Table 7.7 Race2 by Hispanic Ethnicity where primary language is Spanish
 ```{r race2xethnicityxlang , echo=F}
 tab_race2lang <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
@@ -1421,8 +1355,7 @@ knitr::kable(tab_race2lang,
              format.args = list(big.mark = ","))
 ```   
 
-## Table 7.8. Race3 by Hispanic Ethnicity where Primary Language is Spanish
-
+## Table 7.8 Race3 by Hispanic Ethnicity where primary language is Spanish
 ```{r race3xethnicityxlang , echo=F}
 tab_race3lang <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
@@ -1476,9 +1409,7 @@ tab_race3lang <- tab_race3lang %>%
 knitr::kable(tab_race3lang,
              format.args = list(big.mark = ","))
 ```   
-
-## Table 7.9. Race4 by Hispanic Ethnicity where Primary Language is Spanish
-
+## Table 7.9 Race4 by Hispanic Ethnicity where primary language is Spanish
 ```{r race4xethnicityxlang , echo=F}
 tab_race4lang <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
@@ -1533,8 +1464,7 @@ knitr::kable(tab_race4lang,
              format.args = list(big.mark = ","))
 ```   
 
-## Table 7.10. Race5 by Hispanic Ethnicity where Primary Language is Spanish
-
+## Table 7.10 Race5 by Hispanic Ethnicity where primary language is Spanish
 ```{r race5xethnicityxlang , echo=F}
 tab_race5lang <- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
@@ -1590,8 +1520,7 @@ knitr::kable(tab_race5lang,
 ```   
 
 
-## Table 7.11. Unknown or Missing Race1 and Hispanic Ethnicity Over Time
-
+## Table 7.11 Unknown or missing race1 and Hispanic ethnicity over time
 ```{r missing race/ethnicity over time, include=FALSE}
 
 
@@ -1635,8 +1564,7 @@ knitr::kable(tab7.11_combined[    c('year', 'rowCnt','tab7.11_totalCnt.rowCnt','
             format.args = list(big.mark = ","), align = 'c')
 ```   
   
-## Figure 1. Percent of Patients with Unknown Race1 and Hispanic Values by Year
-
+## Figure 1 Percent of Patients with Unknown Race1 and Hispanic Values by Year
 ```{r tab7.11_fig, echo = F}
 
 ggplot(data = tab7.11_combined, aes(x = year, y = rowPct, group=1)) + geom_line() + geom_point() + ylab("Percent") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -1644,8 +1572,7 @@ ggplot(data = tab7.11_combined, aes(x = year, y = rowPct, group=1)) + geom_line(
 ```
 
 
-## Table 7.12. Unknown or Missing Race1 and Hispanic Ethnicity by Gender
-
+## Table 7.12 Unknown or missing race1 and Hispanic ethnicity by gender
 ```{r missing race/ethnicity by gender, include=FALSE}
 gender_re <- demogCounts[ which (demogCounts$race1=='UN' & demogCounts$hispanic=='U'),]
 
@@ -1671,8 +1598,7 @@ knitr::kable(gender_re[    c('gender', 'decode','count','countPct')],
 
 
 
-## Table 7.13. Unknown or Missing Race1 and Hispanic Ethnicity by Age Group
-
+## Table 7.13 Unknown or missing race1 and Hispanic ethnicity by age group
 ```{r missing race/ethnicity by age, include=FALSE}
 
 encTmp2 <- sqlQuery(sqldb,
@@ -1732,12 +1658,13 @@ tab7.13_combined$rowPct <- round(100*tab7.13_combined$count/tab7.13_combined$tab
 
 ```
 
-```{r tab7.13_disp, echo = F}
-knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','columnPct', 'rowPct')], 
+```{r tab7.12_disp, echo = F}
+knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','countPct', 'rowPct')], 
             col.names = c("Age Group","Frequency Missing Race1 & Hispanic","Total Frequency","Column Percent", "Row Percent"), row.names=FALSE, 
             format.args = list(big.mark = ","))
 ```
 
+```
 
 
 ```{r encounter table, include=FALSE}
@@ -1796,7 +1723,7 @@ Month and year of last encounter: `r format(as.Date(encSumm$lastEnc),"%B %Y")`
 `r ifelse(encRows== encPrimKeyRows," ","The encounter table has duplicate rows, by enc_id")`
 
 
-## Table 8. Count of Distinct Patients by Age Group and Year of Utilization
+## Table 8 . Count of Distinct Patients by Age Group and Year of Utilization
 
 ```{r echo=F}
  
@@ -1835,34 +1762,14 @@ encPersonAgeYear <- within(encPersonYear,{
                            pct = round(100*Freq/yearTot,1),
                            toDisplay = paste0(Freq,' (',pct,')')
                            )  
- 
-
-
-encPersonAgeYear <- within(encPersonYear,{
-                           adate_YM <- as.Date(paste(as.character(aYear),as.character(aMon),'01',sep='-'))
-                           #dob_YM <- as.Date(paste(as.character(dobYear),as.character(dobMon),'01',sep='-'))
-                           #age <- as.numeric(floor((difftime(adate_YM, dob_YM, units='days'))/365.25))
-                           ageCat <- ageCatCalc(as.numeric(age))
-                    }) %>% 
-                    group_by(aYear, ageCat) %>%
-                    summarise(Freq = sum(personCnt)) %>% 
-                    group_by(aYear) %>%
-                    mutate(yearTot = sum(Freq),
-                           pct = round(100*Freq/yearTot,1))
-
-encPersonAgeYear$Freq <- format(encPersonAgeYear$Freq, big.mark = ",")
-encPersonAgeYear$toDisplay = paste0(encPersonAgeYear$Freq,' (',encPersonAgeYear$pct,')')
-                           
-
-
-# transpose to square table
+ # transpose to square table
 encPersonAgeYear_tx <- spread(encPersonAgeYear[c('ageCat','aYear','toDisplay')],aYear,toDisplay)
 ```
 
 ```{r tab8_disp, echo = F}
 knitr::kable(encPersonAgeYear_tx, 
              col.names=c("Age at First Encounter in CY, N(%)",names(encPersonAgeYear_tx)[-1]), 
-             row.names=FALSE, align = "c",
+             row.names=FALSE, 
              format.args = list(big.mark = ","))
 ```
 
@@ -1894,7 +1801,7 @@ tab9_avg_pats <- odbc::dbGetQuery(con,
       order by year(adate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(list(mean = mean, median = median, min = min, max = max))%>% 
+  summarise_all(list(mean, median, min, max))%>% 
   mutate(
     pats_val = paste0(median, "(", min, ", ", max, ")")
   )
@@ -1907,7 +1814,7 @@ tab9_all$year <- as.character(tab9_all$year)
 ```
 
 ```{r tab9_dis, echo = FALSE}
-kable(tab9_all, col.names = c("Year", "Total Number of Recorded Encounters", "Percent Change from Previous Year", "Total Number of Patients with at Least One Encounter", "Median Number of Encounters per Patient (Min, Max)"), format.args = list(big.mark = ","))
+kable(tab9_all, col.names = c("Year", "Total Number of Recorded Encountres", "Percent Change from Previous Year", "Total Number of Patients with at Least One Encounter", "Median Number of Encounters per Patient (Min, Max)"), format.args = list(big.mark = ","))
 ```
 
 
@@ -1929,7 +1836,7 @@ encEncType_YM <- within(encEncType_YM,{
 
 ## Table 10. Count of Encounters by Encounter Type 
 
-```{r tab10, include=F}
+```{r include=F}
 encEncType <- encEncType_YM %>% group_by(encType) %>% summarize(Freq = sum(rowCnt))
 encEncType <- merge(encEncType,subset(valSets,tableName=='ENCOUNTERS' & columnName=='ENCTYPE')[c('code','decode')], by.x='encType', by.y='code', all.x=TRUE) 
 encEncType <- within(encEncType, {
@@ -1941,7 +1848,7 @@ encEncType <- encEncType %>%
   select(-encType)
 ```
 
-```{r tab10_disp, echo=FALSE}
+```{r echo=FALSE}
 knitr::kable(encEncType, col.names=c("Encounter Type",'Number of Encounters','Percent of Total Encounters'), 
              row.names=FALSE, 
              format.args = list(big.mark = ","))
@@ -1988,16 +1895,14 @@ encTypeBymonYr <- merge(encEncType_YM,encLabels, by.x='encType', by.y='code', al
 encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(encType), 'Missing', 'Invalid'))})
 ```
 
-
-
-## Figure 3a. Ambulatory Encounters by Admission Year and Month
+## Figure 3a. Ambulatory encounters by admission year and month
 
 ```{r echo=F}
 ggplot(subset(encTypeBymonYr,encType == 'AV'), aes(adate_YM, rowCnt)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-## Figure 3b. Other Encounter Types by Admission Year and Month
+## Figure 3b. Other encounter types by admission year and month
 
 ```{r echo=F}
 ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=decode)) + geom_line() +
@@ -2027,12 +1932,6 @@ locSumm  <- sqlQuery(sqldb,
                  as.is=c(TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE),
                  max=maxQryRows
                  )
-
-locSumm$rowCnt <- format(locSumm$rowCnt, big.mark = ",")
-locSumm$primKeyCnt <- format(locSumm$primKeyCnt, big.mark = ",")
-locSumm$personCnt <- format(locSumm$personCnt, big.mark = ",")
-
-
 tmpLastLoc_ <- sqlQuery(sqldb,
                         paste('SELECT distinct a.*',
                               "INTO #tmpLastLoc",
@@ -2060,7 +1959,6 @@ lastLocation <- trimChrVars(lastLocation)
 
 Total rows in the dataset: `r locSumm$rowCnt`
 
-
 Total unique combinations of the primary key: `r locSumm$primKeyCnt `
 
 Total patients in the location table: `r locSumm$personCnt`
@@ -2073,8 +1971,7 @@ Month and year of last location: `r format(as.Date(locSumm$lastDT),"%B %Y")`
 
 `r multLastLocs$patsMultLoc` patients have more than one most recent location record
 
-
-## Table 11. Count of Unique Patients by State and County, Based on Most Recent Location
+## Table 11. Count of unique patients by State and County, based on most recent location
 
 ```{r echo=F}
 lastLocation <- merge(lastLocation, stateCnty[c('stateCnty','stCntyNm')], by = 'stateCnty', all.x=T) %>% arrange(desc(Freq)) %>% 
@@ -2215,7 +2112,7 @@ kable(tab13_dxall, col.names = c("Diagnosis Code", "Code Type", "Diagnosis Descr
 kable(tab13_dxav, col.names = c("Diagnosis Code for AV", "Diagnosis Type for AV", "Diagnosis Description", "Number of Recorded Diagnosis for AV", "Number of Patients for AV"), format.args = list(big.mark = ","))
 ```
  
-## Table 14. Summary of the Ten Most Common Diagnoses by Diagnosis Code Type, Total Number of Recorded Diagnoses and Total Number of Recorded Patients
+## Table 14: Summary of the Ten Most Common Diagnoses by Diagnosis Code Type, Total Number of Recorded Diagnoses and Total Number of Recorded Patients
 This table includes information on the ten most common diagnoses recorded in your DIAGNOSES table. Data on diagnosis codes, counts and patients are presented for ICD-9 and ICD-10.
 
 ```{r tab14_res, echo=FALSE}
@@ -2268,14 +2165,14 @@ dxByMonEncTp <- merge(dxByMonEncTp,encLabels, by.x='enctype', by.y='code', all.x
 dxByMonEncTp <- within(dxByMonEncTp,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(enctype), 'Missing', 'Invalid'))})
 ```
 
-## Figure 4a. Count of Diagnoses by Year and Month in Ambulatory Encounters 
+## Figure 4a. Count of diagnoses by year and month in ambulatory encounters , Dataset: DIAGNOSES 
 
 ```{r Count of diagnoses by year and month in ambulatory encounters, echo=F}
 ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-## Figure 4b. Count of Diagnoses by Year and Month, other Encounter Types
+## Figure 4b. Count of diagnoses by year and month, other encounter types , Dataset: DIAGNOSES 
 
 ```{r Count of diagnoses by year and month other encounter types, echo=F}
 ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + geom_line() +
@@ -2352,7 +2249,7 @@ knitr::kable(vlst[c('variable','nobs','npats','minimum','q1','median','q3', 'max
              format.args = list(big.mark = ","))
 ```
 
-## Table 16. Annual Trends in the Total Number of Recorded Vital Sign Records, the Mean Number of Encounters, the Mean Number of Patients and the Percent Change from the Previous Year, by Calendar Year
+## Table 16: Annual Trends in the Total Number of Recorded Vital Sign Records, the Mean Number of Encounters, the Mean Number of Patients and the Percent Change from the Previous Year, by Calendar Year
 
 This table examines the volume of vital signs over time and the number of patients with encounters represented in the VITAL_SIGNS table. Average number of vital signs per encounter, and per patient, are calculated to compare vital signs volume trends over time; and also to indicate whether or not vital signs are captured in one row or multiple rows for each encounter.
 
@@ -2405,7 +2302,7 @@ kable(tab16_add, col.names = c("Year", "Total Number of Recorded Vitals", "Perce
 ```
 
 
-## Figure 5. Count of Vital Signs by Year and Month
+## Figure 5. Count of vital signs by year and month, Dataset: VITAL_SIGNS
 
 ```{r Count of vital signs by year and month, echo=F}
 vitalsByMonYr <- sqlQuery(sqldb,
@@ -2428,60 +2325,118 @@ ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Vital type')
 ```
 
-## Table 17. BENEFIT Table Information
+## Table 17: BENEFIT table information
 
-```{r tab17_res, echo=F}
- 
-tab17 <-  odbc::dbGetQuery(con, 
-                          paste0("select year(benefit_date) as year,
-   count(*) as num_rec,
-   SUM(CASE WHEN BENEFIT_CAT = 'CC' THEN 1 ELSE 0 END) as correctional_care,
-   SUM(CASE WHEN benefit_cat = 'CO' THEN 1 ELSE 0 END) as comm_private_insurance,
-   SUM(CASE WHEN benefit_cat = 'CP' THEN 1 ELSE 0 END) as CHIP,
-   SUM(CASE WHEN benefit_cat = 'MC' THEN 1 ELSE 0 END) as medicare,
-   SUM(CASE WHEN benefit_cat = 'MD' THEN 1 ELSE 0 END) as medicaid,
-   SUM(CASE WHEN benefit_cat = 'OG' THEN 1 ELSE 0 END) as other_gov,
-   SUM(CASE WHEN benefit_cat = 'NC' THEN 1 ELSE 0 END) as no_coverage,
-   SUM(CASE WHEN benefit_cat = 'OT' THEN 1 ELSE 0 END) as other_ins,
-   SUM(CASE WHEN benefit_cat = 'UN' THEN 1 ELSE 0 END) as unknown_ins,
-   SUM(CASE WHEN benefit_cat = 'WC' THEN 1 ELSE 0 END) as work_comp,
-   SUM(CASE WHEN benefit_cat = 'NI' THEN 1 ELSE 0 END) as na
-     from ", benefit, "
-       group by year(benefit_date)
-       order by year(benefit_date)"))
+```{r tab17_res, eval = F}
+tab17_ben_null <- odbc::dbGetQuery(con, 
+  paste0("SELECT COUNT(*) as total,
+   SUM(CASE WHEN LOAD_DATE IS NULL THEN 1 ELSE 0 END) as LOAD_DATE,
+   MIN(LOAD_DATE) as MIN_LOAD_DATE,
+   MAX(LOAD_DATE) as MAX_LOAD_DATE,
+   SUM(CASE WHEN REFRESH_DATE IS NULL THEN 1 ELSE 0 END) as REFRESH_DATE,
+   MIN(REFRESH_DATE) as MIN_REFRESH_DATE,
+   MAX(REFRESH_DATE) as MAX_REFRESH_DATE,
+   SUM(CASE WHEN START_DATE IS NULL THEN 1 ELSE 0 END) as START_DATE,
+   MIN(START_DATE) as MIN_START_DATE,
+   MAX(START_DATE) as MAX_START_DATE,
+   SUM(CASE WHEN END_DATE IS NULL THEN 1 ELSE 0 END) as END_DATE,
+   MIN(END_DATE) as MIN_END_DATE,
+   MAX(END_DATE) as MAX_END_DATE
+      FROM ", benefit))
+tab17_final <- tab17_ben_null %>% 
+  mutate(
+    perc_null_load = 100* (LOAD_DATE / total),
+    perc_null_refresh = 100* (REFRESH_DATE / total),
+    perc_null_start = 100* (START_DATE / total),
+    perc_null_end = 100* (END_DATE / total)
+  )
+tab17_display  <- list(
+  "LOAD_DATE" =
+    list("Minimum" = ~ min(MIN_LOAD_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_LOAD_DATE, na.rm = T),
+         "Percent Null" = ~ paste0(perc_null_load, "%")),
+  "REFRESH_DATE" =
+    list("Minimum" = ~ min(MIN_REFRESH_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_REFRESH_DATE, na.rm = T),
+         "Percent Null" = ~ paste0(perc_null_refresh, "%")),
+  "END_DATE" =
+    list("Minimum" = ~ min(MIN_START_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_START_DATE, na.rm = T),
+         "Percent Null" = ~ paste0(perc_null_start, "%")),
+  "END_DATE" =
+    list("Minimum" = ~ min(MIN_END_DATE, na.rm = T),
+         "Maximum" = ~ max(MAX_END_DATE, na.rm = T),
+         "Percent Null" = ~ paste0(perc_null_end, "%")),
+  "BENEFIT_TYPE" =
+    list("Current insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CU", na_rm = T),
+         "Enrollment insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "EN", na_rm = T),
+         "Primary payer on a claim or encounter" = ~ qwraps2::perc_n(BENEFIT_TYPE == "PR", na_rm = T),
+         "Payer on a claim with unknown rank or order" = ~ qwraps2::perc_n(BENEFIT_TYPE == "PA", na_rm = T),
+         "Self-reported insurance or benefit information" = ~ qwraps2::perc_n(BENEFIT_TYPE == "SR", na_rm = T),
+         "No Benefit information available" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NI", na_rm = T),
+         "NULL" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NULL", na_rm = T),
+         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CU", "EN", "PR", "PA", "SR", "NI", "NULL")), na_rm = T)),
+  "BENEFIT_CAT" =
+    list("Correctional Care" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CC", na_rm = T),
+         "Commercial/Private Insurance" = ~ qwraps2::perc_n(BENEFIT_TYPE == "CO", na_rm = T),
+         "Children’s Health Insurance Program " = ~ qwraps2::perc_n(BENEFIT_TYPE == "CP", na_rm = T),
+         "Medicare" = ~ qwraps2::perc_n(BENEFIT_TYPE == "MC", na_rm = T),
+         "Medicaid" = ~ qwraps2::perc_n(BENEFIT_TYPE == "MD", na_rm = T),
+         "Other government" = ~ qwraps2::perc_n(BENEFIT_TYPE == "OG", na_rm = T),
+         "Self-Pay/Uninsured/Private Pay " = ~ qwraps2::perc_n(BENEFIT_TYPE == "SP", na_rm = T),
+         "Other insurance" = ~ qwraps2::perc_n(BENEFIT_TYPE == "OT", na_rm = T),
+         "NULL" = ~ qwraps2::perc_n(BENEFIT_TYPE == "NULL", na_rm = T),
+         "Other/None of the above" = ~ qwraps2::perc_n(!(BENEFIT_TYPE %in% c("CC", "CO", "CP", "MC", "MD", "OG", "SP", "OT", "NULL")), na_rm = T))
+) 
 
-#Final display
-tab17$correctional_care = paste0(format(tab17$correctional_care,big.mark = ",") ,' (',round(tab17$correctional_care/tab17$num_rec*100, digits=1),'%)')
-tab17$comm_private_insurance = paste0(format(tab17$comm_private_insurance,big.mark = ",") ,' (',round(tab17$comm_private_insurance/tab17$num_rec*100, digits=1),'%)')
-tab17$CHIP = paste0(format(tab17$CHIP,big.mark = ",") ,' (',round(tab17$CHIP/tab17$num_rec*100, digits=1),'%)')
-tab17$medicare = paste0(format(tab17$medicare,big.mark = ",") ,' (',round(tab17$medicare/tab17$num_rec*100, digits=1),'%)')
-tab17$medicaid = paste0(format(tab17$medicaid,big.mark = ",") ,' (',round(tab17$medicaid/tab17$num_rec*100, digits=1),'%)')
-tab17$other_gov = paste0(format(tab17$other_gov,big.mark = ",") ,' (',round(tab17$other_gov/tab17$num_rec*100, digits=1),'%)')
-tab17$no_coverage = paste0(format(tab17$no_coverage,big.mark = ",") ,' (',round(tab17$no_coverage/tab17$num_rec*100, digits=1),'%)')
-tab17$other_ins = paste0(format(tab17$other_ins,big.mark = ",") ,' (',round(tab17$other_ins/tab17$num_rec*100, digits=1),'%)')
-tab17$unknown_ins = paste0(format(tab17$unknown_ins,big.mark = ",") ,' (',round(tab17$unknown_ins/tab17$num_rec*100, digits=1),'%)')
-tab17$work_comp = paste0(format(tab17$work_comp,big.mark = ",") ,' (',round(tab17$work_comp/tab17$num_rec*100, digits=1),'%)')
-tab17$na = paste0(format(tab17$na,big.mark = ",") ,' (',round(tab17$na/tab17$num_rec*100, digits=1),'%)')
+tab17_final2 <- qwraps2::summary_table(tab17_final, tab17_display)
 
-tab17$year <- as.character(tab17$year)
 
+tab17_final <- qwraps2::summary_table(tab17_final, tab17_display, digits = 2)
 ```
 
+## Table 18: CENSUS_LOCATION Table Information
 
-```{r tab17.1, echo = FALSE}
-kable(tab17, col.names = c("Year", "Records", "Correctional Care", "Commercial/Private Insurance",  "CHIP", "Medicare", "Medicaid", "Other Govt. Insurance", "No Coverage", "Other Insurance", "Unknown", "Workers Comp", "NA"), align = 'c', format.args = list(big.mark = ","))
+```{r tab18, echo=F}
+tab18a <- odbc::dbGetQuery(con, 
+                           paste0("SELECT GEOCODE_COUNTY,
+                                  COUNT(*) as num_county
+                                  FROM ", census_location, "
+                                  GROUP BY GEOCODE_COUNTY"))
+tab18b <- odbc::dbGetQuery(con, 
+                           paste0("SELECT ADDRESS_TYPE_CODE,
+                                  COUNT(*) as num_add_flag
+                                  FROM ", census_location, "
+                                  GROUP BY ADDRESS_TYPE_CODE"))
+tab18_tot <- odbc::dbGetQuery(con, 
+                              paste0("SELECT COUNT(*) n_census
+                                     FROM ", census_location))
+tab18_allCounty <- tab18a %>%
+  mutate(
+    perc_county = paste0(round((num_county / tab18_tot$n_census) * 100, 1), "%")
+  )
+tab18_allAddType <- tab18b %>%
+  mutate(
+    perc_add_type_code = paste0(round((num_add_flag / tab18_tot$n_census) * 100, 1), "%")
+  )
 ```
 
+```{r tab18_dis, echo=F}
 
-## Table 18. LINKAGE Table Information
+knitr::kable(tab18_allCounty, col.names = c("County Geocode", "Frequency County Geocode", "Percent County Geocode"), format.args = list(big.mark = ","), align='l')
+
+knitr::kable(tab18_allAddType, col.names = c("Address Flag Type Code", "Frequency Address Type Code", "Percent Address Type Code"), format.args = list(big.mark = ","), align='l')
+```
+
+## Table 19: LINKAGE table
 
 ```{r, echo=FALSE, echo = F}
-tab18 <- odbc::dbGetQuery(con, 
+tab19 <- odbc::dbGetQuery(con, 
                           paste0("SELECT COUNT(DISTINCT PERSON_ID) as npats,
                           COUNT(DISTINCT LINK_ID) as nlink
                           FROM ", linkage))
 
-knitr::kable(tab18, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
+knitr::kable(tab19, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
 ```
 
 ####Total program run time:
@@ -2490,9 +2445,61 @@ knitr::kable(tab18, col.names = c("Number of unique patient IDs", "Number of uni
  close(sqldb)
 endTime <- Sys.time()
 endTime - startTime 
-```
-title: "P1 QA with new REL questions"
+```title: "P1 QA with new REL questions"
 author: "Emily Bacon"
-date: "10/23/2019"
+date: "6/4/2019"
 output: word_document
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+title: "P1 QA report with new REL questions"
+author: "Emily Bacon"
+date: "6/4/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
