@@ -517,9 +517,7 @@ knitr::kable(gender_identity[c( 'Gender Identity','count','countPct')],
 
 ## Table 5.2. Gender Identity by Gender Distribution 
 
-```{r gender_by_gender_identity , echo=F}
-demographics <- "demographics"
- 
+```{r gender_by_gender_identity , echo=F} 
 tab_gender_identity<- DBI::dbGetQuery(con, gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
 declare @GENDER TABLE (GI varchar(2), GENDER_IDENTITYDESC varchar(50));
