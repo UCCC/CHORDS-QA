@@ -255,10 +255,10 @@ tab2_demo_null <- odbc::dbGetQuery(con,
    SUM(CASE WHEN PRIMARY_LANGUAGE IS NULL THEN 1 ELSE 0 END) as PRIMARY_LANGUAGE,
    SUM(CASE WHEN NEEDS_INTERPRETER IS NULL THEN 1 ELSE 0 END) as NEEDS_INTERPRETER,
    SUM(CASE WHEN RACE1 IS NULL THEN 1 ELSE 0 END) as RACE1,
-   SUM(CASE WHEN RACE1 IS NULL THEN 1 ELSE 0 END) as RACE2,
-   SUM(CASE WHEN RACE1 IS NULL THEN 1 ELSE 0 END) as RACE3,
-   SUM(CASE WHEN RACE1 IS NULL THEN 1 ELSE 0 END) as RACE4,
-   SUM(CASE WHEN RACE1 IS NULL THEN 1 ELSE 0 END) as RACE5,
+   SUM(CASE WHEN RACE2 IS NULL THEN 1 ELSE 0 END) as RACE2,
+   SUM(CASE WHEN RACE3 IS NULL THEN 1 ELSE 0 END) as RACE3,
+   SUM(CASE WHEN RACE4 IS NULL THEN 1 ELSE 0 END) as RACE4,
+   SUM(CASE WHEN RACE5 IS NULL THEN 1 ELSE 0 END) as RACE5,
    SUM(CASE WHEN HISPANIC IS NULL THEN 1 ELSE 0 END) as HISPANIC,
    SUM(CASE WHEN SEXUAL_ORIENTATION IS NULL THEN 1 ELSE 0 END) as SEXUAL_ORIENTATION,
    SUM(CASE WHEN GENDER_IDENTITY IS NULL THEN 1 ELSE 0 END) as GENDER_IDENTITY
@@ -322,10 +322,10 @@ tab2_demo_uk <- odbc::dbGetQuery(con,
    SUM(CASE WHEN PRIMARY_LANGUAGE = 'UNK' THEN 1 ELSE 0 END) as PRIMARY_LANGUAGE,
    SUM(CASE WHEN NEEDS_INTERPRETER = 'U' THEN 1 ELSE 0 END) as NEEDS_INTERPRETER,
    SUM(CASE WHEN RACE1 = 'UN' THEN 1 ELSE 0 END) as RACE1,
-   SUM(CASE WHEN RACE1 = 'UN' THEN 1 ELSE 0 END) as RACE2,
-   SUM(CASE WHEN RACE1 = 'UN' THEN 1 ELSE 0 END) as RACE3,
-   SUM(CASE WHEN RACE1 = 'UN' THEN 1 ELSE 0 END) as RACE4,
-   SUM(CASE WHEN RACE1 = 'UN' THEN 1 ELSE 0 END) as RACE5,
+   SUM(CASE WHEN RACE2 = 'UN' THEN 1 ELSE 0 END) as RACE2,
+   SUM(CASE WHEN RACE3 = 'UN' THEN 1 ELSE 0 END) as RACE3,
+   SUM(CASE WHEN RACE4 = 'UN' THEN 1 ELSE 0 END) as RACE4,
+   SUM(CASE WHEN RACE5 = 'UN' THEN 1 ELSE 0 END) as RACE5,
    SUM(CASE WHEN HISPANIC = 'U' THEN 1 ELSE 0 END) as HISPANIC,
    SUM(CASE WHEN SEXUAL_ORIENTATION = 'UN' THEN 1 ELSE 0 END) as SEXUAL_ORIENTATION,
    SUM(CASE WHEN GENDER_IDENTITY = 'UN' THEN 1 ELSE 0 END) as GENDER_IDENTITY
@@ -1683,8 +1683,20 @@ encTmp2 <- sqlQuery(sqldb,
                   )
 
 tab7.13_rowCnt <- sqlQuery(sqldb,
-                 paste("SELECT age, count(*) as rowCnt",
-                       "FROM #encTmp10 where Race1 in ('UN') and Hispanic in ('U') GROUP BY age ",
+                 paste("SELECT ageBase.age,
+                          CASE
+                            WHEN ageSubGroup.rowCnt IS NULL THEN 0 ELSE ageSubGroup.rowCnt END AS rowCnt
+                          FROM (SELECT age, 
+                                  COUNT(*) AS rowCnt
+                                  FROM #encTmp10
+                                  GROUP BY age) ageBase
+                          LEFT JOIN (SELECT age, 
+                                        COUNT(*) AS rowCnt
+                                        FROM #encTmp10
+                                        WHERE  Race1 IN('UN')
+                                        AND Hispanic IN('U')
+                                        GROUP BY age) ageSubGroup ON ageSubGroup.age = ageBase.age
+                          ORDER BY age;",
                        sep=" "
                        )
                 )
