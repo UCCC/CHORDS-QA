@@ -555,7 +555,7 @@ This table shows the behavioral and social survey questions that have been loade
 tab19 <- sqlQuery(sqldb, "select * from pro_questions")
 ```
 
-```{r tab18_disp, results="asis"}
+```{r tab19_disp, results="asis"}
 kable(tab19)
 ```
 
