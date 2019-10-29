@@ -559,32 +559,6 @@ tab19 <- sqlQuery(sqldb, "select * from pro_questions")
 kable(tab19)
 ```
 
-## Table 20: PRO_Responses Table
-
-This table shows the responses for each of the behavioral and social surveys that have been loaded into the VDW.
-
-```{r tab20_res}
-tab20 <- 
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ####Total program run time:
