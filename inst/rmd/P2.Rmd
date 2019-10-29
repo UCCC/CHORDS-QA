@@ -130,7 +130,7 @@ prov_type <- chordsTables::prov_type
 
 This table contains summary counts and date ranges by table. Distinct encounters and patients are shown for applicable tables. Date ranges should be used to compare data time windows between tables.
 
-```{r tab1_sum_stats, echo = F}
+```{r tab1_sum_stats, echo = F, include=T, error=T}
 
 lab_res_db <- tbl(con, lab_results)
 encounters_db <-  tbl(con, encounters)
@@ -170,7 +170,7 @@ tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh) %>%
 
 ```
 
-```{r tab1_disp, results="asis"}
+```{r tab1_disp, echo = F, include=T, error=T}
 kable(tab1_all, col.names = c("Table", "Records", "Patients", "Encounters", "Date Field", "Min Date", "Max Date"), format.args = list(big.mark = ",")) 
   
 ```
@@ -182,7 +182,7 @@ kable(tab1_all, col.names = c("Table", "Records", "Patients", "Encounters", "Dat
 This table contains record counts for null and unknown values across P2 tables.
 
 
-```{r tab2_res, echo = F}
+```{r tab2_res, echo = F, include=T, error=T}
 tab2_lab_null <- odbc::dbGetQuery(con, 
   paste0("SELECT SUM(CASE WHEN TEST_TYPE IS NULL THEN 1 ELSE 0 END) as TEST_TYPE,
    SUM(CASE WHEN BATTERY_CD IS NULL THEN 1 ELSE 0 END) as BATTERY_CD,
@@ -297,7 +297,7 @@ tab2_uk <- bind_rows(tab2_lab_uk2, tab2_rx_uk2, tab2_px_uk2, tab2_ps_uk2, tab2_s
 tab2_all <- left_join(tab2_null, tab2_uk, by = c("table", "var"))
 ```
 
-```{r tab2_disp, results="asis"}
+```{r tab2_disp, echo = F, include=T, error=T}
 kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of Records Null", "Unknown Records", "Percent of Records Unknown"), digits = 2, format.args = list(big.mark = ","))
 ```
 
@@ -310,7 +310,7 @@ The following tables explore the contents of the LAB_RESULTS table with a focus 
 
 This table displays trends in the number of recorded lab tests and the number of unique patients tested by year. The percent change in both count values is included to identify unexpected temporal fluctuations. 
 
-```{r tab3_res, echo = F}
+```{r tab3_res, echo = F, include=T, error=T}
 tab3 <- odbc::dbGetQuery(con, 
   paste0("select year(result_dt) as year,
     count(*) as nrows, 
@@ -327,7 +327,7 @@ tab3$year <- as.character(tab3$year)
 tab3_ord <- tab3[, c(1,2,4,3,5)]
 ```
 
-```
+```{r tab3_disp, echo = F, include=T, error=T}
 kable(tab3_ord, col.names = c("Year", "Number of Recorded Lab Tests", "Percent Change From Previous Year", "Number of Patients Tested", "Percent Change From Previous Year"), format.args = list(big.mark = ","), align = 'c')
 ```
 
@@ -336,7 +336,7 @@ kable(tab3_ord, col.names = c("Year", "Number of Recorded Lab Tests", "Percent C
 
 This table illustrates the number (and percent) of priority lab test records including the percent of all lab test records , as well as the number (and percent)  of unique patients tested for select TEST_TYPE values. 
 
-```{r tab4_res, echo = F}
+```{r tab4_res, echo = F, include=T, error=T}
 tab4 <- odbc::dbGetQuery(con, 
   paste0("select test_type,
     count(*) as nrows, 
@@ -357,7 +357,7 @@ tab4 <- tab4 %>%
   
 ```
 
-```{r tab4_disp, results="asis"}
+```{r tab4_disp, echo = F, include=T, error=T}
 
 kable(tab4 [c("test_type", "nrows", "pct_rec", "npats", "pct_pat", "avg_resval", "min_resval", "max_resval")], col.names = c("Test Type", "Number of Recorded Lab Tests", "Percentage of All Recorded Tests", "Number of Unique Patients Tested", "Percentage of All Patients", "Mean Result Value", "Minimum Result Value", "Maximum Result Value"), digits = 2, align = 'c', format.args = list(big.mark = ",")) 
 ```
@@ -367,7 +367,7 @@ kable(tab4 [c("test_type", "nrows", "pct_rec", "npats", "pct_pat", "avg_resval",
 These figures shows temporal trends in the number of records for CHORDS priority lab tests.
 
 
-```{r fig1_res, fig.height=4, fig.width=7, echo = F}
+```{r fig1_res, fig.height=4, fig.width=7, echo = F, include=T, error=T}
 fig1 <- odbc::dbGetQuery(con, 
   paste0("select test_type, 
     month(result_dt) as month,
@@ -412,7 +412,7 @@ lapply(2:ncol(fig1_wide), function(x)
 
 This table illustrates the number (and percent) of the data partner's ten most common lab tests and the number (and percent) of unique patients tested with the ten most common lab tests, by the BATTERY_CD field (which captures site-specific lab test names), the percentage of records this represents, and the number and percent of patients in the LAB_RESULTS table who have these results. 
 
-```{r tab5_res, echo = F}
+```{r tab5_res, echo = F, include=T, error=T}
 tab5 <- odbc::dbGetQuery(con, 
                          paste0("select battery_cd,
     count(*) as nrows, 
@@ -430,7 +430,7 @@ tab5_sub <- tab5 %>%
 ```
 
 
-```{r tab5_disp, results="asis"}
+```{r tab5_disp, echo = F, include=T, error=T}
 kable(tab5_sub, col.names = c("BATTERY_CD", "Number of Recorded Lab Tests", "Percentage of All Lab Tests", "Number of Patients Tested", "Percentage of All Patients with a Lab Test"), format.args = list(big.mark = ","))
 ```
 
@@ -443,7 +443,7 @@ The following tables explore the contents of the PRESCRIBING table with a focus 
 This table displays trends in PRESCRIBING record volume over time as well as patient volume represented in the table. PRESCRIBING records are attributed to a year based on RX_ORDER_DATE.
 
 
-```{r tab6_res, echo = F}
+```{r tab6_res, echo = F, include=T, error=T}
 tab6 <- odbc::dbGetQuery(con, 
                          paste0("select year(rx_order_date) as year,
     count(*) as nrows, 
@@ -471,7 +471,7 @@ tab6_all <- left_join(tab6, tab6_avg_pats, by = "year") %>%
 tab6_all$year <- as.character(tab6_all$year)
 ```
 
-```{r tab6_disp, results="asis"}
+```{r tab6_disp, echo = F, include=T, error=T}
 kable(tab6_all, col.names = c("Year", "Total Number of Prescriptions", "Percent Change From Last Year", "Total Number of Patients", "Median number of Prescriptions per patient", "Minimum Number of Prescriptions Per Patient", "Maximum Number of Prescriptions Per Patient"), align = "c" , format.args = list(big.mark = ","))
 ```
 
@@ -479,7 +479,7 @@ kable(tab6_all, col.names = c("Year", "Total Number of Prescriptions", "Percent 
 
 This table displays the top ten most common orders including count of records and patients. 
 
-```{r tab7_res, echo = F}
+```{r tab7_res, echo = F, include=T, error=T}
 tab7<- odbc::dbGetQuery(con, 
                         paste0("select top 10 GENERIC_MED_NAME,
     count(*) as nrows,
@@ -493,7 +493,7 @@ tab7<- odbc::dbGetQuery(con,
 
 ```
 
-```{r tab7_disp, results="asis"}
+```{r tab7_disp, echo = F, include=T, error=T}
 kable(tab7, col.names = c("Medication Name (GENERIC_MED_NAME)", "Records", "Patients", "Average Days Supply", "Average Quantity"), format.args = list(big.mark = ","))
 ```
 
@@ -506,7 +506,7 @@ The following tables explore the contents of the PROCEDURES table with a focus o
 This table examines the volume of procedures over time and the number of encounters and patients with represented in the PROCEDURES table. Average number of procedures per encounter, and per patient, are calculated to compare procedure volume trends over time.
 
 
-```{r tab8_res, echo = F}
+```{r tab8_res, echo = F, include=T, error=T}
 tab8 <- odbc::dbGetQuery(con, 
                          paste0("select year(procdate) as year,
     count(*) as nrows, 
@@ -550,7 +550,7 @@ tab8_add <- tab8 %>%
 tab8_add$year <- as.character(tab8_add$year)
 ```
 
-```{r tab8_dis, results="asis"}
+```{r tab8_dis, echo = F, include=T, error=T}
 kable(tab8_add, col.names = c("Year", "Total Number of Recorded Procedures", "Percent Change from Previous Year", "Total Number of Encounters with Procedures", "Total Number of Patients with Procedures", "Median Number of Procedures per Encounter (Min, Max)", "Median Number of Procedures per Patient (Min, Max)"),  align= "c", format.args = list(big.mark = ","))
 ```
 
@@ -558,7 +558,7 @@ kable(tab8_add, col.names = c("Year", "Total Number of Recorded Procedures", "Pe
 
 This table compares the distribution of procedures, diagnoses and encounters by encounter type. Average diagnosis and procedure counts per encounter are calculated to compare diagnosis and procedure volume by encounter type.
 
-```{r tab9_res, echo = F}
+```{r tab9_res, echo = F, include=T, error=T}
 tab9_enct1 <- odbc::dbGetQuery(con, 
                                paste0("select enctype,
     count(*) as nrows_enct
@@ -596,7 +596,7 @@ tab9_all <- tab9_enct1 %>%
   bind_rows(., tab9_tot)  
 ```
 
-```{r tab9_disp, results="asis"}
+```{r tab9_disp, echo = F, include=T, error=T}
 kable(tab9_all[1:7, c( "enctype", "nrows_enct", "pct_enct", "nrows_enct", "pct_diag", "nrows_px", "pct_px")], col.names = c("Encounter Type", "Number of Encounters", "Percent of Total Encounters", "Number of Diagnoses", "Percent of Total Diagnoses", "Number of Procedures", "Percent of Total Procedures"), digits = 2, format.args = list(big.mark = ","))
 ```
 
@@ -604,7 +604,7 @@ kable(tab9_all[1:7, c( "enctype", "nrows_enct", "pct_enct", "nrows_enct", "pct_d
 
 This table includes information on the ten most common procedures recorded in your PROCEDURE table.  Data on procedure codes, types, counts and patients are presented for all encounters and for ambulatory only encounters (ENCTYPE='AV'). 
 
-```{r tab10_res, echo = F}
+```{r tab10_res, echo = F, include=T, error=T}
 tab10_pxall <- odbc::dbGetQuery(con, 
                                 paste0("select px,
     px_codetype,
@@ -627,7 +627,7 @@ tab10_pxav <- odbc::dbGetQuery(con,
 tab10_all <- bind_cols(tab10_pxall, tab10_pxav)
 ```
 
-```{r tab10_disp, results="asis"}
+```{r tab10_disp, echo = F, include=T, error=T}
 kable(tab10_all, col.names = c("Procedure Code", "Procedure Type", "Number of Recorded Procedures", "Number of Patients", "Procedure Code for AV", "Procedure Type for AV", "Number of Recorded Procedures for AV", "Number of Patients for AV"), align = 'c', format.args = list(big.mark = ","))
 ```
 
@@ -635,7 +635,7 @@ kable(tab10_all, col.names = c("Procedure Code", "Procedure Type", "Number of Re
 
 This table includes information on the ten most common procedures recorded in your PROCEDURE table.  Data on procedure codes, counts and patients are presented for CPT, HCPCS, and other code types. 
 
-```{r tab11_res, echo = F}
+```{r tab11_res, echo = F, include=T, error=T}
 tab11_pxc4 <- odbc::dbGetQuery(con, 
                                paste0("select top 10 px,
     count(*) as nrows_all,
@@ -662,7 +662,7 @@ tab11_px_oth <- odbc::dbGetQuery(con,
       order by nrows_all DESC"))
 ```
 
-```{r tab11_disp, results="asis"}
+```{r tab11_disp, echo = F, include=T, error=T}
 #if and else statements are used to determine if the respecitvie table has any
 #rows. If not, then an error message is written indicating so.
 if (nrow(tab11_pxc4) != 0){
@@ -691,7 +691,7 @@ The following tables explore the contents of the PROVIDER_SPECIALTY table with a
 
 This table includes information on the number and percent of providers represented in various CHORDS VDW 3.1 tables.
 
-```{r tab12_res, echo = F}
+```{r tab12_res, echo = F, include=T, error=T}
 tab12_ps <- odbc::dbGetQuery(con, 
                              paste0("select 'PROVIDER_SPECIALTY' as from_tab,
    count(distinct provider) as num_prov
@@ -722,7 +722,7 @@ tab12_all <- bind_rows(tab12_ps, tab12_dx, tab12_enct, tab12_lab, tab12_rx, tab1
   )
 ```
 
-```{r tab12_disp, results="asis"}
+```{r tab12_disp, echo = F, include=T, error=T}
 kable(tab12_all, col.names = c("Table", "Number of Providers*", "Percent of All Providers"), digits = 2, format.args = list(big.mark = ","))
 ```
 *Excludes Provider = 'Unknown'
@@ -731,7 +731,7 @@ kable(tab12_all, col.names = c("Table", "Number of Providers*", "Percent of All 
 
 This table includes information on the distribution of providers by specialty.
 
-```{r tab13_res, echo = F}
+```{r tab13_res, echo = F, include=T, error=T}
 tab13 <- odbc::dbGetQuery(con, 
                           paste0("select specialty as spec,
    count(distinct provider) as num_prov
@@ -745,7 +745,7 @@ tab13 <- odbc::dbGetQuery(con,
 tab13$spec_full <- specialties$Description[match(as.character(tab13$spec), as.character(specialties$SPECIALTY))]
 tab13 <- tab13[, c(1,4,2,3)]
 ```
-```{r tab13_disp, results = "asis"}
+```{r tab13_disp, echo = F, include=T, error=T}
 kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Providers", "Percent of All Providers"), digits = 2, format.args = list(big.mark = ","))
 ```
 
@@ -753,7 +753,7 @@ kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Pro
 
 This table includes information on the distribution of providers by type.
 
-```{r tab14_res, echo = F}
+```{r tab14_res, echo = F, include=T, error=T}
 tab14 <- odbc::dbGetQuery(con, 
                           paste0("select provider_type as prov_type,
    count(distinct provider) as num_prov
@@ -769,7 +769,7 @@ tab14$spec_full <- prov_type$V2[match(tab14$prov_type, prov_type$V1)]
 tab14$spec_full[is.na(tab14$spec_full)] <- "Unknown"
 tab14 <- tab14[, c(1,4,2,3)]
 ```
-```{r tab14_disp, results = "asis"}
+```{r tab14_disp, echo = F, include=T, error=T}
 kable(tab14, col.names = c("Provider Abbreviation", "Provider Type", "Number of Providers", "Percent of All Providers"), digits = 2, align = 'l', format.args = list(big.mark = ","))
 ```
 
@@ -777,7 +777,7 @@ kable(tab14, col.names = c("Provider Abbreviation", "Provider Type", "Number of 
 
 This table includes information on the distribution of SOCIAL_HISTORY records by TOBACCO_USER value.
 
-```{r tab15_res, echo = F}
+```{r tab15_res, echo = F, include=T, error=T}
 tab15 <- odbc::dbGetQuery(con, 
                           paste0("select year(contact_date) as year,
    count(*) as num_rec,
@@ -804,7 +804,7 @@ tab15$unknown <- paste0(format(tab15$unknown, big.mark = ","), " (", round(100* 
 tab15$year <- as.character(tab15$year)
 
 ```
-```{r tab15_disp, results="asis"}
+```{r tab15_disp, echo = F, include=T, error=T}
 kable(tab15, col.names = c("Year", "Records", "Yes/Current (%)", "Infrequent(%) ", "Quit/Former (%)", "Passive/Second Hand Smoke Exposure (%)", "Never (%)", "Not Asked/Unknown (%)", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
 
@@ -813,7 +813,7 @@ kable(tab15, col.names = c("Year", "Records", "Yes/Current (%)", "Infrequent(%) 
 This table includes information on the distribution of SOCIAL_HISTORY records by ALCOHOL_USER value.
 
 
-```{r tab16_res, echo = F}
+```{r tab16_res, echo = F, include=T, error=T}
 tab16 <- odbc::dbGetQuery(con, 
                           paste0("select year(contact_date) as year,
    count(*) as num_rec,
@@ -833,7 +833,7 @@ tab16$unknown <- paste0(format(tab16$unknown, big.mark = ","), " (", round(100* 
 tab16$year <- as.character(tab16$year)
 ```
 
-```{r tab16_disp, results="asis"}
+```{r tab16_disp, echo = F, include=T, error=T}
 kable(tab16, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
 
@@ -841,7 +841,7 @@ kable(tab16, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Ne
 
 This table includes information on the distribution of SOCIAL_HISTORY records by ILL_DRUG_USER value.
 
-```{r tab17_res, echo = F}
+```{r tab17_res, echo = F, include=T, error=T}
 tab17 <- odbc::dbGetQuery(con, 
                           paste0("select year(contact_date) as year,
    count(*) as num_rec,
@@ -860,7 +860,7 @@ tab17$unknown <- paste0(format(tab17$unknown, big.mark = ","), " (", round(100* 
 tab17$year <- as.character(tab17$year)
 ```
 
-```{r tab17_disp, results="asis"}
+```{r tab17_disp, echo = F, include=T, error=T}
 kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
 
@@ -868,11 +868,11 @@ kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Ne
 
 This table shows the behavioral and social surveys that have been loaded into the VDW. Note that it does not show the responses to the surveys.
 
-```{r tab18_res, echo = F}
+```{r tab18_res, echo = F, include=T, error=T}
 tab18 <- sqlQuery(sqldb, "select * from pro_surveys")
 ```
 
-```{r tab18_disp, results="asis"}
+```{r tab18_disp, echo = F, include=T, error=T}
 kable(tab18)
 ```
 
@@ -880,11 +880,11 @@ kable(tab18)
 
 This table shows the behavioral and social survey questions that have been loaded into the VDW. Note that it does not show the responses to the surveys.
 
-```{r tab19_res, echo = F}
+```{r tab19_res, echo = F, include=T, error=T}
 tab19 <- sqlQuery(sqldb, "select * from pro_questions")
 ```
 
-```{r tab19_disp, results="asis"}
+```{r tab19_disp, echo = F, include=T, error=T}
 kable(tab19)
 ```
 
