@@ -1956,7 +1956,7 @@ knitr::kable(encEncType, col.names=c("Encounter Type",'Number of Encounters','Pe
 ```
 
 
-```{r include=F}
+```{r include=F, error=T}
 encByYear <- encEncType_YM %>% group_by(aYear ) %>% summarize(Freq = sum(rowCnt))
 encByYear <- within(encByYear,{
                     pct <- round(100*Freq/sum(Freq),1)
