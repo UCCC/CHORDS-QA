@@ -234,6 +234,11 @@ tab2_sh_null <- odbc::dbGetQuery(con,
       FROM ", social_history))
 tab2_sh_null2 <- data.frame(table = rep("SOCIAL_HISTORY", ncol(tab2_sh_null)), var = names(tab2_sh_null), records_null = t(tab2_sh_null)[,1])
 row.names(tab2_sh_null2) <- NULL
+
+tab1_ps <- odbc::dbGetQuery(con, "select count(*) as nrows
+	from provider_specialty")
+tab1_ps <- data.frame(nrows = tab1_ps$nrows, npats = NA, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
+
 tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_null2, tab2_sh_null2) %>% 
   mutate(
     pct_rec = ifelse(table == "LAB_RESULTS", (records_null / tab1_lab$nrows * 100), 
@@ -282,9 +287,6 @@ tab2_sh_uk <- odbc::dbGetQuery(con,
 tab2_sh_uk2 <- data.frame(table = rep("SOCIAL_HISTORY", ncol(tab2_sh_uk)), var = names(tab2_sh_uk), records_uk = t(tab2_sh_uk)[,1])
 row.names(tab2_sh_uk2) <- NULL
 
-tab1_ps <- odbc::dbGetQuery(con, "select count(*) as nrows
-	from provider_specialty")
-tab1_ps <- data.frame(nrows = tab1_ps$nrows, npats = NA, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
 
 tab2_uk <- bind_rows(tab2_lab_uk2, tab2_rx_uk2, tab2_px_uk2, tab2_ps_uk2, tab2_sh_uk2) %>% 
   mutate(
