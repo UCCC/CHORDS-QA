@@ -888,9 +888,6 @@ tab19 <- sqlQuery(sqldb, "select * from pro_questions")
 kable(tab19)
 ```
 
-```{r tab20_res, echo = F, include=T, error=T}
-tab20 <- 
-```
 
 
 
