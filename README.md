@@ -23,13 +23,16 @@ Once you have download and installed R, RStudio.  You can download the `chordsTa
 ```{r, eval=FALSE}
 devtools::install_github("UCCC/CHORDS-QA", ref="PMN_QA_Dev")
 ```
-You may receive a promt 
+You may receive the following promt: 
+"These packages have more recent versions available. Which would you like to update?" 
+You can skip this update by entering the number 3 in the console.
+
 For both lines of code above, you only need to run this code for the initial install or to update the respective packages.  It is probably good practice to update both packages each time you open a new RStudio session.  The `install_github` has a ref parameter to install different branches of the code from Github.
 
 
 ## Step 2
 
-Now that the `chordsTables` package is downloaded and installed you can use the `run_report()` function to generate the report.  This function takes one argument that you must provide.  The argument indicates which report you want to generate.  The options include `"P1"`, `"P2"`, `"P3"` indicating which priority table the user wants.  The arguments must be entered exactly as shown above, including the quotation marks, uppercase P, and no spacing between the P and the number.  If you don't enter one of those option, a warning message will be printed in the Console indicating as such.  To execute this function run the following code in RStudio (NOTE: `"P1"` is used as an example here.  Change the argument to the value you want):
+Now that the `chordsTables` package is downloaded and installed you can use the `run_report()` function to generate the report.  This function takes one argument that you must provide.  The argument indicates which report you want to generate.  The options include `"P1"` or `"P2"` indicating which priority table the user wants.  The arguments must be entered exactly as shown above, including the quotation marks, uppercase P, and no spacing between the P and the number.  If you don't enter one of those option, a warning message will be printed in the Console indicating as such.  To execute this function run the following code in RStudio (NOTE: `"P1"` is used as an example here.  Change the argument to the value you want):
 
 ```{r, eval=FALSE}
 chordsTables::run_report("P1")
