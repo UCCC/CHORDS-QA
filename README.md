@@ -18,10 +18,10 @@ In order to download and install the `chordsTables` package you will need to ins
 install.packages("devtools")
 ```
 
-Once you have download and installed R, RStudio.  You can download the `chordsTables` package from ([here](https://github.com/UCCC/CHORDS-QA)). You can download the package by running the following code in RStudio or an R Command window:
+Once you have download and installed R, RStudio.  You can download the `chordsTables` package from ([here](https://github.com/UCCC/CHORDS-QA)). You can download the package by running the following code in RStudio or an R Command window (use the ref argument for a specific branch other than master):
 
 ```{r, eval=FALSE}
-devtools::install_github("UCCC/CHORDS-QA", ref="PMN")
+devtools::install_github("UCCC/CHORDS-QA"[, ref="GithubBranch"])
 ```
 You may receive the following promt: 
 "These packages have more recent versions available. Which would you like to update?" 
