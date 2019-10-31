@@ -1,8 +1,12 @@
 #' Run code to generate priority tables.
 #'
 #' @param priority A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".
-#' @param dbserver A string vector.  The name of the database server name. This is selected via an html window and contains the following options \code{cc-s-d05.ucdenver.pvt}, \code{vwphbisql06}, \code{ihrsql1.ihr.or.kp.org}, \code{PRDVDWSQL01}, \code{SQL01}, \code{BI01}, and \code{vwedwtstsql04}
-#' @param dbname A string vector.  The name of the database.  This is selected via an html window and contains the following options \code{VDW_3_1_DH}, \code{VDW.dbo}, \code{VDW}, \code{CHORDS_VDW_CC_3.1}, \code{CHORDS_VDW_CT_3.1}, \code{CHORDS_VDW_HP_3.1}, \code{CHORDS_VDW_MC_3.1}, \code{CHORDS_VDW_SC_3.1}, \code{CHORDS_VDW_SS_3.1}, \code{CHORDSlive.dbo}, \code{VDW.aligned}, and \code{CHORDSlive}
+#' @param dbserver A string vector.  The name of the database server name. This is selected via an html window.
+#' @param dbname A string vector.  The name of the database.  This is selected via an html window.
+#' @param dbuser A string vector. The username that is used to connect to the database. Should be an empty string for windows authentication
+#' @param dbpassword A string vector.  The password used to connect to the database.  Should be an empty string for windows authentication
+#' @param outputdir A string vector.  The directory for the output document.  If none is specified, default is \code{C:/Users/<username>/Documents}
+#' @param batchmode A boolean value.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters
 #' @return Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)
 #' @examples
 #' \dontrun{
@@ -18,15 +22,58 @@
 #' @import httr
 #' @export
 
-run_report <- function(priority, dbserver, dbname) {
+run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE) {
+  if(is.null(dbuser)){
+    dbuser = ""
+  }
+  if(is.null(dbpassword)){
+    dbpassword = ""
+  }
+
+  if (is.null(outputdir) || outputdir == ''){
+	  outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
+  }
   if (priority == "P1"){
-    rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = paste0("C:/Users/", Sys.info()["login"], "/Documents"))
+	  if (!is.null(batchmode) && batchmode == TRUE){
+		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"),
+		                    params = list(
+		                        DBServerName = dbserver,
+		                      DBName = dbname,
+		                      DBUser = dbuser,
+		                      DBPassword = dbpassword
+		                      ),
+		                    output_dir = outputdir)
+	  } else{
+		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+	  }
   }
   else if (priority == "P2"){
-    rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = paste0("C:/Users/", Sys.info()["login"], "/Documents"))
+	  if (!is.null(batchmode) && batchmode == TRUE){
+		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"),
+		                    params = list(
+		                      DBServerName = dbserver,
+		                      DBName = dbname,
+		                      DBUser = dbuser,
+		                      DBPassword = dbpassword
+		                    ),
+		                    output_dir = outputdir)
+	  } else {
+		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+	  }
   }
   else if (priority == "P3"){
-    rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = paste0("C:/Users/", Sys.info()["login"], "/Documents"))
+    if (!is.null(batchmode) && batchmode == TRUE){
+		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"),
+		                    params = list(
+		                      DBServerName = dbserver,
+		                      DBName = dbname,
+		                      DBUser = dbuser,
+		                      DBPassword = dbpassword
+		                    ),
+		                    output_dir = outputdir)
+	  } else {
+		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+	  }
   }
   else if (!(priority %in% c("P1", "P2", "P3"))){
     warning(paste("Priority table ",

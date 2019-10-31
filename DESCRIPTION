@@ -1,14 +1,16 @@
 Package: chordsTables
 Title: Package for generating CHORDS priority tables
-Version: 0.4.1
+Version: 0.4.2
 Authors@R: c(
-    person("Matthew", "Cox-Martin", email = "matthew.cox-martin@ucdenver.edu", role = c("aut", "cre")),
-    person("Carter", "Sevick", email = "carter.sevick@ucdenver.edu", role = c("ctb"))
+    person("Will", "Carter", email = "William.A.Carter@cuanschutz.edu", role = c("aut", "ctb")),
+    person("Emily", "Bacon", email = "baconanalyticsco@gmail.com", role = c("aut", "ctb")),
+    person("Carter", "Sevick", email = "carter.sevick@ucdenver.edu", role = c("aut", "ctb")),
+    person("Matthew", "Cox-Martin", email = "matthew.cox-martin@ucdenver.edu", role = c("aut", "cre"))
     )
-Maintainer: Matthew Cox-Martin <matthew.cox-martin@ucdenver.edu>
+Maintainer: Will Carter <William.A.Carter@cuanschutz.edu>
 Description: This package contains the function, .RMD files, and data files necessary for generating all CHORDS priority tables.
 Depends:
-    R (>= 3.0.2),
+    R (>= 3.5.1),
     httr (>= 1.3.1)
 Imports: 
     tidyverse,
@@ -25,4 +27,4 @@ URL: http://github.com/UCC/CHORDS-QA
 BugReports: http://github.com/UCC/CHORDS-QA/issues
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
