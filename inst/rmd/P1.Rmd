@@ -355,10 +355,9 @@ kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of R
 
 ## Table 3. Overall Demographics
 
-```{r Demographic table, include=F, error=T}
-
-nDemogRows <- odbc::dbGetQuery(con, paste0("select  count(*) as nDemogRows FROM ",   demographics)) 
-demogSummary <- odbc::dbGetQuery(con, 
+```{r Demographic table, echo = F, include=T, error=T}
+nDemogRows <- sqlQuery(sqldb, paste0("select  count(*) as nDemogRows FROM ",   demographics)) 
+demogSummary <- sqlQuery(sqldb, 
                   paste('select  count(*) as nDemogRows ',
                                 ', count(distinct person_id) as nPatsDemog ',
 		                            ', sum(nPatsWithEncs) as nPatsWithEncs ',
@@ -397,8 +396,8 @@ knitr::kable(demogTable, col.names=c("Characteristic","Frequency","Percent of un
 `r ifelse(demogSummary$nDemogRows==demogSummary$nPatsDemog," ","The demographics table has duplicate rows, by person_id")`
 
  
-```{r demographic counts, include=F, error=T}
-demogCounts <- odbc::dbGetQuery(con, 
+```{r demographic counts, echo = F, include=T, error=T}
+demogCounts <- sqlQuery(sqldb, 
                   paste('SELECT gender, gender_identity, sexual_orientation, primary_language, race1, race2, race3, race4, race5, hispanic, count(*) as nRows',
                         'FROM ', demographics,
                         'group by gender, gender_identity, sexual_orientation, primary_language, race1, race2, race3, race4, race5, hispanic',
@@ -1590,8 +1589,7 @@ knitr::kable(tab_race5lang,
 
 ## Table 7.11. Unknown or Missing Race1 and Hispanic Ethnicity Over Time
 
-```{r missing race/ethnicity over time, include=FALSE, error=T}
-
+```{r missing race/ethnicity over time, echo = F, include=T, error=T}
 
 # create a temp table in the SQL DB temp drive, this will not be pulled into the R workspace.This pulls in the most recent encounter date and combines it with race and hispanic data from demographics
 
@@ -1606,12 +1604,38 @@ encTmp1 <-   sqlQuery(sqldb,
                         )
                   )
 
-tab7.11_rowCnt <- sqlQuery(sqldb,
-                 paste("SELECT year(lastEnc) as year, count(*) as rowCnt",
-                       "FROM #encTmp1 where Race1 in ('UN') and Hispanic in ('U') GROUP BY year(lastEnc)",
-                       sep=" "
-                       )
-                )
+tab7.11_rowCnt <-sqlQuery(sqldb,
+                 paste("SELECT   
+       lastEnc.year,
+       ISNULL(missingRaceHispanic.rowCnt, 0) rowCnt
+FROM         
+(
+    SELECT
+           YEAR(lastEnc) AS year,
+           COUNT(*) AS rowCnt
+    FROM  
+         #encTmp1
+    GROUP BY
+             YEAR(lastEnc)
+) lastEnc
+LEFT JOIN
+(
+    SELECT
+           YEAR(lastEnc) AS year,
+           COUNT(*) AS rowCnt
+    FROM  
+         #encTmp1
+    WHERE  Race1 IN('UN')
+    AND Hispanic IN('U')
+    GROUP BY
+             YEAR(lastEnc)
+) missingRaceHispanic
+     ON missingRaceHispanic.year = lastEnc.year
+ORDER BY
+         lastEnc.year", 
+sep=" "
+)
+)
 
 tab7.11_totalCnt <-sqlQuery(sqldb,
                  paste("SELECT year(lastEnc) as year, count(*) as rowCnt",
@@ -1643,7 +1667,7 @@ ggplot(data = tab7.11_combined, aes(x = year, y = rowPct, group=1)) + geom_line(
 
 ## Table 7.12. Unknown or Missing Race1 and Hispanic Ethnicity by Gender
 
-```{r missing race/ethnicity by gender, include=FALSE}
+```{r missing race/ethnicity by gender, echo = F, include=T, error=T}
 gender_re <- demogCounts[ which (demogCounts$race1=='UN' & demogCounts$hispanic=='U'),]
 
 gender_re <-   demogCounts  %>% 
@@ -1670,7 +1694,7 @@ knitr::kable(gender_re[    c('gender', 'decode','count','countPct')],
 
 ## Table 7.13. Unknown or Missing Race1 and Hispanic Ethnicity by Age Group
 
-```{r missing race/ethnicity by age, include=FALSE, error=T}
+```{r missing race/ethnicity by age, echo = F, include=T, error=T}
 
 encTmp2 <- sqlQuery(sqldb,
                   paste('SET NOCOUNT ON; SELECT D.*,   demo.RACE1, demo.HISPANIC, demo.birth_date ',
@@ -1747,7 +1771,7 @@ knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','col
 
 
 
-```{r encounter table, include=FALSE, error=T}
+```{r encounter table, echo = F, include=T, error=T}
 rm(diag)
 gc()
 # create a temp table in the SQL DB temp drive, this will not be pulled into the R workspace.
@@ -1918,7 +1942,7 @@ kable(tab9_all, col.names = c("Year", "Total Number of Recorded Encounters", "Pe
 ```
 
 
-```{r encounter types by year and month, include=F, error=T}
+```{r encounter types by year and month, echo = F, include=T, error=T}
 encEncType_YM  <- sqlQuery(sqldb,
                  paste('SELECT aMon, aYear, encType, count(*) as rowCnt',
                        'FROM #encTmp',
@@ -1955,7 +1979,7 @@ knitr::kable(encEncType, col.names=c("Encounter Type",'Number of Encounters','Pe
 ```
 
 
-```{r include=F, error=T}
+```{r echo = F, include=T, error=T}
 encByYear <- encEncType_YM %>% group_by(aYear ) %>% summarize(Freq = sum(rowCnt))
 encByYear <- within(encByYear,{
                     pct <- round(100*Freq/sum(Freq),1)
@@ -1969,7 +1993,7 @@ encByYear$aYear <- as.character(encByYear$aYear)
 ```
 
 
-```{r  include=F, error=T}
+```{r  echo = F, include=T, error=T}
 uniqPatByYear <- sqlQuery(sqldb,
                  paste('SELECT aYear, count(distinct person_id) as Freq',
                        'FROM #encTmp',
@@ -1990,7 +2014,7 @@ uniqPatByYear$aYear <- as.character(uniqPatByYear$aYear)
 ```
 
 
-```{r add labels to encEncType_YM , include=F, error=T}
+```{r add labels to encEncType_YM , echo = F, include=T, error=T}
 encTypeBymonYr <- merge(encEncType_YM,encLabels, by.x='encType', by.y='code', all.x=TRUE) 
 encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(encType), 'Missing', 'Invalid'))})
 ```
@@ -2013,7 +2037,7 @@ ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=deco
 ```
 
  
-```{r include=F, error=T}
+```{r echo = F, include=T, error=T}
 #
 # Encounter types by year
 #
