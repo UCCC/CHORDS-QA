@@ -41,7 +41,7 @@ if (nchar(params$DBUser) == 0)
                       Driver = "SQL Server",
                       Server = params$DBServerName,
                       Database = params$DBName)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+	#sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 } else {
 	con <- DBI::dbConnect(odbc::odbc(),
                       Driver = "SQL Server",
@@ -49,7 +49,7 @@ if (nchar(params$DBUser) == 0)
                       Database = params$DBName,
                       UID = params$DBUser,
                       PWD = params$DBPassword)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$UserName,';pwd=',params$Password,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+	#sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 }
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
@@ -871,7 +871,8 @@ kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Ne
 This table shows the behavioral and social surveys that have been loaded into the VDW. Note that it does not show the responses to the surveys.
 
 ```{r tab18_res, echo = F, include=T, error=T}
-tab18 <- sqlQuery(sqldb, "select * from pro_surveys")
+#tab18 <- sqlQuery(sqldb, "select * from pro_surveys")
+tab18 <- odbc::dbGetQuery(con, "select * from pro_surveys")
 ```
 
 ```{r tab18_disp, echo = F, include=T, error=T}
@@ -883,7 +884,8 @@ kable(tab18)
 This table shows the behavioral and social survey questions that have been loaded into the VDW. Note that it does not show the responses to the surveys.
 
 ```{r tab19_res, echo = F, include=T, error=T}
-tab19 <- sqlQuery(sqldb, "select * from pro_questions")
+#tab19 <- sqlQuery(sqldb, "select * from pro_questions")
+tab19 <- odbc::dbGetQuery(con, "select * from pro_questions")
 ```
 
 ```{r tab19_disp, echo = F, include=T, error=T}
@@ -896,7 +898,8 @@ kable(tab19)
 ####Total program run time:
 ```{r calc_runtime}
 # close odbc
-DBI::dbDisconnect(con)
+odbc::dbDisconnect(con)
+odbcCloseAll()
 endTime <- Sys.time()
 runtime <- endTime - startTime 
 ```
