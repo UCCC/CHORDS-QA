@@ -492,25 +492,12 @@ gender_identity <-   demogCounts %>%
             mutate(totCount = sum(count), 
                   countPct = round(100*count/totCount,1)
                   )
-
-#total row
-gender_identity<- as.data.frame(gender_identity [c(3,2,7,6,5,1,4,8),])
-rownames(gender_identity) <- c('Male', 'Female', 'Transgender Male','Transgender Female', 'Other', 'Declined to answer', 'No Information','Unknown ')
-gender_identity$gender_identity  <-gender_identity$totCount <-NULL
-rowsum <-colSums(gender_identity)
-gender_identity <-rbind(gender_identity, rowsum)
-
-#row names
-rownames(gender_identity) [9]<- c( 'Total')
-
-gender_identity <- gender_identity %>%
-  rownames_to_column((var="Gender Identity"))
 ```
 
 ```{r tab5.1_disp, echo = F, include=T, error=T}
  
 knitr::kable(gender_identity[c( 'Gender Identity','count','countPct')], 
-            col.names = c('Gender Identity',"Frequency", "Percent"), 
+            col.names = c('gender_identity',"Frequency", "Percent"), 
             row.names=F, 
             format.args = list(big.mark = ","))
 ```
@@ -599,23 +586,10 @@ sexual_orientation <-   demogCounts %>%
                   countPct = round(100*count/totCount,1)
                   )
 
-#total row
-sexual_orientation<- as.data.frame(sexual_orientation [c(1,3,4,5,7,8,9,2,6,10),])
-rownames(sexual_orientation) <- c('Bisexual', 'Gay', 'Lesbian','Multiple sexual orientations', 'Questioning', 'Something else', 'straight','Declined to answer','No Information','Unknown ')
-sexual_orientation$sexual_orientation  <-sexual_orientation$totCount <-NULL
-rowsum <-colSums(sexual_orientation)
-sexual_orientation <-rbind(sexual_orientation, rowsum)
-
-#row names
-rownames(sexual_orientation) [11]<- c( 'Total')
-
-sexual_orientation <- sexual_orientation %>%
-  rownames_to_column((var="Sexual Orientation"))
-
 ```
 
 ```{r tab5.3_disp, echo = F, include=T, error=T}
-knitr::kable(sexual_orientation[c( 'Sexual Orientation','count','countPct')], 
+knitr::kable(sexual_orientation[c( 'sexual_orientation','count','countPct')], 
             col.names = c('Sexual Orientation',"Frequency", "Percent"), 
             row.names=F, 
             format.args = list(big.mark = ","))
@@ -2277,7 +2251,7 @@ if (nrow(tab14_09) != 0){
    cat(noquote("Table had zero rows.  DX_CODETYPE = '09' likely isn't a category for this variable.\n"))
 } 
 if (nrow(tab14_10) != 0){
-  kable(tab14_10, col.names = c("ProDiagnosiscedure", "Records", "Patients"), caption = "Diagnosis Code Type = 10", format.args = list(big.mark = ","))
+  kable(tab14_10, col.names = c("Diagnosis", "Records", "Patients"), caption = "Diagnosis Code Type = 10", format.args = list(big.mark = ","))
 } else {
    cat(noquote("Table had zero rows.  DX_CODETYPE = '10' likely isn't a category for this variable.\n"))
 } 
