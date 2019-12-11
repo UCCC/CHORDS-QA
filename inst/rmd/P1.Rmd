@@ -1997,14 +1997,14 @@ encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode,
 
 ## Figure 3a. Ambulatory Encounters by Admission Year and Month
 
-```{r fig3a, echo = F, include=T, error=T}
+```{r fig3a, echo = F, include=T, echo = F, include=T, error=T}
 ggplot(subset(encTypeBymonYr,encType == 'AV'), aes(adate_YM, rowCnt)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ## Figure 3b. Other Encounter Types by Admission Year and Month
 
-```{r fig3b, echo = F, include=T, error=T}
+```{r fig3b, echo = F, include=T, echo = F, include=T, error=T}
 ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=decode)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')
 #,legend.position="bottom" "
@@ -2081,7 +2081,7 @@ Month and year of last location: `r format(as.Date(locSumm$lastDT),"%B %Y")`
 
 ## Table 11. Count of Unique Patients by State and County, Based on Most Recent Location
 
-```{r echo = F, include=T, error=T}
+```{r echo = F, include=T, echo = F, include=T, error=T}
 lastLocation <- merge(lastLocation, stateCnty[c('stateCnty','stCntyNm')], by = 'stateCnty', all.x=T) %>% arrange(desc(Freq)) %>% 
                 mutate(pct = round(100*Freq/sum(Freq),1),
                        stCntyNm = ifelse(!is.na(stCntyNm), stCntyNm, ifelse( is.na(stateCnty),'Missing','Invalid'))
