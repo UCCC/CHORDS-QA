@@ -123,6 +123,75 @@ Data Partner:
 Analyst: 
 Query Run Date:  `r Sys.Date()`
 
+## Data Check 1.01: Required tables are not present
+
+
+## Data Check 1.02: Required tables are not populated
+
+
+## Data Check 1.03: Required fields are not present
+
+
+## Data Check 1.04: Required fields do not conform to data model specifications for data type, length, or name
+
+
+## Data Check 1.05: Tables have primary key definition errors
+
+
+## Data Check 1.06: Required fields contain values outside of data model specifications
+
+
+## Data Check 1.07: Required fields have non-permissible missing values
+
+
+## Data Check 1.08: Tables contain orphan PERSON_IDs 
+
+
+## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
+
+
+## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
+
+
+## Data Check 1.11: More than 5% of encounters are assigned to more than one patient 
+
+
+## Data Check 1.12: Tables contain orphan PROVIDER_IDs
+
+
+## Data Check 1.13: More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content
+
+
+## Data Check 2.01: More than 5% of records have future dates
+
+
+## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic
+## blood pressure, systolic blood pressure, or dispensed days supply
+
+
+## Data Check 2.03: More than 5% of patients have illogical date relationships
+
+
+## Data Check 3.03: More than 10% of records have missing or unknown values for the following fields:
+
+
+
+## Data Check 3.04: Less than 50% of patients with encounters have DIAGNOSIS records 
+
+
+## Data Check 3.05: Less than 50% of patients with encounters have PROCEDURES records 
+
+
+## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal
+## diagnosis
+
+
+## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient
+## (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
+
+
+
+## Data Check 3.11: Vital, prescribing, or laboratory records are less than 75% complete three months prior to the current month
 
 
 ####Total program run time:
