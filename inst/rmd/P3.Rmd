@@ -9,6 +9,11 @@ params:
         input: text
         value: ""
         placeholder: "Enter your VDW Database Server Name"
+    DBPort: 
+        label: "Database Server Port:"
+        input: text
+        value: ""
+        placeholder: "Enter the database port if required.  Leave blank for default."
     DBName:
         label: "Database Name:"
         input: text
@@ -43,16 +48,18 @@ if (nchar(params$DBUser) == 0)
 	con <- DBI::dbConnect(odbc::odbc(),
                       Driver = "SQL Server",
                       Server = params$DBServerName,
-                      Database = params$DBName)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+                      Database = params$DBName,
+                      Port = params$DBPort)
+	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 } else {
 	con <- DBI::dbConnect(odbc::odbc(),
                       Driver = "SQL Server",
                       Server = params$DBServerName,
                       Database = params$DBName,
+                      Port = params$DBPort,
                       UID = params$DBUser,
                       PWD = params$DBPassword)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName,';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 }
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.

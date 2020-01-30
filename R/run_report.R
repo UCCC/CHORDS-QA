@@ -22,12 +22,15 @@
 #' @import httr
 #' @export
 
-run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE) {
+run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL) {
   if(is.null(dbuser)){
     dbuser = ""
   }
   if(is.null(dbpassword)){
     dbpassword = ""
+  }
+  if(is.null(dbport)){
+    dbport = ""
   }
 
   if (is.null(outputdir) || outputdir == ''){
@@ -40,7 +43,8 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                        DBServerName = dbserver,
 		                      DBName = dbname,
 		                      DBUser = dbuser,
-		                      DBPassword = dbpassword
+		                      DBPassword = dbpassword,
+		                      DBPort = dbport
 		                      ),
 		                    output_dir = outputdir)
 	  } else{
@@ -54,7 +58,8 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBServerName = dbserver,
 		                      DBName = dbname,
 		                      DBUser = dbuser,
-		                      DBPassword = dbpassword
+		                      DBPassword = dbpassword,
+		                      DBPort = dbport
 		                    ),
 		                    output_dir = outputdir)
 	  } else {
@@ -68,7 +73,8 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBServerName = dbserver,
 		                      DBName = dbname,
 		                      DBUser = dbuser,
-		                      DBPassword = dbpassword
+		                      DBPassword = dbpassword,
+		                      DBPort = dbport
 		                    ),
 		                    output_dir = outputdir)
 	  } else {
