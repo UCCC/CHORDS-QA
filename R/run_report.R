@@ -46,9 +46,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBPassword = dbpassword,
 		                      DBPort = dbport
 		                      ),
-		                    output_dir = outputdir)
+		                    output_dir = outputdir, run_pandoc = FALSE)
 	  } else{
-		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir, run_pandoc = FALSE)
 	  }
   }
   else if (priority == "P2"){
@@ -61,9 +61,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBPassword = dbpassword,
 		                      DBPort = dbport
 		                    ),
-		                    output_dir = outputdir)
+		                    output_dir = outputdir, run_pandoc = FALSE)
 	  } else {
-		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir, run_pandoc = FALSE)
 	  }
   }
   else if (priority == "P3"){
@@ -76,9 +76,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBPassword = dbpassword,
 		                      DBPort = dbport
 		                    ),
-		                    output_dir = outputdir)
+		                    output_dir = outputdir, run_pandoc = FALSE)
 	  } else {
-		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir, run_pandoc = FALSE)
 	  }
   }
   else if (!(priority %in% c("P1", "P2", "P3"))){
