@@ -32,7 +32,6 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
   if(is.null(dbport)){
     dbport = ""
   }
-
   if (is.null(outputdir) || outputdir == ''){
 	  outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
   }
@@ -46,9 +45,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBPassword = dbpassword,
 		                      DBPort = dbport
 		                      ),
-		                    output_dir = outputdir, run_pandoc = FALSE)
+		                    output_dir = outputdir)
 	  } else{
-		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir, run_pandoc = FALSE)
+		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
 	  }
   }
   else if (priority == "P2"){
@@ -61,9 +60,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBPassword = dbpassword,
 		                      DBPort = dbport
 		                    ),
-		                    output_dir = outputdir, run_pandoc = FALSE)
+		                    output_dir = outputdir)
 	  } else {
-		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir, run_pandoc = FALSE)
+		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
 	  }
   }
   else if (priority == "P3"){
@@ -76,9 +75,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBPassword = dbpassword,
 		                      DBPort = dbport
 		                    ),
-		                    output_dir = outputdir, run_pandoc = FALSE)
+		                    output_dir = outputdir)
 	  } else {
-		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir, run_pandoc = FALSE)
+		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
 	  }
   }
   else if (!(priority %in% c("P1", "P2", "P3"))){
