@@ -4,8 +4,16 @@
 \alias{run_report}
 \title{Run code to generate priority tables.}
 \usage{
-run_report(priority, dbserver = NULL, dbname = NULL, dbuser = NULL,
-  dbpassword = NULL, outputdir = NULL, batchmode = FALSE)
+run_report(
+  priority,
+  dbserver = NULL,
+  dbname = NULL,
+  dbuser = NULL,
+  dbpassword = NULL,
+  outputdir = NULL,
+  batchmode = FALSE,
+  dbport = NULL
+)
 }
 \arguments{
 \item{priority}{A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".}
