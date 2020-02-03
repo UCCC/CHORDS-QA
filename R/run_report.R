@@ -22,7 +22,7 @@
 #' @import httr
 #' @export
 
-run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL) {
+run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, ...) {
   if(is.null(dbuser)){
     dbuser = ""
   }
