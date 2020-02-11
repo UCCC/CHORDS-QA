@@ -136,7 +136,7 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 1.01: Required tables are not present
 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 # Table to check for quality
 tableCheckList <- c(lab_results,   encounters, prescribing,procedures  , social_history  , provider_specialty,diagnoses ,vital_signs  , census_location, demographics  , pro_surveys   ,  pro_questions ,pro_responses)
 
@@ -165,7 +165,7 @@ missingTableMessage <- if(length(missingTables)==0) {"All tables accounted for."
 
 ## Data Check 1.02: Required tables are not populated
 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 table_N_lst <- list() #vector(length=length(nonMissingDBTables))
 for(i in 1:length(nonMissingDBTables)){
   table_N_lst[[i]] <- sqlQuery(sqldb, paste("select distinct '_aaa_' as _aaa_, count(*) as tabN from ",nonMissingDBTables[i], sep=' '))#[,'tabN',drop=T]
@@ -212,7 +212,7 @@ nonPopMessage <- if(length(nonPopTables)==0) {"All tables populated, among those
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 
 repErrors <- sqlQuery(sqldb,
                       paste0(
@@ -251,7 +251,7 @@ knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
 ## Data Check 1.11: More than 5% of encounters are assigned to more than one patient 
 
 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 
 GR1Person <- sqlQuery(sqldb,
                       paste0(
@@ -296,7 +296,7 @@ encItoManyMsg <- if(GR1Person$pct>5){
 
 ## Data Check 2.01: More than 5% of records have future dates
 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 # DC 2.01
 tabDates <- sqlQuery(sqldb, 'select distinct a.name as tabname, b.name as colname from sys.tables as a inner join sys.columns as b on a.object_id = b.object_id order by a.name') %>% 
   subset(grepl('date',colname, ignore.case = T))
@@ -340,7 +340,7 @@ futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0 & params$QAAlert==F
 ## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic
 ## blood pressure, systolic blood pressure, or dispensed days supply
 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 # select count(*) as personCount, sum(case when (minage not between 0 and 89) or (maxage not between 0 and 89) then 1 else 0 end ) as N_outOfRange
 
 patAgeRange <- sqlQuery(sqldb, paste0("
@@ -444,7 +444,7 @@ outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & p
 
 ## Data Check 2.03: More than 5% of patients have illogical date relationships
 
-```{r echo = F}
+```{r echo = F, include=T, error=T}
 
 encTabBirth2.03 <- sqlQuery(sqldb,paste0("
  select sum(dobPostAdate) as dobPostAdate,
@@ -698,7 +698,7 @@ illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0 & params$QAAlert==F
 
 
 ## Data Check 3.05: Less than 50% of patients with encounters have PROCEDURES records 
-```{r echo=F}
+```{r echo = F, include=T, error=T}
 
 patsWithEncs <- sqlQuery(sqldb, paste0("select count(*) as nrows, sum(patsWEncDiag) as patsWEncDiag, sum(patsWEncProc) as patsWEncProc from ( select  case when person_id in (select person_id from ", diagnoses, ") then 1 else 0 end as patsWEncDiag",
  ",case when person_id in (select person_id from ", procedures, ") then 1 else 0 end as patsWEncProc",
