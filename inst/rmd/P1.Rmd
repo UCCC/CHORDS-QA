@@ -29,6 +29,9 @@ params:
         input: password
         value: ""
         placeholder: "leave blank if using windows authentication for your server"
+    QAAlert:
+        label: "Create Alert List in Output"
+        value: TRUE
 ---
 
 ```{r setup, include=FALSE}
