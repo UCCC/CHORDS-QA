@@ -2355,7 +2355,7 @@ Month and year of last record: `r format(as.Date(vitalSumm$lastDT),"%B %Y")`
 
 ## Table 15. Vital Signs Summary
 
-```{r vital signs summary, echo = T, include=T}
+```{r vital signs summary, echo = F, include=T}
 # be sure to include space breaks in any re-design
 #vitalCon <- DBI::dbConnect(odbc::odbc(),.connection_string = connectionString)
 vitalVarSumm <- function(var,label){

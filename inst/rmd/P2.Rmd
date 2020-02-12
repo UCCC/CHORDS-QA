@@ -45,26 +45,65 @@ knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE)
 startTime <- Sys.time()
-# connection to sql server
-if (nchar(params$DBUser) == 0)
-{
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      Port = params$DBPort)
-} else {
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      Port = params$DBPort,
-                      UID = params$DBUser,
-                      PWD = params$DBPassword)
+```
+
+```{r connection strings, include=FALSE, error=FALSE}
+if (nchar(params$DBUser) == 0) {
+  	connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
+  
+}else{
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
 }
+
+if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
+  connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
+}
+
+```
+
+```{r run queries, include=FALSE, error=TRUE}
+run_query <- function(query_text, ...) {
+  tryCatch(
+    {
+      db_conn <- get_connection()
+      result <- sqlQuery(db_conn, query = query_text, as.is = TRUE)
+      return(result)
+      },
+    error = function(cond){
+      stop(cond)
+      return(NA)
+    },
+    finally = {
+      close_conection(db_conn)
+    }
+  )
+}
+
+get_connection <- function(){
+  tryCatch(
+    {
+      db_conn <- RODBC::odbcDriverConnect(connection = connectionString)
+      return(db_conn)
+    },
+    error = function(cond){
+      stop(cond)
+      return(NA)
+    }
+  )
+}
+
+close_conection <- function(db_conn){
+  try({
+    RODBC::odbcClose(db_conn)
+  })
+}
+
+```
+
+```{r table replacements, include=FALSE, error=FALSE}
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
-dfChordsTbls <- odbc::dbGetQuery(con, "                    
+dfChordsTbls <- run_query("                    
     IF EXISTS
     (
         SELECT
@@ -79,14 +118,14 @@ dfChordsTbls <- odbc::dbGetQuery(con, "
             [NEW_NAME]
         FROM[CHORDS_TABLENAMES];
     END; ")
-if (nrow(dfChordsTbls) == 0  && exists("outputdir")){
+if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir")){
   tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
   if (file.exists(tableReplaceFile)){
     print("updating for QA using tablereplace.csv")
     dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
   }
 }
-if (nrow(dfChordsTbls) > 0){
+if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
   lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
   encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
   prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
@@ -116,7 +155,6 @@ if (nrow(dfChordsTbls) > 0){
   pro_surveys <- "PRO_SURVEYS"
   pro_questions <- "PRO_QUESTIONS"
   pro_responses <- "PRO_RESPONSES"
-  
 }
 ```
 
@@ -142,34 +180,28 @@ prov_type <- chordsTables::prov_type
 This table contains summary counts and date ranges by table. Distinct encounters and patients are shown for applicable tables. Date ranges should be used to compare data time windows between tables.
 
 ```{r tab1_sum_stats, echo = F, include=T, error=T}
-
-lab_res_db <- tbl(con, lab_results)
-encounters_db <-  tbl(con, encounters)
-rx_db <-  tbl(con, prescribing)
-px_db <-  tbl(con, procedures)
-sh_db <-  tbl(con, social_history)
-tab1_lab <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
+tab1_lab <- run_query(paste0("select count(*) as nrows, 
   count(distinct person_id) as npats,
   null as nencts,
   'RESULT_DT' as fieldname,
   cast(cast(min(result_dt)as date) as varchar) as mindt,
   cast(cast(max(result_dt)as date) as varchar) as maxdt
   from ", lab_results))
-tab1_rx <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
+tab1_rx <- run_query(paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
   count(distinct enc_id) as nencts,
   'RX_ORDER_DATE' as fieldname,
 	cast(min(rx_order_date) as varchar) as mindt,
 	cast(max(rx_order_date) as varchar) as maxdt
   from ", prescribing))
-tab1_px <- odbc::dbGetQuery(con, paste0("select count(*) as nrows,  
+tab1_px <- run_query(paste0("select count(*) as nrows,  
 	count(distinct person_id) as npats,
   count(distinct enc_id) as nencts,
   'PROCDATE' as fieldname,
 	cast(min(procdate) as varchar) as mindt,
 	cast(max(procdate) as varchar) as maxdt
   from ", procedures))
-tab1_sh <- odbc::dbGetQuery(con, paste0("select count(*) as nrows, 
+tab1_sh <- run_query(paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
   'CONTACT_DATE' as fieldname,
   count(distinct enc_id) as nencts,
@@ -194,7 +226,7 @@ This table contains record counts for null and unknown values across P2 tables.
 
 
 ```{r tab2_res, echo = F, include=T, error=T}
-tab2_lab_null <- odbc::dbGetQuery(con, 
+tab2_lab_null <- run_query( 
   paste0("SELECT SUM(CASE WHEN TEST_TYPE IS NULL THEN 1 ELSE 0 END) as TEST_TYPE,
    SUM(CASE WHEN BATTERY_CD IS NULL THEN 1 ELSE 0 END) as BATTERY_CD,
    SUM(CASE WHEN LOINC= '' THEN 1 ELSE 0 END) as LOINC,
@@ -205,7 +237,7 @@ tab2_lab_null <- odbc::dbGetQuery(con,
       FROM ", lab_results))
 tab2_lab_null2 <- data.frame(table = rep("LAB_RESULTS", ncol(tab2_lab_null)), var = names(tab2_lab_null), records_null = t(tab2_lab_null)[,1])
 row.names(tab2_lab_null2) <- NULL
-tab2_rx_null <- odbc::dbGetQuery(con, 
+tab2_rx_null <- run_query( 
   paste0("SELECT SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
    SUM(CASE WHEN GENERIC_MED_NAME IS NULL THEN 1 ELSE 0 END) as GENERIC_MED_NAME,
    SUM(CASE WHEN RX_DAYS_SUPPLY IS NULL THEN 1 ELSE 0 END) as RX_DAYS_SUPPLY,
@@ -220,14 +252,14 @@ tab2_rx_null <- odbc::dbGetQuery(con,
       FROM ", prescribing))
 tab2_rx_null2 <- data.frame(table = rep("PRESCRIBING", ncol(tab2_rx_null)), var = names(tab2_rx_null), records_null = t(tab2_rx_null)[,1])
 row.names(tab2_rx_null2) <- NULL
-tab2_px_null <- odbc::dbGetQuery(con, 
+tab2_px_null <- run_query(
   paste0("SELECT SUM(CASE WHEN PROVIDER IS NULL THEN 1 ELSE 0 END) as PROVIDER,
    SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCTYPE,
    SUM(CASE WHEN PXCNT IS NULL THEN 1 ELSE 0 END) as PXCNT
       FROM ", procedures))
 tab2_px_null2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_null)), var = names(tab2_px_null), records_null = t(tab2_px_null)[,1])
 row.names(tab2_px_null2) <- NULL
-tab2_ps_null <- odbc::dbGetQuery(con, 
+tab2_ps_null <- run_query(
   paste0("SELECT SUM(CASE WHEN SPECIALTY IS NULL THEN 1 ELSE 0 END) as SPECIALTY,
    SUM(CASE WHEN PROVIDER_TYPE IS NULL THEN 1 ELSE 0 END) as PROVIDER_TYPE,
    SUM(CASE WHEN PROVIDER_BIRTH_YEAR IS NULL THEN 1 ELSE 0 END) as PROVIDER_BIRTH_YEAR,
@@ -237,7 +269,7 @@ tab2_ps_null <- odbc::dbGetQuery(con,
     FROM ", provider_specialty))
 tab2_ps_null2 <- data.frame(table = rep("PROVIDER_SPECIALTY", ncol(tab2_ps_null)), var = names(tab2_ps_null), records_null = t(tab2_ps_null)[,1])
 row.names(tab2_ps_null2) <- NULL
-tab2_sh_null <- odbc::dbGetQuery(con, 
+tab2_sh_null <- run_query(
   paste0("SELECT SUM(CASE WHEN TOBACCO_USER='' THEN 1 ELSE 0 END) as TOBACCO_USER,
    SUM(CASE WHEN ALCOHOL_USER='' THEN 1 ELSE 0 END) as ALCOHOL_USER,
    SUM(CASE WHEN ILL_DRUG_USER='' THEN 1 ELSE 0 END) as ILL_DRUG_USER,
@@ -246,7 +278,7 @@ tab2_sh_null <- odbc::dbGetQuery(con,
 tab2_sh_null2 <- data.frame(table = rep("SOCIAL_HISTORY", ncol(tab2_sh_null)), var = names(tab2_sh_null), records_null = t(tab2_sh_null)[,1])
 row.names(tab2_sh_null2) <- NULL
 
-tab1_ps <- odbc::dbGetQuery(con, "select count(*) as nrows
+tab1_ps <- run_query("select count(*) as nrows
 	from provider_specialty")
 tab1_ps <- data.frame(nrows = tab1_ps$nrows, npats = NA, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
 
@@ -258,29 +290,29 @@ tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_nul
                                      ifelse(table == "PROVIDER_SPECIALTY", (records_null / tab1_ps$nrows * 100), 
                                              ifelse(table == "SOCIAL_HISTORY", (records_null / tab1_sh$nrows * 100), NA)))))
   )
-tab2_lab_uk <- odbc::dbGetQuery(con, 
+tab2_lab_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN TEST_TYPE = 'Unknown' THEN 1 ELSE 0 END) as TEST_TYPE,
     SUM(CASE WHEN RESULT_UNIT = 'UN' THEN 1 ELSE 0 END) AS RESULT_UNIT,
     SUM(CASE WHEN SPECIMEN_SOURCE = 'NS' OR SPECIMEN_SOURCE = 'OTHER' THEN 1 ELSE 0 END) as SPECIMEN_SOURCE
       FROM ", lab_results))
 tab2_lab_uk2 <- data.frame(table = rep("LAB_RESULTS", ncol(tab2_lab_uk)), var = names(tab2_lab_uk), records_uk = t(tab2_lab_uk)[,1])
 row.names(tab2_lab_uk2) <- NULL
-tab2_px_uk <- odbc::dbGetQuery(con, 
+tab2_px_uk <- run_query( 
   paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNK' THEN 1 ELSE 0 END) as PROVIDER
       FROM ", procedures))
 tab2_px_uk2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_uk)), var = names(tab2_px_uk), records_uk = t(tab2_px_uk)[,1])
 row.names(tab2_px_uk2) <- NULL
-tab2_px_uk <- odbc::dbGetQuery(con, 
+tab2_px_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNK' THEN 1 ELSE 0 END) as PROVIDER
       FROM ", procedures))
 tab2_px_uk2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_uk)), var = names(tab2_px_uk), records_uk = t(tab2_px_uk)[,1])
 row.names(tab2_px_uk2) <- NULL
-tab2_rx_uk <- odbc::dbGetQuery(con, 
+tab2_rx_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN RXMD = 'UNK' THEN 1 ELSE 0 END) as RXMD
       FROM ", prescribing))
 tab2_rx_uk2 <- data.frame(table = rep("PRESCRIBING", ncol(tab2_rx_uk)), var = names(tab2_rx_uk), records_uk = t(tab2_rx_uk)[,1])
 row.names(tab2_rx_uk2) <- NULL
-tab2_ps_uk <- odbc::dbGetQuery(con, 
+tab2_ps_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN SPECIALTY = 'UNK' THEN 1 ELSE 0 END) as SPECIALTY,
    SUM(CASE WHEN PROVIDER_TYPE = 999 THEN 1 ELSE 0 END) as PROVIDER_TYPE,
    SUM(CASE WHEN PROVIDER_BIRTH_YEAR = 0 THEN 1 ELSE 0 END) as PROVIDER_BIRTH_YEAR,
@@ -290,7 +322,7 @@ tab2_ps_uk <- odbc::dbGetQuery(con,
     FROM ", provider_specialty))
 tab2_ps_uk2 <- data.frame(table = rep("PROVIDER_SPECIALTY", ncol(tab2_ps_uk)), var = names(tab2_ps_uk), records_uk = t(tab2_ps_uk)[,1])
 row.names(tab2_ps_uk2) <- NULL
-tab2_sh_uk <- odbc::dbGetQuery(con, 
+tab2_sh_uk <- run_query(
    paste0("SELECT SUM(CASE WHEN TOBACCO_USER = 'U' OR TOBACCO_USER = 'X' THEN 1 ELSE 0 END) as TOBACCO_USER,
    SUM(CASE WHEN ALCOHOL_USER = 'U' OR ALCOHOL_USER = 'X' THEN 1 ELSE 0 END) as ALCOHOL_USER,
    SUM(CASE WHEN ILL_DRUG_USER = 'U' OR ILL_DRUG_USER = 'X' THEN 1 ELSE 0 END) as ILL_DRUG_USER
@@ -324,7 +356,7 @@ The following tables explore the contents of the LAB_RESULTS table with a focus 
 This table displays trends in the number of recorded lab tests and the number of unique patients tested by year. The percent change in both count values is included to identify unexpected temporal fluctuations. 
 
 ```{r tab3_res, echo = F, include=T, error=T}
-tab3 <- odbc::dbGetQuery(con, 
+tab3 <- run_query( 
   paste0("select year(result_dt) as year,
     count(*) as nrows, 
 	  count(distinct person_id) as npats
@@ -350,7 +382,7 @@ kable(tab3_ord, col.names = c("Year", "Number of Recorded Lab Tests", "Percent C
 This table illustrates the number (and percent) of priority lab test records including the percent of all lab test records , as well as the number (and percent)  of unique patients tested for select TEST_TYPE values. 
 
 ```{r tab4_res, echo = F, include=T, error=T}
-tab4 <- odbc::dbGetQuery(con, 
+tab4 <- run_query( 
   paste0("select test_type,
     count(*) as nrows, 
 	  count(distinct person_id) as npats,
@@ -381,7 +413,7 @@ These figures shows temporal trends in the number of records for CHORDS priority
 
 
 ```{r fig1_res, fig.height=4, fig.width=7, echo = F, include=T, error=T}
-fig1 <- odbc::dbGetQuery(con, 
+fig1 <- run_query(
   paste0("select test_type, 
     month(result_dt) as month,
     year(result_dt) as year,
@@ -426,7 +458,7 @@ lapply(2:ncol(fig1_wide), function(x)
 This table illustrates the number (and percent) of the data partner's ten most common lab tests and the number (and percent) of unique patients tested with the ten most common lab tests, by the BATTERY_CD field (which captures site-specific lab test names), the percentage of records this represents, and the number and percent of patients in the LAB_RESULTS table who have these results. 
 
 ```{r tab5_res, echo = F, include=T, error=T}
-tab5 <- odbc::dbGetQuery(con, 
+tab5 <- run_query(
                          paste0("select battery_cd,
     count(*) as nrows, 
 	  count(distinct person_id) as npats
@@ -457,14 +489,14 @@ This table displays trends in PRESCRIBING record volume over time as well as pat
 
 
 ```{r tab6_res, echo = F, include=T, error=T}
-tab6 <- odbc::dbGetQuery(con, 
+tab6 <- run_query(
                          paste0("select year(rx_order_date) as year,
     count(*) as nrows, 
 	  count(distinct person_id) as npats
 	  from ", prescribing, "
 	    group by year(rx_order_date)
       order by year(rx_order_date)"))
-tab6_avg_pats <- odbc::dbGetQuery(con, 
+tab6_avg_pats <- run_query( 
                                   paste0("select year(rx_order_date) as year,
     count(*) as nrows
 	  from ", prescribing, "
@@ -493,7 +525,7 @@ kable(tab6_all, col.names = c("Year", "Total Number of Prescriptions", "Percent 
 This table displays the top ten most common orders including count of records and patients. 
 
 ```{r tab7_res, echo = F, include=T, error=T}
-tab7<- odbc::dbGetQuery(con, 
+tab7<- run_query( 
                         paste0("select top 10 GENERIC_MED_NAME,
     count(*) as nrows,
 	  count(distinct person_id) as npats,
@@ -520,7 +552,7 @@ This table examines the volume of procedures over time and the number of encount
 
 
 ```{r tab8_res, echo = F, include=T, error=T}
-tab8 <- odbc::dbGetQuery(con, 
+tab8 <- run_query( 
                          paste0("select year(procdate) as year,
     count(*) as nrows, 
     count(distinct enc_id) as nencts,
@@ -528,7 +560,7 @@ tab8 <- odbc::dbGetQuery(con,
 	  from ", procedures, "
 	    group by year(procdate)
       order by year(procdate)"))
-tab8_avg_encts <- odbc::dbGetQuery(con, 
+tab8_avg_encts <- run_query( 
                                    paste("select year(procdate) as year,
     count(*) as nrows
 	  from ", procedures, "
@@ -541,8 +573,8 @@ tab8_avg_encts <- odbc::dbGetQuery(con,
     enct_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
   select(enct_val)
-tab8_avg_pats <- odbc::dbGetQuery(con, 
-                                  paste0("select year(procdate) as year,
+tab8_avg_pats <- run_query( 
+    paste0("select year(procdate) as year,
     count(*) as nrows
 	  from ", procedures, "
 	    group by year(procdate), person_id
@@ -572,29 +604,29 @@ kable(tab8_add, col.names = c("Year", "Total Number of Recorded Procedures", "Pe
 This table compares the distribution of procedures, diagnoses and encounters by encounter type. Average diagnosis and procedure counts per encounter are calculated to compare diagnosis and procedure volume by encounter type.
 
 ```{r tab9_res, echo = F, include=T, error=T}
-tab9_enct1 <- odbc::dbGetQuery(con, 
-                               paste0("select enctype,
+tab9_enct1 <- run_query(
+    paste0("select enctype,
     count(*) as nrows_enct
 	  from ", encounters, "
 	    group by enctype"))
-tab9_enct2 <- odbc::dbGetQuery(con, 
-                               paste0("select count(*) as enct_tot
+tab9_enct2 <- run_query(
+    paste0("select count(*) as enct_tot
 	  from ", encounters))
-tab9_diag1 <- odbc::dbGetQuery(con, 
-                               paste0("select enctype,
+tab9_diag1 <- run_query(
+    paste0("select enctype,
     count(*) as nrows_diag
 	  from ", diagnoses, "
 	    group by enctype"))
-tab9_diag2 <- odbc::dbGetQuery(con, 
-                               paste0("select count(*) as diag_tot
+tab9_diag2 <- run_query(
+    paste0("select count(*) as diag_tot
 	  from ", diagnoses))
-tab9_px1 <- odbc::dbGetQuery(con, 
-                             paste0("select enctype,
+tab9_px1 <- run_query(
+    paste0("select enctype,
     count(*) as nrows_px
 	  from ", procedures, "
 	    group by enctype"))
-tab9_px2 <- odbc::dbGetQuery(con, 
-                             paste0("select count(*) as px_tot
+tab9_px2 <- run_query(
+    paste0("select count(*) as px_tot
 	  from ", procedures))
 tab9_tot <- data.frame(enctype = "Total", nrows_enct = tab9_enct2$enct_tot, nrows_diag = tab9_diag2$diag_tot, nrows_px = tab9_px2$px_tot, pct_enct = NA, pct_diag = NA, pct_px = NA)
 tab9_all <- tab9_enct1 %>% 
@@ -618,8 +650,8 @@ kable(tab9_all[1:7, c( "enctype", "nrows_enct", "pct_enct", "nrows_enct", "pct_d
 This table includes information on the ten most common procedures recorded in your PROCEDURE table.  Data on procedure codes, types, counts and patients are presented for all encounters and for ambulatory only encounters (ENCTYPE='AV'). 
 
 ```{r tab10_res, echo = F, include=T, error=T}
-tab10_pxall <- odbc::dbGetQuery(con, 
-                                paste0("select px,
+tab10_pxall <- run_query(
+    paste0("select px,
     px_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
@@ -627,8 +659,8 @@ tab10_pxall <- odbc::dbGetQuery(con,
 	    group by px, px_codetype")) %>% 
   arrange(desc(nrows_all)) %>% 
   head(., 10)
-tab10_pxav <- odbc::dbGetQuery(con, 
-                               paste0("select px as px_av,
+tab10_pxav <- run_query(
+    paste0("select px as px_av,
     px_codetype as px_codetype_av,
     count(*) as nrows_av,
     count(distinct person_id) as npats_av
@@ -649,24 +681,24 @@ kable(tab10_all, col.names = c("Procedure Code", "Procedure Type", "Number of Re
 This table includes information on the ten most common procedures recorded in your PROCEDURE table.  Data on procedure codes, counts and patients are presented for CPT, HCPCS, and other code types. 
 
 ```{r tab11_res, echo = F, include=T, error=T}
-tab11_pxc4 <- odbc::dbGetQuery(con, 
-                               paste0("select top 10 px,
+tab11_pxc4 <- run_query(
+    paste0("select top 10 px,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", procedures, "
 	    where px_codetype = 'C4'
       group by px
       order by nrows_all DESC"))
-tab11_pxh4 <- odbc::dbGetQuery(con, 
-                               paste0("select top 10 px,
+tab11_pxh4 <- run_query(
+    paste0("select top 10 px,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", procedures, "
 	    where px_codetype = 'H4'
       group by px
       order by nrows_all DESC"))
-tab11_px_oth <- odbc::dbGetQuery(con, 
-                                 paste0("select top 10 px,
+tab11_px_oth <- run_query(
+    paste0("select top 10 px,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", procedures, "
@@ -705,29 +737,29 @@ The following tables explore the contents of the PROVIDER_SPECIALTY table with a
 This table includes information on the number and percent of providers represented in various CHORDS VDW 3.1 tables.
 
 ```{r tab12_res, echo = F, include=T, error=T}
-tab12_ps <- odbc::dbGetQuery(con, 
-                             paste0("select 'PROVIDER_SPECIALTY' as from_tab,
-   count(distinct provider) as num_prov
+tab12_ps <- run_query(
+    paste0("select 'PROVIDER_SPECIALTY' as from_tab,
+    count(distinct provider) as num_prov
      from ", provider_specialty))
-tab12_dx <- odbc::dbGetQuery(con, 
-                             paste0("select 'DIAGNOSES' as from_tab,
-   count(distinct provider) as num_prov
+tab12_dx <- run_query(
+    paste0("select 'DIAGNOSES' as from_tab,
+    count(distinct provider) as num_prov
      from ", diagnoses))
-tab12_enct <- odbc::dbGetQuery(con, 
-                               paste0("select 'ENCOUNTERS' as from_tab,
-   count(distinct provider) as num_prov
+tab12_enct <- run_query(
+    paste0("select 'ENCOUNTERS' as from_tab,
+    count(distinct provider) as num_prov
      from ", encounters))
-tab12_lab <- odbc::dbGetQuery(con, 
-                              paste0("select 'LAB_RESULTS' as from_tab,
-   count(distinct order_prov) as num_prov 
+tab12_lab <- run_query(
+    paste0("select 'LAB_RESULTS' as from_tab,
+    count(distinct order_prov) as num_prov 
      from ", lab_results))
-tab12_rx <- odbc::dbGetQuery(con, 
-                             paste0("select 'PRESCRIBING' as from_tab,
-   count(distinct rxmd) as num_prov 
+tab12_rx <- run_query(
+    paste0("select 'PRESCRIBING' as from_tab,
+    count(distinct rxmd) as num_prov 
      from ", prescribing))
-tab12_px <- odbc::dbGetQuery(con, 
-                             paste0("select 'PROCEDURES' as from_tab,
-   count(distinct provider) as num_prov
+tab12_px <- run_query(
+    paste0("select 'PROCEDURES' as from_tab,
+    count(distinct provider) as num_prov
      from ", procedures))
 tab12_all <- bind_rows(tab12_ps, tab12_dx, tab12_enct, tab12_lab, tab12_rx, tab12_px) %>% 
   mutate(
@@ -745,9 +777,9 @@ kable(tab12_all, col.names = c("Table", "Number of Providers*", "Percent of All 
 This table includes information on the distribution of providers by specialty.
 
 ```{r tab13_res, echo = F, include=T, error=T}
-tab13 <- odbc::dbGetQuery(con, 
-                          paste0("select specialty as spec,
-   count(distinct provider) as num_prov
+tab13 <- run_query(
+    paste0("select specialty as spec,
+    count(distinct provider) as num_prov
      from ", provider_specialty, "
        group by specialty
        order by specialty")) %>% 
@@ -767,9 +799,9 @@ kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Pro
 This table includes information on the distribution of providers by type.
 
 ```{r tab14_res, echo = F, include=T, error=T}
-tab14 <- odbc::dbGetQuery(con, 
-                          paste0("select provider_type as prov_type,
-   count(distinct provider) as num_prov
+tab14 <- run_query(
+    paste0("select provider_type as prov_type,
+    count(distinct provider) as num_prov
      from ", provider_specialty, "
        group by provider_type
        order by provider_type")) %>% 
@@ -791,16 +823,16 @@ kable(tab14, col.names = c("Provider Abbreviation", "Provider Type", "Number of 
 This table includes information on the distribution of SOCIAL_HISTORY records by TOBACCO_USER value.
 
 ```{r tab15_res, echo = F, include=T, error=T}
-tab15 <- odbc::dbGetQuery(con, 
-                          paste0("select year(contact_date) as year,
-   count(*) as num_rec,
-   SUM(CASE WHEN TOBACCO_USER = 'Y' THEN 1 ELSE 0 END) as smoker,
-   SUM(CASE WHEN TOBACCO_USER = 'I' THEN 1 ELSE 0 END) as infreq,
-   SUM(CASE WHEN TOBACCO_USER = 'Q' THEN 1 ELSE 0 END) as former,
-   SUM(CASE WHEN TOBACCO_USER = 'P' THEN 1 ELSE 0 END) as passive,
-   SUM(CASE WHEN TOBACCO_USER = 'N' THEN 1 ELSE 0 END) as never,
-   SUM(CASE WHEN TOBACCO_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
-   SUM(CASE WHEN TOBACCO_USER IS NULL THEN 1 ELSE 0 END) as t_null
+tab15 <- run_query(
+    paste0("select year(contact_date) as year,
+    count(*) as num_rec,
+    SUM(CASE WHEN TOBACCO_USER = 'Y' THEN 1 ELSE 0 END) as smoker,
+    SUM(CASE WHEN TOBACCO_USER = 'I' THEN 1 ELSE 0 END) as infreq,
+    SUM(CASE WHEN TOBACCO_USER = 'Q' THEN 1 ELSE 0 END) as former,
+    SUM(CASE WHEN TOBACCO_USER = 'P' THEN 1 ELSE 0 END) as passive,
+    SUM(CASE WHEN TOBACCO_USER = 'N' THEN 1 ELSE 0 END) as never,
+    SUM(CASE WHEN TOBACCO_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
+    SUM(CASE WHEN TOBACCO_USER IS NULL THEN 1 ELSE 0 END) as t_null
       from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
@@ -827,14 +859,14 @@ This table includes information on the distribution of SOCIAL_HISTORY records by
 
 
 ```{r tab16_res, echo = F, include=T, error=T}
-tab16 <- odbc::dbGetQuery(con, 
-                          paste0("select year(contact_date) as year,
-   count(*) as num_rec,
-   SUM(CASE WHEN ALCOHOL_USER = 'Y' THEN 1 ELSE 0 END) as alc_use,
-   SUM(CASE WHEN ALCOHOL_USER = 'Q' THEN 1 ELSE 0 END) as former,
-   SUM(CASE WHEN ALCOHOL_USER = 'N' THEN 1 ELSE 0 END) as never,
-   SUM(CASE WHEN ALCOHOL_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
-   SUM(CASE WHEN ALCOHOL_USER IS NULL THEN 1 ELSE 0 END) as t_null
+tab16 <- run_query(
+    paste0("select year(contact_date) as year,
+    count(*) as num_rec,
+    SUM(CASE WHEN ALCOHOL_USER = 'Y' THEN 1 ELSE 0 END) as alc_use,
+    SUM(CASE WHEN ALCOHOL_USER = 'Q' THEN 1 ELSE 0 END) as former,
+    SUM(CASE WHEN ALCOHOL_USER = 'N' THEN 1 ELSE 0 END) as never,
+    SUM(CASE WHEN ALCOHOL_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
+    SUM(CASE WHEN ALCOHOL_USER IS NULL THEN 1 ELSE 0 END) as t_null
      from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
@@ -855,14 +887,14 @@ kable(tab16, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Ne
 This table includes information on the distribution of SOCIAL_HISTORY records by ILL_DRUG_USER value.
 
 ```{r tab17_res, echo = F, include=T, error=T}
-tab17 <- odbc::dbGetQuery(con, 
-                          paste0("select year(contact_date) as year,
-   count(*) as num_rec,
-   SUM(CASE WHEN ILL_DRUG_USER = 'Y' THEN 1 ELSE 0 END) as ill_drug,
-   SUM(CASE WHEN ILL_DRUG_USER = 'Q' THEN 1 ELSE 0 END) as former,
-   SUM(CASE WHEN ILL_DRUG_USER = 'N' THEN 1 ELSE 0 END) as never,
-   SUM(CASE WHEN ILL_DRUG_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
-   SUM(CASE WHEN ILL_DRUG_USER IS NULL THEN 1 ELSE 0 END) as t_null
+tab17 <- run_query(
+    paste0("select year(contact_date) as year,
+    count(*) as num_rec,
+    SUM(CASE WHEN ILL_DRUG_USER = 'Y' THEN 1 ELSE 0 END) as ill_drug,
+    SUM(CASE WHEN ILL_DRUG_USER = 'Q' THEN 1 ELSE 0 END) as former,
+    SUM(CASE WHEN ILL_DRUG_USER = 'N' THEN 1 ELSE 0 END) as never,
+    SUM(CASE WHEN ILL_DRUG_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
+    SUM(CASE WHEN ILL_DRUG_USER IS NULL THEN 1 ELSE 0 END) as t_null
      from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
@@ -883,7 +915,7 @@ This table shows the behavioral and social surveys that have been loaded into th
 
 ```{r tab18_res, echo = F, include=T, error=T}
 #tab18 <- sqlQuery(sqldb, "select * from pro_surveys")
-tab18 <- odbc::dbGetQuery(con, "select * from pro_surveys")
+tab18 <- run_query("select * from pro_surveys")
 ```
 
 ```{r tab18_disp, echo = F, include=T, error=T}
@@ -895,8 +927,7 @@ kable(tab18)
 This table shows the behavioral and social survey questions that have been loaded into the VDW. Note that it does not show the responses to the surveys.
 
 ```{r tab19_res, echo = F, include=T, error=T}
-#tab19 <- sqlQuery(sqldb, "select * from pro_questions")
-tab19 <- odbc::dbGetQuery(con, "select * from pro_questions")
+tab19 <- run_query("select * from pro_questions")
 ```
 
 ```{r tab19_disp, echo = F, include=T, error=T}
@@ -907,14 +938,14 @@ kable(tab19)
 This table summarizes responses to the behavioral and social survey questions based on which screening surveys each data partner has included.
 
 ```{r tab20_res,echo = F, include=T, error=T }
-tab20 <- odbc::dbGetQuery(con, 
-                         paste0("select pro_id, question_id,
+tab20 <- run_query(
+    paste0("select pro_id, question_id,
 	  count(distinct response_id) as nresponse,
 	  min(response_num) as min_resval,
 	  max(response_num) as max_resval,
 	  SUM(CASE WHEN RESPONSE_NUM IS NULL THEN 1 ELSE 0 END) as resp_num_null,
 	  SUM(CASE WHEN RESPONSE_TEXT = '' THEN 1 ELSE 0 END) as resp_text_na,
-  SUM(CASE WHEN (TRY_CAST(RESPONSE_TEXT AS NUMERIC(8)) = RESPONSE_NUM) OR (NULLIF(RESPONSE_TEXT, '') IS NULL
+    SUM(CASE WHEN (TRY_CAST(RESPONSE_TEXT AS NUMERIC(8)) = RESPONSE_NUM) OR (NULLIF(RESPONSE_TEXT, '') IS NULL
                AND RESPONSE_NUM IS NULL)  THEN 0 ELSE 1 END) as resp_text_diff
 	  from ", pro_responses, "
       group by pro_id, question_id"))
@@ -930,13 +961,10 @@ kable(tab20_order, col.names = c("PRO_ID", "QUESTION_ID", "Number of Records", "
 
 
 
-
-
 ####Total program run time:
 ```{r calc_runtime}
 # close odbc
-odbc::dbDisconnect(con)
-odbcCloseAll()
+RODBC::odbcCloseAll()
 endTime <- Sys.time()
 runtime <- endTime - startTime 
 ```
