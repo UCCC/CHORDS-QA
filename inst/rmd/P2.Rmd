@@ -19,6 +19,9 @@ params:
         input: text
         value: ""
         placeholder: "Enter your VDW Database Name"
+    DBEncrypt:
+        label: "Encrypt Database Connection"
+        value: FALSE
     DBUser:
         label: "Database User Name"
         input: text
@@ -50,7 +53,6 @@ if (nchar(params$DBUser) == 0)
                       Server = params$DBServerName,
                       Database = params$DBName,
                       Port = params$DBPort)
-	#sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 } else {
 	con <- DBI::dbConnect(odbc::odbc(),
                       Driver = "SQL Server",
@@ -59,7 +61,6 @@ if (nchar(params$DBUser) == 0)
                       Port = params$DBPort,
                       UID = params$DBUser,
                       PWD = params$DBPassword)
-	#sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
 }
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.

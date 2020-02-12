@@ -19,6 +19,9 @@ params:
         input: text
         value: ""
         placeholder: "Enter your VDW Database Name"
+    DBEncrypt:
+        label: "Encrypt Database Connection"
+        value: FALSE
     DBUser:
         label: "Database User Name"
         input: text
@@ -52,20 +55,26 @@ if (nchar(params$DBUser) == 0) {
     connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
 }
 
+if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
+  connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
+}
+```
+
+```{r run queries, include=FALSE, error=TRUE}
 run_query <- function(query_text) {
   tryCatch(
     {
       db_conn <- get_connection()
       result <-RODBC::sqlQuery(channel = db_conn, query = query_text)
       return(result)
-  },
-  error = function(cond){
-    stop(cond)
-    return(NA)
-  },
-  finally = {
+    },
+    error = function(cond){
+      stop(cond)
+      return(NA)
+    },
+    finally = {
       close_conection(db_conn)
-  }
+    }
   )
 }
 
