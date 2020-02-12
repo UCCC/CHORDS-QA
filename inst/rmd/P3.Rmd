@@ -33,37 +33,67 @@ params:
         label: "Create Alert List in Output"
         value: TRUE
 ---
-
 ```{r setup, include=FALSE}
 library(RODBC)
 library(knitr)
 library(tidyverse)
-knitr::opts_chunk$set(echo = TRUE,
+knitr::opts_chunk$set(echo = FALSE,
                 message = FALSE,
-                warning = FALSE)
+                warning = FALSE,
+                error= FALSE)
 startTime <- Sys.time()
-# connection to sql server
-if (nchar(params$DBUser) == 0)
-{
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      Port = params$DBPort)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
-} else {
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      Port = params$DBPort,
-                      UID = params$DBUser,
-                      PWD = params$DBPassword)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+```
+
+```{r connection strings, include=FALSE, error=FALSE}
+if (nchar(params$DBUser) == 0) {
+  	connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
+  
+}else{
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
 }
+
+run_query <- function(query_text) {
+  tryCatch(
+    {
+      db_conn <- get_connection()
+      result <-RODBC::sqlQuery(channel = db_conn, query = query_text)
+      return(result)
+  },
+  error = function(cond){
+    stop(cond)
+    return(NA)
+  },
+  finally = {
+      close_conection(db_conn)
+  }
+  )
+}
+
+get_connection <- function(){
+  tryCatch(
+    {
+      db_conn <- RODBC::odbcDriverConnect(connection = connectionString)
+      return(db_conn)
+    },
+    error = function(cond){
+      stop(cond)
+      return(NA)
+    }
+  )
+}
+
+close_conection <- function(db_conn){
+  try({
+    RODBC::odbcClose(db_conn)
+  })
+}
+
+```
+
+```{r table replacements, include=FALSE, error=FALSE}
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
-dfChordsTbls <- odbc::dbGetQuery(con, "                    
+dfChordsTbls <- run_query("                    
     IF EXISTS
     (
         SELECT
@@ -78,28 +108,29 @@ dfChordsTbls <- odbc::dbGetQuery(con, "
             [NEW_NAME]
         FROM[CHORDS_TABLENAMES];
     END; ")
-if (nrow(dfChordsTbls) == 0  && exists("outputdir")){
+if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir")){
   tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
   if (file.exists(tableReplaceFile)){
     print("updating for QA using tablereplace.csv")
     dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
   }
 }
-if (nrow(dfChordsTbls) > 0){
-  lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
-  encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
-  prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
-  procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
-  social_history <- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
-  provider_specialty <- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
-  diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
-  vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
-  census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
-  demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
-  pro_surveys <- ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys")
-  pro_questions <- ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions")
-  pro_responses <- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
-  
+if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
+  if (nrow(dfChordsTbls) > 0){
+    lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
+    encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
+    prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
+    procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
+    social_history <- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
+    provider_specialty <- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
+    diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
+    vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
+    census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
+    demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
+    pro_surveys <- ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys")
+    pro_questions <- ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions")
+    pro_responses <- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
+  }
 } else {
   # Names of database tables
   lab_results    <- "LAB_RESULTS"
@@ -115,9 +146,9 @@ if (nrow(dfChordsTbls) > 0){
   pro_surveys <- "PRO_SURVEYS"
   pro_questions <- "PRO_QUESTIONS"
   pro_responses <- "PRO_RESPONSES"
-  
 }
 ```
+
 
 ## CHORDS QA Report: VDW P2 Tables
 
@@ -133,6 +164,7 @@ Query Run Date:  `r Sys.Date()`
 ## Data Check 1.01: Required tables are not present
 
 
+
 ## Data Check 1.02: Required tables are not populated
 
 
@@ -143,7 +175,262 @@ Query Run Date:  `r Sys.Date()`
 
 
 ## Data Check 1.05: Tables have primary key definition errors
+```{r 1.05 Data PrimaryKeyChecks Data }
+primary_key_data <- run_query("
+/*TABLEREPLACEMENTINFILE*/
+/*****************************************************************************
+Script for validating the VDW Primary Keys.  It will create two lists.  One of
+the Expected Tables and their primary keys and another of all the tables currently in
+the partner VDW.  It will validate:
+    - Compare the expected primary key to the primary key of each
+	table in a partner's VDW
+	- The number of records that currently violate the exepcted primary key
 
+FOR DEVELOPERS:
+To Update the script for partner use:
+
+1) Edit the #PKVALIDATION table insertion if the primary keys of the VDW have
+changed or add new entires for new tables.  One row per primary key column.
+
+Examples below:
+
+Output:
+    One output table
+    1) 	Shows the Table name, the expected primary key, the found primary key,
+	and the result of the comparision between the expected and found primary keys.
+	KeyMatchResultValues:
+		- OK: Expected primary key matches the found primary key
+		- KEY MISMATCH: Expected Primary Key does not matc the found primary key
+		- TABLE OR KEYS NOT FOUND: No table in the VDW matches the expected table
+		- UNKNOWN: An unknow error occured
+	ViolationCount:
+		- The number of records that that appear to violate the expected primary key.
+*****************************************************************************/
+
+/*****************************************************************************
+BEGIN TempTable Clearing and Creation
+*****************************************************************************/
+SET NOCOUNT ON;
+BEGIN
+   
+    IF OBJECT_ID('tempdb..#PKVALIDATION') IS NOT NULL
+    BEGIN
+	   DROP TABLE #PKVALIDATION;
+    END;
+
+	CREATE TABLE #PKVALIDATION (
+		Table_Name      VARCHAR(250) ,
+        Column_Name     VARCHAR(250)
+    );
+
+	IF OBJECT_ID('tempdb..#KeyMatchResult') IS NOT NULL
+    BEGIN
+	   DROP TABLE #KeyMatchResult;
+    END;
+
+	IF OBJECT_ID('tempdb..#PKVIOLATIONS') IS NOT NULL
+    BEGIN
+	   DROP TABLE #PKVIOLATIONS;
+    END;
+    
+	CREATE TABLE #PKVIOLATIONS (
+		Table_Name      VARCHAR(250) ,
+        Violation_Count BIGINT
+    );
+
+END;
+/*****************************************************************************
+END TempTable Clearing and Creation
+*****************************************************************************/
+
+/*****************************************************************************
+BEGIN Table Create Section
+*****************************************************************************/
+
+INSERT INTO #PKVALIDATION
+VALUES      (
+       'CENSUS_DEMOG', 'CENSUS_YEAR'), (
+       'CENSUS_DEMOG', 'GEOCODE'), (
+       'EVERNDC', 'NDC'), (
+       'EVERNDC', 'GENERIC'), (
+       'PROVIDER_SPECIALTY', 'PROVIDER'), (
+       'DEATH', 'PERSON_ID'), (
+       'CAUSE_OF_DEATH', 'PERSON_ID'), (
+       'CAUSE_OF_DEATH', 'COD'), (
+       'DEMOGRAPHICS', 'PERSON_ID'), (
+       'LINKAGE', 'LINK_ID'), (
+       'LINKAGE', 'LINE'), (
+       'BENEFIT', 'BENEFIT_ID'), (
+       'ENCOUNTERS', 'ENC_ID'), (
+       'DIAGNOSES', 'DIAGNOSES_ID'), (
+       'ENROLLMENT', 'PERSON_ID'), (
+       'ENROLLMENT', 'ENR_START'), (
+       'LAB_RESULTS', 'LAB_RESULTS_ID'), (
+       'PRO_SURVEYS', 'PRO_ID'), (
+       'PRO_QUESTIONS', 'PRO_ID'), (
+       'PRO_QUESTIONS', 'QUESTION_ID'), (
+       'PRO_QUESTIONS', 'QUESTION_VER'), (
+       'PRO_RESPONSES', 'RESPONSE_ID'), (
+       'PHARMACY', 'PHARMACY_ID'), (
+       'PRESCRIBING', 'PRESCRIBING_ID'), (
+       'PROCEDURES', 'PROCEDURES_ID'), (
+       'SOCIAL_HISTORY', 'SOCIAL_HISTORY_ID'), (
+       'VITAL_SIGNS', 'VITAL_SIGNS_ID'), (
+       'TUMOR', 'TUMOR_ID'), (
+       'LANGUAGES', 'PERSON_ID'), (
+       'LANGUAGES', 'LANG_ISO'), (
+       'CENSUS_LOCATION', 'PERSON_ID'), (
+       'CENSUS_LOCATION', 'LOC_START');
+/*****************************************************************************
+BEGIN Table Name Replacement: If a TableName replacement table exists, it will swap out the 
+names in the tables for the correct ones based on how it's mapped in their table.
+*****************************************************************************/
+
+BEGIN
+IF OBJECT_ID('CHORDS_TABLENAMES') IS NOT NULL
+    BEGIN
+        UPDATE a
+               SET a.Table_Name = b.NEW_NAME
+        FROM #PKVALIDATION a JOIN CHORDS_TABLENAMES b ON b.ORG_NAME = a.Table_Name;
+    END;
+END;
+
+/*****************************************************************************
+END Table Name Replacement
+*****************************************************************************/
+
+/*****************************************************************************
+BEGIN Analysis Section: Compares the partner's primary keys to the expected keys
+******************************************************************************/
+SELECT * INTO #KeyMatchResult
+FROM (
+SELECT            
+       ExpectKeys.TABLE_NAME, 
+       ExpectKeys.COLUMN_NAMES AS Expected_Primary_Key, 
+       CurrKeys.COLUMN_NAMES AS Found_Primary_Key,
+       CASE
+           WHEN CurrKeys.TABLE_NAME IS NULL
+           THEN 'TABLE OR KEYS NOT FOUND'
+           WHEN ExpectKeys.COLUMN_NAMES != CurrKeys.COLUMN_NAMES
+           THEN 'KEY MISMATCH'
+           WHEN ExpectKeys.COLUMN_NAMES = CurrKeys.COLUMN_NAMES
+           THEN 'OK'
+           ELSE 'UNKNOWN ERROR'
+       END AS Key_Match_Result
+FROM                  
+(
+    SELECT        
+           TABLE_NAME, 
+           LEFT(COL, LEN(COL) - 1) AS COLUMN_NAMES
+    FROM              
+    (
+        SELECT DISTINCT    
+               TAB.TABLE_NAME TABLE_NAME, 
+        (
+            SELECT 
+                   COL.Column_Name + ', ' AS [text()]
+            FROM    
+                 #PKVALIDATION COL
+            WHERE  COL.Table_Name = TAB.Table_Name
+            ORDER BY 
+                     COL.Column_Name FOR
+            XML PATH('')
+        ) COL
+        FROM 
+             #PKVALIDATION TAB
+    ) T
+    WHERE T.COL IS NOT NULL
+) ExpectKeys
+LEFT JOIN
+(
+    SELECT        
+           TABLE_NAME, 
+           LEFT(COL, LEN(COL) - 1) AS COLUMN_NAMES
+    FROM              
+    (
+        SELECT DISTINCT    
+               TAB.TABLE_NAME TABLE_NAME, 
+        (
+            SELECT 
+                   COL.COLUMN_NAME + ', ' AS [text()]
+            FROM    
+                 INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE COL
+            WHERE  COL.CONSTRAINT_NAME = TAB.CONSTRAINT_NAME
+                   AND COL.TABLE_NAME = TAB.TABLE_NAME
+                   AND CONSTRAINT_TYPE = 'PRIMARY KEY'
+            ORDER BY 
+                     COL.COLUMN_NAME FOR
+            XML PATH('')
+        ) COL
+        FROM 
+             INFORMATION_SCHEMA.TABLE_CONSTRAINTS TAB
+    ) T
+    WHERE T.COL IS NOT NULL
+) CurrKeys
+     ON CurrKeys.TABLE_NAME = ExpectKeys.TABLE_NAME) KeyMatch;
+
+BEGIN
+    
+    DECLARE @SQL NVARCHAR(3000);
+    DECLARE @Table_Name VARCHAR(100);
+	DECLARE @Key_Columns VARCHAR(100);
+    
+    DECLARE CUR CURSOR
+    FOR SELECT
+              Table_Name, Expected_Primary_Key
+        FROM
+             #KeyMatchResult;
+    
+    OPEN CUR;
+    
+    FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
+    
+    WHILE @@FETCH_STATUS = 0
+        BEGIN
+		SET @SQL = '
+			IF OBJECT_ID(''' + @Table_Name + ''') IS NOT NULL
+			WITH CTEKEY
+				AS (SELECT 
+			        COUNT(*) KEYTOT
+					FROM (
+						SELECT DISTINCT  ' + @Key_Columns + '
+						FROM ' + @Table_Name + ') z),
+			CTETOT
+				AS (SELECT COUNT(*) TABTOT
+					FROM ' + @Table_Name + ')
+			INSERT INTO #PKVIOLATIONS
+			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT
+			FROM CTETOT, CTEKEY;'
+            --PRINT @SQL;
+            EXEC Sp_executesql
+                 @SQL;
+            FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
+        END;
+    
+    CLOSE CUR;
+    
+    DEALLOCATE CUR; 
+END
+
+SELECT 
+       m.*, 
+       v.Violation_Count
+FROM   
+     #KeyMatchResult m
+     LEFT JOIN #PKVIOLATIONS v
+          ON v.Table_Name = m.TABLE_NAME;
+/*****************************************************************************
+END Analysis Section
+*****************************************************************************/
+  ")
+
+```
+
+```{r 1.05 Data PrimaryKeyChecks Result}
+
+knitr::kable(primary_key_data)
+
+```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
 
@@ -195,19 +482,67 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient
 ## (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
+```{r 3.07 Data, include=FALSE, error=FALSE}
 
+benchmark_start <- run_query("
+  SET NOCOUNT ON;
+  DECLARE @BenchmarkStartDate DATE;
+  SET @BenchmarkStartDate =
+  (
+      SELECT 
+             IIF(MAX(x.ADATE) <= GETDATE(), MAX(x.ADATE), GETDATE())
+      FROM   
+           ENCOUNTERS x
+  );
+  SELECT @BenchmarkStartDate;
+")
 
+data_result <- run_query(str_replace_all("
+  SET NOCOUNT ON;
+  DECLARE @BenchmarkPriorYearAvg INT;
+  SET @BenchmarkPriorYearAvg =
+  (
+      SELECT 
+             COUNT(1) / 12
+      FROM   
+           ENCOUNTERS e
+      WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')
+      AND e.ADATE >= DATEADD(MONTH, -24, @BenchmarkStartDate)
+      AND e.ADATE <= DATEADD(MONTH, -12, @BenchmarkStartDate)
+  );
+  
+  SELECT 
+         FORMAT(ADATE, 'MM-MMM') MONTHNUM, 
+         @BenchmarkPriorYearAvg AS BenchMarkCount, 
+         COUNT(1) PriorMonthCount, 
+         ROUND(CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0, 2) AS PercentOfBenchMark
+  FROM   
+       ENCOUNTERS e
+  WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')
+  AND e.ADATE >= DATEADD(MONTH, -12, @BenchmarkStartDate)
+  GROUP BY 
+           FORMAT(ADATE, 'MM-MMM')
+  ORDER BY 
+           FORMAT(ADATE, 'MM-MMM');                          
+                            
+", "@BenchmarkStartDate", paste0('\'', benchmark_start[1,1], '\'', sep='')))
+```
+
+```{r 3.07 Output, error=FALSE, include=TRUE}
+
+knitr::kable(data_result)
+
+```
 
 ## Data Check 3.11: Vital, prescribing, or laboratory records are less than 75% complete three months prior to the current month
 
 
 ####Total program run time:
-```{r calc_runtime}
+```{r calc_runtime, echo=TRUE}
 # close odbc
-odbc::dbDisconnect(con)
 odbcCloseAll()
 endTime <- Sys.time()
-runtime <- endTime - startTime 
+runtime <- endTime - startTime
 ```
 
 
