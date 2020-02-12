@@ -141,23 +141,23 @@ if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
     pro_responses <- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
     pharmacy <- ifelse("pharmacy" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pharmacy"), tolower(dfChordsTbls$ORG_NAME))], "pharmacy")
 } else {
-  # Names of database tables
-  lab_results    <- "LAB_RESULTS"
-  encounters      <- "ENCOUNTERS"
-  prescribing <- "PRESCRIBING"
-  procedures     <- "PROCEDURES"
-  social_history  <- "SOCIAL_HISTORY"
-  provider_specialty <- "PROVIDER_SPECIALTY"
-  diagnoses <- "DIAGNOSES"
-  vital_signs <- "VITAL_SIGNS"
-  census_location <- "CENSUS_LOCATION"
-  demographics <- "DEMOGRAPHICS"
-  pro_surveys <- "PRO_SURVEYS"
-  pro_questions <- "PRO_QUESTIONS"
-  pro_responses <- "PRO_RESPONSES"
-  death <- "DEATH"
-  pharmacy <- "PHARMACY"
-  
+    # Names of database tables
+    lab_results    <- "LAB_RESULTS"
+    encounters      <- "ENCOUNTERS"
+    prescribing <- "PRESCRIBING"
+    procedures     <- "PROCEDURES"
+    social_history  <- "SOCIAL_HISTORY"
+    provider_specialty <- "PROVIDER_SPECIALTY"
+    diagnoses <- "DIAGNOSES"
+    vital_signs <- "VITAL_SIGNS"
+    census_location <- "CENSUS_LOCATION"
+    demographics <- "DEMOGRAPHICS"
+    pro_surveys <- "PRO_SURVEYS"
+    pro_questions <- "PRO_QUESTIONS"
+    pro_responses <- "PRO_RESPONSES"
+    death <- "DEATH"
+    pharmacy <- "PHARMACY"
+  } 
 }
 ```
 
