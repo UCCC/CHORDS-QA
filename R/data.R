@@ -14,8 +14,8 @@
 #'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
 #'   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
 #'}
-#'
-#' @source ccsMDxI1019jun17.Rda
+#' @rdname datasets
+#' @source ccsMDxI10.Rda
 "ccsMDxI10"
 #' @title ccsMDxI9
 #'
@@ -34,8 +34,8 @@
 #'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
 #'   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
 #'}
-#'
-#' @source ccsMDxI1019jun17.Rda
+#' @rdname datasets
+#' @source ccsMDxI9.Rda
 "ccsMDxI9"
 #' @title ccsSDxI9
 #'
@@ -51,8 +51,8 @@
 #'   \item{optDesc}{(chr) Indicates diagnosis was present at time of admission.}
 #'   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
 #'}
-#'
-#' @source ccsSingle2015July17.Rda
+#' @rdname datasets
+#' @source ccsSDxI9.Rda
 "ccsSDxI9"
 #' @title isoLang
 #'
@@ -66,10 +66,10 @@
 #'   \item{InEnglish}{(chr) Indicates diagnosis was present at time of admission.}
 #'   \item{InFrench}{(chr) Indicates diagnosis was present at time of admission.}
 #'}
-#'
-#' @source isoLang_10Jul2017.Rda
+#' @rdname datasets
+#' @source isoLang.Rda
 "isoLang"
-#' @title Provider Type
+#' @title prov_type
 #'
 #' @description This table contains the categories and complete title for provider types from the \code{PROVIDER_SPECIALTY} table.
 #'
@@ -78,8 +78,8 @@
 #'   \item{V1}{(int) Provider category (from CHORDS_VDW_V3.1_DataModelManual)}
 #'   \item{V2}{(chr) Provider type description.}
 #'}
-#'
-#' @source CHORDS_VDW_V3.1_DataModelManual.doc
+#' @rdname datasets
+#' @source prov_type.rda
 "prov_type"
 #' @title Provider Specialties
 #'
@@ -90,10 +90,10 @@
 #'   \item{SPECIALTY}{(int) Provider specialty category (from CHORDS_VDW_V3.1_DataModelManual)}
 #'   \item{Description}{(chr) Provider specialty description.}
 #'}
-#'
-#' @source CHORDS_VDW_V3.1_DataModelManual.doc
+#' @rdname datasets
+#' @source specialties.rda
 "specialties"
-#' @title State and County Fips data
+#' @title stateCnty
 #'
 #' @description This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
 #'
@@ -107,10 +107,10 @@
 #'   \item{stateCnty}{(chr) Indicates diagnosis was present at time of admission.}
 #'   \item{stCntyNm}{(chr) Indicates diagnosis was present at time of admission.}
 #'}
-#'
-#' @source StateCountyFips15jun17.Rda
+#' @rdname datasets
+#' @source stateCnty.Rda
 "stateCnty"
-#' @title Value Sets
+#' @title valSets
 #'
 #' @description This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
 #'
@@ -121,6 +121,6 @@
 #'   \item{code}{(chr) Indicates diagnosis was present at time of admission.}
 #'   \item{decode}{(chr) Indicates diagnosis was present at time of admission.}
 #'}
-#'
-#' @source StateCountyFips15jun17.Rda
+#' @rdname datasets
+#' @source valSets.Rda
 "valSets"
