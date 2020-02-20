@@ -22,7 +22,7 @@
 #' @import httr
 #' @export
 
-run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL) {
+run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
   if(is.null(dbuser)){
     dbuser = ""
   }
@@ -31,6 +31,9 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
   }
   if(is.null(dbport)){
     dbport = ""
+  }
+  if(is.null(dbencrypt)){
+    dbencrypt = ""
   }
   if (is.null(outputdir) || outputdir == ''){
 	  outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
@@ -43,7 +46,8 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBName = dbname,
 		                      DBUser = dbuser,
 		                      DBPassword = dbpassword,
-		                      DBPort = dbport
+		                      DBPort = dbport,
+		                      DBEncrypt = dbencrypt
 		                      ),
 		                    output_dir = outputdir)
 	  } else{
@@ -58,7 +62,8 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBName = dbname,
 		                      DBUser = dbuser,
 		                      DBPassword = dbpassword,
-		                      DBPort = dbport
+		                      DBPort = dbport,
+		                      DBEncrypt = dbencrypt
 		                    ),
 		                    output_dir = outputdir)
 	  } else {
@@ -73,7 +78,8 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 		                      DBName = dbname,
 		                      DBUser = dbuser,
 		                      DBPassword = dbpassword,
-		                      DBPort = dbport
+		                      DBPort = dbport,
+		                      DBEncrypt = dbencrypt
 		                    ),
 		                    output_dir = outputdir)
 	  } else {
