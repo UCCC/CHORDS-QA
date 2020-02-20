@@ -19,6 +19,9 @@ params:
         input: text
         value: ""
         placeholder: "Enter your VDW Database Name"
+    DBEncrypt:
+        label: "Encrypt Database Connection"
+        value: FALSE
     DBUser:
         label: "Database User Name"
         input: text
@@ -33,37 +36,73 @@ params:
         label: "Create Alert List in Output"
         value: TRUE
 ---
-
 ```{r setup, include=FALSE}
 library(RODBC)
 library(knitr)
 library(tidyverse)
-knitr::opts_chunk$set(echo = TRUE,
+knitr::opts_chunk$set(echo = FALSE,
                 message = FALSE,
-                warning = FALSE)
+                warning = FALSE,
+                error= FALSE)
 startTime <- Sys.time()
-# connection to sql server
-if (nchar(params$DBUser) == 0)
-{
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      Port = params$DBPort)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
-} else {
-	con <- DBI::dbConnect(odbc::odbc(),
-                      Driver = "SQL Server",
-                      Server = params$DBServerName,
-                      Database = params$DBName,
-                      Port = params$DBPort,
-                      UID = params$DBUser,
-                      PWD = params$DBPassword)
-	sqldb <- odbcDriverConnect(paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep=""), readOnlyOptimize = TRUE)
+```
+
+```{r connection strings, include=FALSE, error=FALSE}
+if (nchar(params$DBUser) == 0) {
+  	connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
+  
+}else{
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
 }
+
+if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
+  connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
+}
+```
+
+```{r run queries, include=FALSE, error=TRUE}
+run_query <- function(query_text) {
+  tryCatch(
+    {
+      db_conn <- get_connection()
+      result <-RODBC::sqlQuery(channel = db_conn, query = query_text)
+      return(result)
+    },
+    error = function(cond){
+      stop(cond)
+      return(NA)
+    },
+    finally = {
+      close_conection(db_conn)
+    }
+  )
+}
+
+get_connection <- function(){
+  tryCatch(
+    {
+      db_conn <- RODBC::odbcDriverConnect(connection = connectionString)
+      return(db_conn)
+    },
+    error = function(cond){
+      stop(cond)
+      return(NA)
+    }
+  )
+}
+
+close_conection <- function(db_conn){
+  try({
+    RODBC::odbcClose(db_conn)
+  })
+}
+
+```
+
+```{r table replacements, include=FALSE, error=FALSE}
 #Checks to see if partner is using table replacements.
 #Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
-dfChordsTbls <- odbc::dbGetQuery(con, "                    
+dfChordsTbls <- run_query("                    
     IF EXISTS
     (
         SELECT
@@ -78,50 +117,53 @@ dfChordsTbls <- odbc::dbGetQuery(con, "
             [NEW_NAME]
         FROM[CHORDS_TABLENAMES];
     END; ")
-if (nrow(dfChordsTbls) == 0  && exists("outputdir")){
+if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir")){
   tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
   if (file.exists(tableReplaceFile)){
     print("updating for QA using tablereplace.csv")
     dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
   }
 }
-if (nrow(dfChordsTbls) > 0){
-  lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
-  encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
-  prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
-  procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
-  social_history <- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
-  provider_specialty <- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
-  diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
-  vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
-  census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
-  demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
-  pro_surveys <- ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys")
-  pro_questions <- ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions")
-  pro_responses <- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
-  
+if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
+  if (nrow(dfChordsTbls) > 0){
+    lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
+    encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
+    prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
+    procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
+    social_history <- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
+    provider_specialty <- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
+    diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
+    vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
+    census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
+    demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
+    pro_surveys <- ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys")
+    pro_questions <- ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions")
+    pro_responses <- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
+    pharmacy <- ifelse("pharmacy" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pharmacy"), tolower(dfChordsTbls$ORG_NAME))], "pharmacy")
 } else {
-  # Names of database tables
-  lab_results    <- "LAB_RESULTS"
-  encounters      <- "ENCOUNTERS"
-  prescribing <- "PRESCRIBING"
-  procedures     <- "PROCEDURES"
-  social_history  <- "SOCIAL_HISTORY"
-  provider_specialty <- "PROVIDER_SPECIALTY"
-  diagnoses <- "DIAGNOSES"
-  vital_signs <- "VITAL_SIGNS"
-  census_location <- "CENSUS_LOCATION"
-  demographics <- "DEMOGRAPHICS"
-  pro_surveys <- "PRO_SURVEYS"
-  pro_questions <- "PRO_QUESTIONS"
-  pro_responses <- "PRO_RESPONSES"
-  
+    # Names of database tables
+    lab_results    <- "LAB_RESULTS"
+    encounters      <- "ENCOUNTERS"
+    prescribing <- "PRESCRIBING"
+    procedures     <- "PROCEDURES"
+    social_history  <- "SOCIAL_HISTORY"
+    provider_specialty <- "PROVIDER_SPECIALTY"
+    diagnoses <- "DIAGNOSES"
+    vital_signs <- "VITAL_SIGNS"
+    census_location <- "CENSUS_LOCATION"
+    demographics <- "DEMOGRAPHICS"
+    pro_surveys <- "PRO_SURVEYS"
+    pro_questions <- "PRO_QUESTIONS"
+    pro_responses <- "PRO_RESPONSES"
+    death <- "DEATH"
+    pharmacy <- "PHARMACY"
+  } 
 }
 ```
 
-## CHORDS QA Report: VDW P2 Tables
+## CHORDS QA Report: VDW P3 Tables
 
-The purpose of the data quality program is to characterize the data in a second set of CHORDS VDW tables (previously referred to as Priority 2 or "P2" tables).  The P2 tables include the following: LAB_RESULTS, PRESCRIBING, PROCEDURES, PROVIDER_SPECIALTY, SOCIAL_HISTORY, PRO_SURVEYS, and PRO_QUESTIONS. The program uses a series of SQL queries operationalized using RStudio to produce this report.  These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness.
+The purpose of the data quality program is to conduct data quality checks that correspond to similar data checks carried out by PCORnet (Version 7). The checks cover 4 realms of data quality: data model conformance, data plausibility, data completeness, and data persistence. The program uses a series of SQL queries operationalized using RStudio to produce this report. The program is designed to support tables/figures that provide detailed information about each data quality check as well as an alert if a data error appears to be present (based on criteria developed by PCORnet or the CHORDS team). 
 
 This data quality report was generated from CHORDS `r params$DBName`.
 
@@ -132,8 +174,57 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 1.01: Required tables are not present
 
+```{r echo = F, include=T, error=T}
+# Table to check for quality
+tableCheckList <- c(lab_results,   encounters, prescribing,procedures  , social_history  , provider_specialty,diagnoses ,vital_signs  , census_location, demographics  , pro_surveys   ,  pro_questions ,pro_responses)
+
+# table list in DB
+dbTables <- sqlTables(sqldb)  
+
+
+tabledChecked <- vector(length=length(tableCheckList))
+for (i in 1:length(tableCheckList)){
+  tabledChecked[i] <- sum(grepl(tableCheckList[i], dbTables$TABLE_NAME, ignore.case = T))>0
+}
+
+missingTables <- setdiff(tableCheckList, tableCheckList[tabledChecked])
+nonMissingTables <- setdiff(tableCheckList, missingTables)
+nonMissingDBTables <- subset(dbTables, grepl(paste(tableCheckList, collapse = '|'), TABLE_NAME, ignore.case = T), select=TABLE_NAME)[,,drop=T]
+
+missingTableMessage <- if(length(missingTables)==0) {"All tables accounted for."
+} else{
+    paste("The following tables are missing:", paste(missingTables, collapse = ','), sep = ' ')
+          }
+```
+ 
+
+`r missingTableMessage`
+
 
 ## Data Check 1.02: Required tables are not populated
+
+```{r echo = F, include=T, error=T}
+table_N_lst <- list() #vector(length=length(nonMissingDBTables))
+for(i in 1:length(nonMissingDBTables)){
+  table_N_lst[[i]] <- sqlQuery(sqldb, paste("select distinct '_aaa_' as _aaa_, count(*) as tabN from ",nonMissingDBTables[i], sep=' '))#[,'tabN',drop=T]
+ # print(dbTables[i])
+
+
+  if (class(table_N_lst[[i]]) !='data.frame') {table_N_lst[[i]] <- NULL}
+}
+#length(dbTables)
+table_N_lst <- do.call('rbind', table_N_lst) [,'tabN',drop=T]
+
+nonPopTables <- nonMissingDBTables[table_N_lst==0]
+nonPopMessage <- if(length(nonPopTables)==0) {"All tables populated, among those present."
+} else{
+    paste("The following tables exist, but are not populated:",  paste(nonPopTables, collapse = ','), sep = ' ')
+          }
+```
+
+`r nonPopMessage`
+
+
 
 
 ## Data Check 1.03: Required fields are not present
@@ -143,7 +234,262 @@ Query Run Date:  `r Sys.Date()`
 
 
 ## Data Check 1.05: Tables have primary key definition errors
+```{r 1.05 Data PrimaryKeyChecks Data }
+primary_key_data <- run_query("
+/*TABLEREPLACEMENTINFILE*/
+/*****************************************************************************
+Script for validating the VDW Primary Keys.  It will create two lists.  One of
+the Expected Tables and their primary keys and another of all the tables currently in
+the partner VDW.  It will validate:
+    - Compare the expected primary key to the primary key of each
+	table in a partner's VDW
+	- The number of records that currently violate the exepcted primary key
 
+FOR DEVELOPERS:
+To Update the script for partner use:
+
+1) Edit the #PKVALIDATION table insertion if the primary keys of the VDW have
+changed or add new entires for new tables.  One row per primary key column.
+
+Examples below:
+
+Output:
+    One output table
+    1) 	Shows the Table name, the expected primary key, the found primary key,
+	and the result of the comparision between the expected and found primary keys.
+	KeyMatchResultValues:
+		- OK: Expected primary key matches the found primary key
+		- KEY MISMATCH: Expected Primary Key does not matc the found primary key
+		- TABLE OR KEYS NOT FOUND: No table in the VDW matches the expected table
+		- UNKNOWN: An unknow error occured
+	ViolationCount:
+		- The number of records that that appear to violate the expected primary key.
+*****************************************************************************/
+
+/*****************************************************************************
+BEGIN TempTable Clearing and Creation
+*****************************************************************************/
+SET NOCOUNT ON;
+BEGIN
+   
+    IF OBJECT_ID('tempdb..#PKVALIDATION') IS NOT NULL
+    BEGIN
+	   DROP TABLE #PKVALIDATION;
+    END;
+
+	CREATE TABLE #PKVALIDATION (
+		Table_Name      VARCHAR(250) ,
+        Column_Name     VARCHAR(250)
+    );
+
+	IF OBJECT_ID('tempdb..#KeyMatchResult') IS NOT NULL
+    BEGIN
+	   DROP TABLE #KeyMatchResult;
+    END;
+
+	IF OBJECT_ID('tempdb..#PKVIOLATIONS') IS NOT NULL
+    BEGIN
+	   DROP TABLE #PKVIOLATIONS;
+    END;
+    
+	CREATE TABLE #PKVIOLATIONS (
+		Table_Name      VARCHAR(250) ,
+        Violation_Count BIGINT
+    );
+
+END;
+/*****************************************************************************
+END TempTable Clearing and Creation
+*****************************************************************************/
+
+/*****************************************************************************
+BEGIN Table Create Section
+*****************************************************************************/
+
+INSERT INTO #PKVALIDATION
+VALUES      (
+       'CENSUS_DEMOG', 'CENSUS_YEAR'), (
+       'CENSUS_DEMOG', 'GEOCODE'), (
+       'EVERNDC', 'NDC'), (
+       'EVERNDC', 'GENERIC'), (
+       'PROVIDER_SPECIALTY', 'PROVIDER'), (
+       'DEATH', 'PERSON_ID'), (
+       'CAUSE_OF_DEATH', 'PERSON_ID'), (
+       'CAUSE_OF_DEATH', 'COD'), (
+       'DEMOGRAPHICS', 'PERSON_ID'), (
+       'LINKAGE', 'LINK_ID'), (
+       'LINKAGE', 'LINE'), (
+       'BENEFIT', 'BENEFIT_ID'), (
+       'ENCOUNTERS', 'ENC_ID'), (
+       'DIAGNOSES', 'DIAGNOSES_ID'), (
+       'ENROLLMENT', 'PERSON_ID'), (
+       'ENROLLMENT', 'ENR_START'), (
+       'LAB_RESULTS', 'LAB_RESULTS_ID'), (
+       'PRO_SURVEYS', 'PRO_ID'), (
+       'PRO_QUESTIONS', 'PRO_ID'), (
+       'PRO_QUESTIONS', 'QUESTION_ID'), (
+       'PRO_QUESTIONS', 'QUESTION_VER'), (
+       'PRO_RESPONSES', 'RESPONSE_ID'), (
+       'PHARMACY', 'PHARMACY_ID'), (
+       'PRESCRIBING', 'PRESCRIBING_ID'), (
+       'PROCEDURES', 'PROCEDURES_ID'), (
+       'SOCIAL_HISTORY', 'SOCIAL_HISTORY_ID'), (
+       'VITAL_SIGNS', 'VITAL_SIGNS_ID'), (
+       'TUMOR', 'TUMOR_ID'), (
+       'LANGUAGES', 'PERSON_ID'), (
+       'LANGUAGES', 'LANG_ISO'), (
+       'CENSUS_LOCATION', 'PERSON_ID'), (
+       'CENSUS_LOCATION', 'LOC_START');
+/*****************************************************************************
+BEGIN Table Name Replacement: If a TableName replacement table exists, it will swap out the 
+names in the tables for the correct ones based on how it's mapped in their table.
+*****************************************************************************/
+
+BEGIN
+IF OBJECT_ID('CHORDS_TABLENAMES') IS NOT NULL
+    BEGIN
+        UPDATE a
+               SET a.Table_Name = b.NEW_NAME
+        FROM #PKVALIDATION a JOIN CHORDS_TABLENAMES b ON b.ORG_NAME = a.Table_Name;
+    END;
+END;
+
+/*****************************************************************************
+END Table Name Replacement
+*****************************************************************************/
+
+/*****************************************************************************
+BEGIN Analysis Section: Compares the partner's primary keys to the expected keys
+******************************************************************************/
+SELECT * INTO #KeyMatchResult
+FROM (
+SELECT            
+       ExpectKeys.TABLE_NAME, 
+       ExpectKeys.COLUMN_NAMES AS Expected_Primary_Key, 
+       CurrKeys.COLUMN_NAMES AS Found_Primary_Key,
+       CASE
+           WHEN CurrKeys.TABLE_NAME IS NULL
+           THEN 'TABLE OR KEYS NOT FOUND'
+           WHEN ExpectKeys.COLUMN_NAMES != CurrKeys.COLUMN_NAMES
+           THEN 'KEY MISMATCH'
+           WHEN ExpectKeys.COLUMN_NAMES = CurrKeys.COLUMN_NAMES
+           THEN 'OK'
+           ELSE 'UNKNOWN ERROR'
+       END AS Key_Match_Result
+FROM                  
+(
+    SELECT        
+           TABLE_NAME, 
+           LEFT(COL, LEN(COL) - 1) AS COLUMN_NAMES
+    FROM              
+    (
+        SELECT DISTINCT    
+               TAB.TABLE_NAME TABLE_NAME, 
+        (
+            SELECT 
+                   COL.Column_Name + ', ' AS [text()]
+            FROM    
+                 #PKVALIDATION COL
+            WHERE  COL.Table_Name = TAB.Table_Name
+            ORDER BY 
+                     COL.Column_Name FOR
+            XML PATH('')
+        ) COL
+        FROM 
+             #PKVALIDATION TAB
+    ) T
+    WHERE T.COL IS NOT NULL
+) ExpectKeys
+LEFT JOIN
+(
+    SELECT        
+           TABLE_NAME, 
+           LEFT(COL, LEN(COL) - 1) AS COLUMN_NAMES
+    FROM              
+    (
+        SELECT DISTINCT    
+               TAB.TABLE_NAME TABLE_NAME, 
+        (
+            SELECT 
+                   COL.COLUMN_NAME + ', ' AS [text()]
+            FROM    
+                 INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE COL
+            WHERE  COL.CONSTRAINT_NAME = TAB.CONSTRAINT_NAME
+                   AND COL.TABLE_NAME = TAB.TABLE_NAME
+                   AND CONSTRAINT_TYPE = 'PRIMARY KEY'
+            ORDER BY 
+                     COL.COLUMN_NAME FOR
+            XML PATH('')
+        ) COL
+        FROM 
+             INFORMATION_SCHEMA.TABLE_CONSTRAINTS TAB
+    ) T
+    WHERE T.COL IS NOT NULL
+) CurrKeys
+     ON CurrKeys.TABLE_NAME = ExpectKeys.TABLE_NAME) KeyMatch;
+
+BEGIN
+    
+    DECLARE @SQL NVARCHAR(3000);
+    DECLARE @Table_Name VARCHAR(100);
+	DECLARE @Key_Columns VARCHAR(100);
+    
+    DECLARE CUR CURSOR
+    FOR SELECT
+              Table_Name, Expected_Primary_Key
+        FROM
+             #KeyMatchResult;
+    
+    OPEN CUR;
+    
+    FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
+    
+    WHILE @@FETCH_STATUS = 0
+        BEGIN
+		SET @SQL = '
+			IF OBJECT_ID(''' + @Table_Name + ''') IS NOT NULL
+			WITH CTEKEY
+				AS (SELECT 
+			        COUNT(*) KEYTOT
+					FROM (
+						SELECT DISTINCT  ' + @Key_Columns + '
+						FROM ' + @Table_Name + ') z),
+			CTETOT
+				AS (SELECT COUNT(*) TABTOT
+					FROM ' + @Table_Name + ')
+			INSERT INTO #PKVIOLATIONS
+			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT
+			FROM CTETOT, CTEKEY;'
+            --PRINT @SQL;
+            EXEC Sp_executesql
+                 @SQL;
+            FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
+        END;
+    
+    CLOSE CUR;
+    
+    DEALLOCATE CUR; 
+END
+
+SELECT 
+       m.*, 
+       v.Violation_Count
+FROM   
+     #KeyMatchResult m
+     LEFT JOIN #PKVIOLATIONS v
+          ON v.Table_Name = m.TABLE_NAME;
+/*****************************************************************************
+END Analysis Section
+*****************************************************************************/
+  ")
+
+```
+
+```{r 1.05 Data PrimaryKeyChecks Result}
+
+knitr::kable(primary_key_data)
+
+```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
 
@@ -159,8 +505,80 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
 
+```{r echo = F, include=T, error=T}
+
+repErrors <- sqlQuery(sqldb,
+                      paste0(
+                        "
+select 'Diagnosis' as tablename, 
+       count(*) as nrows,
+       sum(case when a.person_id <> b.person_id then 1 else 0 end) as Person_ID,
+       sum(case when a.adate <> b.adate then 1 else 0 end) as Adate,
+       sum(case when a.enctype <> b.enctype then 1 else 0 end) as EncType
+from ", encounters, " as a inner join (select distinct enc_id, person_id, adate, enctype from ", diagnoses, ") as b on a.enc_id = b.enc_id
+
+union
+
+select 'Procedure' as tablename, 
+       count(*) as nrows,
+       sum(case when a.person_id <> b.person_id then 1 else 0 end) as  Person,
+       sum(case when a.adate <> b.adate then 1 else 0 end) as  Adate,
+       sum(case when a.enctype <> b.enctype then 1 else 0 end) as  EncType
+from ", encounters, " as a inner join (select distinct enc_id, person_id, adate, enctype from ", procedures, ") as b on a.enc_id = b.enc_id
+
+                        "
+                      )) 
+
+repErrors_tx <- tidyr::gather(repErrors, 'field','n_bad',Person_ID, Adate, EncType) %>% arrange(tablename) %>%
+  within({
+    NP_bad<- paste0(n_bad,' (',round(100*n_bad/nrows, 2),')')
+
+  })
+
+knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
+             col.names = c('Table','N','Field','Errors N(%)'))
+
+```
+
 
 ## Data Check 1.11: More than 5% of encounters are assigned to more than one patient 
+
+
+```{r echo = F, include=T, error=T}
+
+GR1Person <- sqlQuery(sqldb,
+                      paste0(
+                        "
+select 'Encounter' as tablename, count(*) as n_encid, 
+       sum(case when N_person>1 then 1 else 0 end) as N_gr1
+
+from ( select enc_id,
+       count(distinct person_id) as N_person
+       from ", encounters," 
+       group by enc_id
+) as qry
+"
+))
+
+GR1Person <- within(GR1Person, {
+  pct <- round(100*N_gr1/n_encid, 2)
+})
+
+#if(GR1Person$pct>5){
+#  print(paste0("WARNING: The encounter table has more than 5% of encounters assigned to more than 1 person (",GR1Person$pct,"%)"))
+#} else{
+#  print(paste0("The encounter table has ", GR1Person$pct,"% of encounters assigned to more than 1 person"))
+#}
+
+encItoManyMsg <- if(GR1Person$pct>5){
+  paste0("WARNING: The encounter table has more than 5% of encounters assigned to more than 1 person (",GR1Person$pct,"%)")
+} else{
+  paste0("The encounter table has ", GR1Person$pct,"% of encounters assigned to more than 1 person")
+}
+```
+
+
+`r encItoManyMsg`
 
 
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
@@ -171,12 +589,398 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 2.01: More than 5% of records have future dates
 
+```{r echo = F, include=T, error=T}
+# DC 2.01
+tabDates <- sqlQuery(sqldb, 'select distinct a.name as tabname, b.name as colname from sys.tables as a inner join sys.columns as b on a.object_id = b.object_id order by a.name') %>% 
+  subset(grepl('date',colname, ignore.case = T))
+  
+modDates <- sqlQuery(sqldb, 'select name, modify_date from sys.tables')
+
+futureDateCode <- merge(tabDates, modDates, by.x='tabname', by.y='name') %>%
+  within({
+    sqlcode <- paste0("select '",tabname, "' as tableName, '", colname,"' as dateName ,count(*) as nrows, sum(case when a.",colname,">b.modify_date then 1 else 0 end) as futureDate from ",
+tabname, " as a , (select modify_date from sys.tables where name ='",tabname,"') as b"
+
+)
+  })
+
+test <- sqlQuery(sqldb, futureDateCode[1, "sqlcode"])
+
+fdatelst <- list()
+for (i in 1:nrow(futureDateCode)){
+  fdatelst[[i]] <- sqlQuery(sqldb, futureDateCode[i, "sqlcode"])
+}
+
+fdatesdone <- do.call('rbind', fdatelst) %>%
+  within(.,{
+    pctFuture <- round(100*futureDate/nrows, 4)
+  })
+
+#params$QAAlert<-F
+### add message if no table is a problem 
+futureDataMsg <- NULL
+futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0 & params$QAAlert==F){
+                 knitr::kable(subset(fdatesdone, pctFuture>=5), col.names = c('Table','Date name','Total rows','N future dates','%'))
+} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
+                   "No table exceeds the 5% limit on future dates."
+} else if ( params$QAAlert==T) {
+                   knitr::kable(fdatesdone, col.names = c('Table','Date name','Total rows','N future dates','%'))
+                 }
+```
+
+`r futureDataMsg`
 
 ## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic
 ## blood pressure, systolic blood pressure, or dispensed days supply
 
+```{r echo = F, include=T, error=T}
+# select count(*) as personCount, sum(case when (minage not between 0 and 89) or (maxage not between 0 and 89) then 1 else 0 end ) as N_outOfRange
+
+patAgeRange <- sqlQuery(sqldb, paste0("
+select count(*) as nrows, 
+       sum(case when (minage <0) or (maxage <0) then 1 else 0 end ) as N_low,
+       sum(case when (minage >=90) or (maxage >=90) then 1 else 0 end ) as N_high
+from
+(
+select distinct  b.*, datediff(YY, a.birth_date, b.first_dt) as minage,  datediff(YY, a.birth_date, b.last_dt) as maxage 
+from ",demographics, " as a inner join 
+  (select person_id, min(adate) as first_dt, max(adate) as last_dt from ",encounters, "  group by person_id  ) as b on a.person_id = b.person_id    
+where a.birth_date is not null
+) as qry
+                        "))
+
+htOutOfRange <- sqlQuery(sqldb, paste0("
+                             
+select count(*) as nrows,
+       sum(case when ht <0.0 then 1 else 0 end ) as N_low,
+       sum(case when ht>=95.0 then 1 else 0 end ) as N_high
+from ", vital_signs, " 
+ where ht is not null
+                             "))
+
+wtOutOfRange <- sqlQuery(sqldb, paste0("
+                             
+select count(*) as nrows,
+       sum(case when wt <0.0 then 1 else 0 end ) as N_low,
+       sum(case when wt>350 then 1 else 0 end ) as N_high
+from ", vital_signs, " 
+ where wt is not null
+                             "))
+
+
+dbpOutOfRange <- sqlQuery(sqldb, paste0("
+                             
+select count(*) as nrows,
+       sum(case when diastolic <40 then 1 else 0 end ) as N_low,
+       sum(case when diastolic>120 then 1 else 0 end ) as N_high
+from ", vital_signs, " 
+ where diastolic is not null
+                             "))
+sbpOutOfRange <- sqlQuery(sqldb, paste0("
+                             
+select count(*) as nrows,
+       sum(case when systolic <40 then 1 else 0 end ) as N_low,
+       sum(case when systolic>210 then 1 else 0 end ) as N_high
+from ", vital_signs, " 
+ where systolic is not null
+                             "))
+
+                            
+daysSupplyOutOfRange <- sqlQuery(sqldb, paste0("
+                             
+select count(*) as nrows,
+       sum(case when rx_days_supply <1 then 1 else 0 end ) as N_low,
+       sum(case when rx_days_supply>90 then 1 else 0 end ) as N_high
+from ", prescribing, " 
+ where rx_days_supply is not null
+                             "))
+
+allOutOfRange <- 
+  rbind(
+    cbind(table='Demographic/Encounter', item='Age (people)', low='< 0 yrs',high='> 89 yrs', patAgeRange),
+    cbind(table='Vital_signs',item='Height (records)',low= '< 0 inches',high='> 0 inches', htOutOfRange),
+    cbind(table='Vital_signs',item='Weight (records)',low= '< 0 pounds',high='> 350 pounds', wtOutOfRange),
+    cbind(table='Vital_signs',item='Diastolic BP (records)',low= '< 40 mgHg',high='> 120 mgHg', dbpOutOfRange),
+    cbind(table='Vital_signs',item='Systolic BP (records)',low= '< 40 mgHg',high='> 210 mgHg', sbpOutOfRange),
+    cbind(table='Prescribing',item='Prescribed days supply (records)',low= '< 1 day',high='> 90 days', daysSupplyOutOfRange)
+)
+allOutOfRange <- within(allOutOfRange, {
+  NP_low = paste0(N_low,' (',round(100*N_low/nrows, 2),')')
+  NP_high = paste0(N_high,' (',round(100*N_high/nrows, 2),')')
+})
+#knitr::kable(
+#subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high)),
+#col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
+#)
+
+ 
+outOfRangeMsg <- NULL
+outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & params$QAAlert==F){
+   knitr::kable(
+   subset(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1), select=c(table,item, low, high, nrows, NP_low, NP_high)),
+   col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
+)
+} else if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))==0 & params$QAAlert==F) {
+                   "No table exceeds the 5% limit."
+} else if ( params$QAAlert==T) {
+  knitr::kable(
+  subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high)),
+  col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
+)
+                 }
+
+```
+
+`r outOfRangeMsg`
+
+
 
 ## Data Check 2.03: More than 5% of patients have illogical date relationships
+
+```{r echo = F, include=T, error=T}
+
+encTabBirth2.03 <- sqlQuery(sqldb,paste0("
+ select sum(dobPostAdate) as dobPostAdate,
+         sum(dobPostDdate) as dobPostDdate
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.birth_Date, b.adate)<0 and b.adate is not null then 1 else 0 end) as dobPostAdate,
+                              max(case when datediff(day, a.birth_Date, b.ddate)<0 and b.ddate is not null then 1 else 0 end) as dobPostDdate
+                       from (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as a inner join
+                            ", encounters, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+encTabDeath2.03 <- sqlQuery(sqldb,paste0("
+ select sum(deathPreAdate) as deathPreAdate,
+         sum(deathPreDdate) as deathPreDdate
+  from (
+                      select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.adate)>0 and b.adate is not null then 1 else 0 end) as deathPreAdate,
+                              max(case when datediff(day, a.deathdt, b.ddate)>0 and b.ddate is not null then 1 else 0 end) as deathPreDdate
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                            ", encounters, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+procTabBirth2.03 <- sqlQuery(sqldb,paste0("
+ select sum(dobPostProc) as dobPostProc 
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.birth_Date, procdate)<0 and b.procdate is not null then 1 else 0 end) as dobPostProc
+                       from (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as a inner join
+                            ", procedures, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+procTabDeath2.03 <- sqlQuery(sqldb,paste0("
+ select sum(deathPreProc) as deathPreProc
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.procdate)>0 and b.procdate is not null then 1 else 0 end) as deathPreProc
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                            ", procedures, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+vitalsTabBirth2.03 <- sqlQuery(sqldb,paste0("
+ select sum(dobPostMeasure) as dobPostMeasure 
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.birth_Date, b.measure_date)<0 and b.measure_date is not null then 1 else 0 end) as dobPostMeasure
+                       from (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as a inner join
+                            ", vital_signs, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+vitalsTabDeath2.03 <- sqlQuery(sqldb,paste0("
+ select sum(deathPreMeasure) as deathPreMeasure
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.measure_date)>0 and b.measure_date is not null then 1 else 0 end) as deathPreMeasure
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                            ", vital_signs, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+pharmTabBirth2.03 <- sqlQuery(sqldb,paste0("
+ select sum(dobPostRx) as dobPostRx 
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.birth_Date, b.rxdate)<0 and b.rxdate is not null then 1 else 0 end) as dobPostRx
+                       from (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as a inner join
+                            ", pharmacy, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+pharmTabDeath2.03 <- sqlQuery(sqldb,paste0("
+ select sum(deathPreRx) as deathPreRx
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.rxdate)>0 and b.rxdate is not null then 1 else 0 end) as deathPreRx
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                            ", pharmacy, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+  
+prescribTabBirth2.03 <- sqlQuery(sqldb,paste0("
+ select sum(dobPostRxStart) as dobPostRxStart 
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.birth_Date, b.rx_start_date)<0 and b.rx_start_date is not null then 1 else 0 end) as dobPostRxStart
+                       from (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as a inner join
+                            ", prescribing, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+prescribTabDeath2.03 <- sqlQuery(sqldb,paste0("
+ select sum(deathPreRxStart) as deathPreRxStart
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.rx_start_date)>0 and b.rx_start_date is not null then 1 else 0 end) as deathPreRxStart
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                            ", prescribing , " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+labTabBirth2.03 <- sqlQuery(sqldb,paste0("
+ select sum(dobPostResult) as dobPostResult 
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.birth_Date, b.result_dt)<0 and b.result_dt is not null then 1 else 0 end) as dobPostResult
+                       from (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as a inner join
+                            ", lab_results, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+labTabDeath2.03 <- sqlQuery(sqldb,paste0("
+ select sum(deathPreResult) as deathPreResult
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.result_dt)>0 and b.result_dt is not null then 1 else 0 end) as deathPreResult
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                            ", lab_results, " as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+
+DeathBeforeBirth <- sqlQuery(sqldb,paste0("
+ select sum(deathPreBirth) as deathPreBirth
+  from (
+                       select a.person_id, 
+                              max(case when datediff(day, a.deathdt, b.birth_date)>0  then 1 else 0 end) as deathPreBirth
+                       from (select distinct person_id, deathdt from ",death, " where deathdt is not null) as a inner join
+                             (select distinct person_id, birth_date from ",demographics, " where birth_date is not null) as b on a.person_id = b.person_id group by a.person_id
+
+) qry
+
+                       
+                       
+                       ") )
+
+patsInEncTab <- sqlQuery(sqldb, paste0("select count(distinct person_id) as n from ",encounters))
+
+table2.03 <- cbind(
+encTabBirth2.03,
+encTabDeath2.03,
+procTabBirth2.03,
+procTabDeath2.03,
+vitalsTabBirth2.03,
+vitalsTabDeath2.03,
+pharmTabBirth2.03,
+pharmTabDeath2.03,
+prescribTabBirth2.03,
+prescribTabDeath2.03,
+labTabBirth2.03,
+labTabDeath2.03,
+DeathBeforeBirth
+)
+
+labels2.03 <- data.frame(name=c( "dobPostAdate","dobPostDdate","deathPreAdate","deathPreDdate","dobPostProc","deathPreProc","dobPostMeasure","deathPreMeasure","dobPostRx","deathPreRx","dobPostRxStart","deathPreRxStart","dobPostResult","deathPreResult","deathPreBirth" ),
+                        newlabel = c('Adate<birth_date','Ddate<birth_date','Deathdt<adate','Deathdt<ddate','Procdate<birth_date','ProcDate>deathdt','Measure_date<birth_date','Measure_date>deathdt','rxdate<birth_date','rxdate>deathdt','rx_start_dt<birth_date','rx_start_dt>deathdt','Result_date<birth_date','Result_date>deathdt','Deathdt<birth_date')   ,
+                        srctab = c('Encounters','Encounters','Encounters','Encounters','Procedures','Procedures','Vital_signs','Vital_signs','Pharmacy','Pharmacy','Prescribing','Prescribing','lab_results','lab_results','Demographics and death')
+)
+ 
+table2.03_tx <- tidyr::gather(table2.03, "comp", 'n') %>%
+  within({
+    pct <- round(100*n/patsInEncTab$n, 2)
+  }) 
+table2.03_tx$ord <- 1:nrow(table2.03_tx)
+table2.03_tx <- table2.03_tx%>%
+  merge(labels2.03, by.x='comp',by.y='name', all.x=T) %>%
+  arrange(ord)
+
+knitr::kable(table2.03_tx[,c('ord','comp','n','pct', 'srctab')], col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+
+#params$QAAlert <- T
+illogicalDatesMsg <- NULL
+illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0 & params$QAAlert==F){
+        knitr::kable(subset(table2.03_tx, pct>=5)[,c('ord','comp','n','pct', 'srctab')], 
+                    col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
+                   "No table exceeds the 5% limit on illogical dates."
+} else if ( params$QAAlert==T) {
+        knitr::kable(table2.03_tx[,c('ord','comp','n','pct', 'srctab')], 
+                    col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+                 }
+
+```
+
+`r illogicalDatesMsg`
+
 
 
 ## Data Check 3.03: More than 10% of records have missing or unknown values for the following fields:
@@ -187,6 +991,40 @@ Query Run Date:  `r Sys.Date()`
 
 
 ## Data Check 3.05: Less than 50% of patients with encounters have PROCEDURES records 
+```{r echo = F, include=T, error=T}
+
+patsWithEncs <- sqlQuery(sqldb, paste0("select count(*) as nrows, sum(patsWEncDiag) as patsWEncDiag, sum(patsWEncProc) as patsWEncProc from ( select  case when person_id in (select person_id from ", diagnoses, ") then 1 else 0 end as patsWEncDiag",
+ ",case when person_id in (select person_id from ", procedures, ") then 1 else 0 end as patsWEncProc",
+ "       from ", demographics, " where person_id in (select person_id from ", encounters, ") ) as q") )
+
+patsWithEncs <- within(patsWithEncs, {
+  pctWEncDiag <- 100* patsWEncDiag/nrows
+  pctWEncproc <- 100* patsWEncProc/nrows
+})
+
+patDiagMsg <- with (patsWithEncs,{
+  if(pctWEncDiag<50 ){
+  paste0('WARNING: Only ',round(pctWEncDiag,1),'% of patients with encounters have diagnoses') 
+} else { 
+  paste0('NOTE: ',round(pctWEncDiag,1),'% of patients with encounters have diagnoses') 
+}
+})
+
+patProcMsg <- with (patsWithEncs,{
+  if(pctWEncproc<50 ){
+  paste0('WARNING: Only ',round(pctWEncproc,1),'% of patients with encounters have procedures') 
+} else { 
+  paste0('NOTE: ',round(pctWEncproc,1),'% of patients with encounters have procedures') 
+}
+})
+
+knitr::kable(
+  rbind(
+    cbind(check='DC 3.05', result=patDiagMsg),
+    cbind(check='DC 3.04', result=patProcMsg)
+  )
+)
+```
 
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal
@@ -195,19 +1033,67 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient
 ## (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
+```{r 3.07 Data, include=FALSE, error=FALSE}
 
+benchmark_start <- run_query("
+  SET NOCOUNT ON;
+  DECLARE @BenchmarkStartDate DATE;
+  SET @BenchmarkStartDate =
+  (
+      SELECT 
+             IIF(MAX(x.ADATE) <= GETDATE(), MAX(x.ADATE), GETDATE())
+      FROM   
+           ENCOUNTERS x
+  );
+  SELECT @BenchmarkStartDate;
+")
 
+data_result <- run_query(str_replace_all("
+  SET NOCOUNT ON;
+  DECLARE @BenchmarkPriorYearAvg INT;
+  SET @BenchmarkPriorYearAvg =
+  (
+      SELECT 
+             COUNT(1) / 12
+      FROM   
+           ENCOUNTERS e
+      WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')
+      AND e.ADATE >= DATEADD(MONTH, -24, @BenchmarkStartDate)
+      AND e.ADATE <= DATEADD(MONTH, -12, @BenchmarkStartDate)
+  );
+  
+  SELECT 
+         FORMAT(ADATE, 'MM-MMM') MONTHNUM, 
+         @BenchmarkPriorYearAvg AS BenchMarkCount, 
+         COUNT(1) PriorMonthCount, 
+         ROUND(CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0, 2) AS PercentOfBenchMark
+  FROM   
+       ENCOUNTERS e
+  WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')
+  AND e.ADATE >= DATEADD(MONTH, -12, @BenchmarkStartDate)
+  GROUP BY 
+           FORMAT(ADATE, 'MM-MMM')
+  ORDER BY 
+           FORMAT(ADATE, 'MM-MMM');                          
+                            
+", "@BenchmarkStartDate", paste0('\'', benchmark_start[1,1], '\'', sep='')))
+```
+
+```{r 3.07 Output, error=FALSE, include=TRUE}
+
+knitr::kable(data_result)
+
+```
 
 ## Data Check 3.11: Vital, prescribing, or laboratory records are less than 75% complete three months prior to the current month
 
 
 ####Total program run time:
-```{r calc_runtime}
+```{r calc_runtime, echo=TRUE}
 # close odbc
-odbc::dbDisconnect(con)
 odbcCloseAll()
 endTime <- Sys.time()
-runtime <- endTime - startTime 
+runtime <- endTime - startTime
 ```
 
 
