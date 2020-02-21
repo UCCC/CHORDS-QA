@@ -122,7 +122,7 @@ if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir"
   tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
   if (file.exists(tableReplaceFile)){
     print("updating for QA using tablereplace.csv")
-    dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
+    dfChordsTbls <- read.csv2(tableReplaceFile, header = TRUE, sep = ",", stringsAsFactors=FALSE)
   }
 }
 if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
