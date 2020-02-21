@@ -118,7 +118,7 @@ dfChordsTbls <- run_query("
             [NEW_NAME]
         FROM[CHORDS_TABLENAMES];
     END; ")
-if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir")){
+if (!is.null(dfChordsTbls) & rlang::is_empty(dfChordsTbls) & exists("outputdir")){
   tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
   if (file.exists(tableReplaceFile)){
     print("updating for QA using tablereplace.csv")
