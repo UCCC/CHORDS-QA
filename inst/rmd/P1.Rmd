@@ -2243,8 +2243,8 @@ vitalVarSumm <- function(var,label){
                   AS (SELECT NULL AS PERSON_ID,
                              min(',var,') AS ', var,',
                              0 AS qRanking
-                      FROM     
-                           vital_signs
+                      FROM  ',   
+                           vital_signs,' 
                       WHERE ', var,' > 0
                       UNION ALL
                       SELECT PERSON_ID,
@@ -2252,8 +2252,8 @@ vitalVarSumm <- function(var,label){
                              NTILE(4) OVER(
                              ORDER BY 
                                       ', var,') qRanking
-                      FROM   
-                           vital_signs
+                      FROM ',  
+                           vital_signs,' 
                       WHERE  ', var,' > 0)
                   SELECT 
                          variable,
