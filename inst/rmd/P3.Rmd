@@ -985,6 +985,64 @@ illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0 & params$QAAlert==F
 
 ## Data Check 3.03: More than 10% of records have missing or unknown values for the following fields:
 
+```{r echo=F}
+
+# to implement a new check add a new row to the following table:
+# table = the standard name of the table in the database (it will automaticaly correct for you if the actual table names are not standard)
+# var = the name of the variable to be chacked
+# condition = a valid logical condition ( in MS sql server language) which identifies a bad value
+# where = a valid where clause to subset the table, be sure to start with "WHERE", see example for ddate
+check3.03 <-
+rbind( 
+  data.frame(table='demographics',   var='birth_date',            condition='is null', where=' '),
+  data.frame(table='demographics',   var='gender',                condition="not in ('M','F','O')", where=' '),
+  data.frame(table='encounters',     var='discharge_disposition', condition="not in ('A','E')", where=' '),
+  data.frame(table='encounters',     var='ddate',                 condition="is null", where="where enctype = 'IP'"),
+  data.frame(table='procedures',     var='procdate',              condition='is null', where=' '),
+  data.frame(table='prescribing',    var='rx_order_date',         condition='is null', where=' '),
+  data.frame(table='pharmacy',       var='not(rxsup>1 or rxamt>1)',       condition=' ', where=' '), # compicated by it depending on two variables
+  #data.frame(table='cause_of_death', var='source',                condition="not in ('S', 'N', 'T', 'B', 'L', 'U', 'O')"),
+  data.frame(table='diagnoses',      var='dx_origin',             condition="not in ('OD', 'BI', 'CL', 'PR', 'NI', 'OT')", where=' '),
+  data.frame(table='diagnoses',      var='enc_id',                condition="is null", where=' '),
+  data.frame(table='procedures',     var='enc_id',                condition="is null", where=' '),
+  data.frame(table='vital_signs',    var='enc_id',                condition="is null", where=' ')
+  
+)
+
+res3.03 <- list()
+for(i in 1:nrow(check3.03)){
+  
+  
+  res3.03[[i]] <- with(check3.03, {sqlQuery(sqldb, 
+                                            paste("select '",table[i],"' as dataTable,'",var[i],"' as variable, count(*) as N_rows, sum(case when ",var[i],condition[i],"then 1 else 0 end) as N_bad",
+                                                  "from",eval(as.name(tolower(table[i]))), where[i]
+                                                  ,
+                                                  sep=' '
+                                                  )
+  )}
+  )
+}
+result3.03 <- do.call('rbind', res3.03) %>%
+  within(.,{
+    pctBad <- round(100*N_bad/N_rows, 2)
+  })
+
+check3.03Msg <- NULL
+check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0 & params$QAAlert==F){
+        knitr::kable(subset(result3.03, pctBad>=10)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
+                    col.names = c('Table','Variable','N Rows','N with bad values','%'))
+} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
+                   "No check exceeds the 10% limit on bad values."
+} else if ( params$QAAlert==T) {
+        knitr::kable(result3.03[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
+                    col.names = c('Table','Variable','N Rows','N with bad values','%'))
+                 }
+
+
+```
+
+`r check3.03Msg`
+
 
 
 ## Data Check 3.04: Less than 50% of patients with encounters have DIAGNOSIS records 
