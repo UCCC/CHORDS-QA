@@ -132,13 +132,13 @@ nonPopMessage <- if(length(nonPopTables)==0) {"All tables populated, among those
 
 `r nonPopMessage`
 
-```{r 1.03 Data }
+```{r 1.03 Data, echo = F, include=T, error=T }
 sqlFiles <- system.file('sql', package='chordsTables')
 schema_validation_query <- read_file(dir(sqlFiles, "VDW_Schema_Validation.sql", f=TRUE))
 
 connection103 <- get_connection()
 
-schema_validation <- sqlQuery(connection103, schema_validation_query)
+schema_validation <- sqlQuery(connection103, schema_validation_query, as.is=TRUE)
 
 odbcClose(connection103)
 
@@ -146,7 +146,7 @@ odbcClose(connection103)
 
 
 ## Data Check 1.03: Required fields are not present
-```{r 1.03 Output}
+```{r 1.03 Output, echo = F, include=T, error=T}
 
 missing_columnsTables <- select(schema_validation[schema_validation$Result == "TABLE OR COLUMN MISSING", ], "TableName", "ColumnName", "Result")
 
@@ -157,11 +157,12 @@ knitr::kable(missing_columnsTables, row.names = FALSE)
 
 ## Data Check 1.04: Required fields do not conform to data model specifications for data type, length, or name
 
-```{r 1.04 Output}
+```{r 1.04 Output, echo = F, include=T, error=T}
 
-config_mismatch <- schema_validation[schema_validation$Result == "CONFIG-MISMATCH", ]
+config_mismatch <- subset(schema_validation, Result == "CONFIG-MISMATCH") 
+misconfig <- subset(config_mismatch, ExpectedIsNullable == FoundIsNullable)
 
-invalid_specs <- select(config_mismatch, c("TableName", "ColumnName", "ExpectedNumberPrecision", "FoundNumberPrecision", "ExpectedNumberScale", "FoundNumberScale", "ExpectedCharLength", "FoundCharLength", "ExpectedDatePrecision", "FoundDatePrecision"))
+invalid_specs <- select(misconfig, c("TableName", "ColumnName", "ExpectedNumberPrecision", "FoundNumberPrecision", "ExpectedNumberScale", "FoundNumberScale", "ExpectedCharLength", "FoundCharLength", "ExpectedDatePrecision", "FoundDatePrecision"))
 
 knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Number Precision", "Found Number Precision", "Expected Number Scale", "Found Number Scale", "Expected Char Length", "Found Char Length", "Expected Date Precision", "Found Date Precision"))
 
@@ -169,7 +170,7 @@ knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Colu
 
 
 ## Data Check 1.05: Tables have primary key definition errors
-```{r 1.05 Data PrimaryKeyChecks Data }
+```{r 1.05 Data PrimaryKeyChecks Data, echo = F, include=T, error=T}
 primary_key_data <- run_query("
 /*TABLEREPLACEMENTINFILE*/
 /*****************************************************************************
@@ -420,7 +421,7 @@ END Analysis Section
 
 ```
 
-```{r 1.05 Data PrimaryKeyChecks Result}
+```{r 1.05 Data PrimaryKeyChecks Result, echo = F, include=T, error=T}
 
 violated_primary_keys <- subset(primary_key_data, Key_Match_Result != "OK")
 
@@ -429,7 +430,7 @@ knitr::kable(violated_primary_keys, row.names = FALSE)
 ```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
-```{r 1.06 Data}
+```{r 1.06 Data,echo =F, include=T, error=T}
 sqlFiles <- system.file('sql', package='chordsTables')
 data_validation_query <- read_file(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE))
 
@@ -455,11 +456,13 @@ ref_integrity <- sqlQuery(connection106, "
 
 odbcClose(connection106)
 
+knitr::kable(data_validation)
+
 ```
 
 
 ## Data Check 1.07: Required fields have non-permissible missing values
-```{r 1.07, echo=F}
+```{r 1.07, echo=F, include=T, error=T}
 nullable_mismatch = select(config_mismatch, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
 
 FoundNullable <- subset(nullable_mismatch, ExpectedIsNullable != FoundIsNullable)
@@ -467,16 +470,16 @@ knitr::kable(FoundNullable, row.names = FALSE, col.names = c("Table Name", "Colu
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
-```{r 1.08, echo=F}
+```{r 1.08, echo=F, include=T, error=T}
 orphan_person_ids <- subset(ref_integrity, TargetColumn == "PERSON_ID" | ReferenceColumn == "PERSON_ID")
-knitr::kable(orphan_person_ids, row.names = FALSE)
+knitr::kable(orphan_person_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 
 ## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
-```{r 1.09, echo=F}
+```{r 1.09, echo=F, include=T, error=T}
 orphan_enc_ids <- subset(ref_integrity, TargetColumn == "ENC_ID" | ReferenceColumn == "ENC_ID")
-knitr::kable(orphan_enc_ids, row.names = FALSE)
+knitr::kable(orphan_enc_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
@@ -559,14 +562,14 @@ encItoManyMsg <- if(GR1Person$pct>5){
 
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
 
-```{r 1.12, echo=F}
+```{r 1.12, echo=F, include=T, error=T}
 orphan_provider_ids <- subset(ref_integrity, TargetColumn %in% c("RXMD", "PROVIDER") | ReferenceColumn %in% c("RXMD", "PROVIDER"))
-knitr::kable(orphan_provider_ids, row.names = FALSE)
+knitr::kable(orphan_provider_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 
 ## Data Check 1.13: More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content
-```{r 1.13, include=T, error=T}
+```{r 1.13, include=T, include=T, error=T}
 connection113 <- get_connection()
 code_conform_table_counts <- sqlQuery(connection113, paste0("
  /*
@@ -851,11 +854,12 @@ ORDER BY TableName,  CountInvalid Desc, CodeType;
 
 odbcClose(connection113)
 
-knitr::kable(code_conform_table_counts, row.names = FALSE)
-```
+knitr::kable(code_conform_table_counts, row.names = FALSE, col.names =c("Table Name", "Code Type", "Count All", "Count Invalid", "Percent Invalid"))
 
+```
+\newline
 ```{r 1.13 Top 50 Invalid COdes, echo=F }
-knitr::kable(top_50_invalid, row.names = FALSE ,caption = "Top 50 Invalid Codes")
+knitr::kable(top_50_invalid, row.names = FALSE ,caption = "Top 50 Invalid Codes", col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"))
 ```
 
 ## Data Check 2.01: More than 5% of records have future dates
@@ -1358,11 +1362,11 @@ knitr::kable(
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal diagnosis
 
-```{r 3.06 }
+```{r 3.06, echo = F, include=T, error=T}
 ipedei_no_principal_diag <- run_query(paste0("SELECT        
        InpatientEnc, 
        InpatientEnc - InpatientEncWPrincipalDiag AS InpatientEncWOPrincipalDiag, 
-       ROUND(1.0 - CAST(InpatientEncWPrincipalDiag AS FLOAT) / CAST(InpatientEnc AS FLOAT), 4) *
+       ROUND((1.0 - CAST(InpatientEncWPrincipalDiag AS FLOAT) / CAST(InpatientEnc AS FLOAT)), 4) *
        100.0 AS InpatientEncWOPrincipalDiagPcnt
 FROM              
 (
@@ -1384,7 +1388,7 @@ FROM
     WHERE e.ENCTYPE IN('IP', 'EI')
 ) PxDiags;"))
 
-knitr::kable(ipedei_no_principal_diag, row.names = FALSE)
+knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Patient Type Encounters", "In-Patient Encounters Without Principal Diagnoses", "Percentage of In-Patient Type Encounters Without Principal Diagnoses"))
 ```
 
 ## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
@@ -1420,9 +1424,9 @@ data_result <- run_query(str_replace_all(paste0("
   
   SELECT 
          FORMAT(ADATE, 'MM-MMM') Month, 
-         @BenchmarkPriorYearAvg AS BenchMarkCount, 
+         @BenchmarkPriorYearAvg AS BenchnmarkCount, 
          COUNT(1) PriorMonthCount, 
-         ROUND(CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0, 2) AS PercentofBenchMark
+         ROUND((CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0), 2)  AS PercentofBenchMark
   FROM ",  
        encounters, " e
   WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')
@@ -1433,11 +1437,13 @@ data_result <- run_query(str_replace_all(paste0("
            FORMAT(ADATE, 'MM-MMM');                          
                             
 "), "@BenchmarkStartDate", paste0('\'', benchmark_start[1,1], '\'', sep='')))
+
 ```
 
-```{r 3.07 Output, error=FALSE, include=TRUE}
 
-knitr::kable(data_result,row.names = FALSE)
+```{r 3.07 Output, error=FALSE, include=TRUE}
+cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
+knitr::kable(data_result,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "Percent of Benchmark"))
 
 ```
 
@@ -1445,7 +1451,7 @@ knitr::kable(data_result,row.names = FALSE)
 
 
 ####Total program run time:
-```{r calc_runtime, echo=TRUE}
+```{r calc_runtime, echo=F}
 # close odbc
 odbcCloseAll()
 endTime <- Sys.time()

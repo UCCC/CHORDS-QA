@@ -757,6 +757,9 @@ BEGIN
     	             a.DATETIME_PRECISION
     	      FROM
     	           tempdb.INFORMATION_SCHEMA.COLUMNS a
+			  JOIN tempdb.sys.tables b
+			        ON b.name = a.table_name
+					AND b.object_id = OBJECT_ID(''tempdb..#' + @NAME + ''')
     	      WHERE  a.TABLE_NAME LIKE ''#' + @NAME + '%''
 				AND  a.TABLE_NAME NOT LIKE ''#' + @NAME + '%_LU_%''';
     
@@ -837,13 +840,6 @@ BEGIN
     FROM
          #CHORDSTEMPRESULT Z
     WHERE  Z.Result != 'OK'; 
-   /* 
-    --Full Results
-    SELECT
-           *
-    FROM
-         #CHORDSTEMPRESULT Z; 
-	*/
 /*****************************************************************************
 END Analysis Section
 *****************************************************************************/
