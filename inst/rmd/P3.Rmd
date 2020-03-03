@@ -1424,7 +1424,7 @@ data_result <- run_query(str_replace_all(paste0("
   
   SELECT 
          FORMAT(ADATE, 'MM-MMM') Month, 
-         @BenchmarkPriorYearAvg AS BenchnmarkCount, 
+         @BenchmarkPriorYearAvg AS BenchmarkCount, 
          COUNT(1) PriorMonthCount, 
          ROUND((CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0), 2)  AS PercentofBenchMark
   FROM ",  
