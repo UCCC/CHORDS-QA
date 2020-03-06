@@ -2024,6 +2024,12 @@ BEGIN
       FROM   @dataintegvalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.TargetTable;
+    UPDATE a
+      SET
+          a.RefTable = b.NEW_NAME
+      FROM   @dataintegvalidation a
+           JOIN CHORDS_TABLENAMES b
+                ON b.ORG_NAME = a.RefTable;
 	UPDATE a
       SET
           a.TargetTable = b.NEW_NAME
@@ -2111,8 +2117,11 @@ WHILE @counter < @max
 			EXEC sp_executesql @SQL;
 	   END TRY
 	   BEGIN CATCH
+	   		Declare @ErrorMessageRef as varchar(max);
+			SELECT @ErrorMessageRef = ERROR_MESSAGE();
+			--print @ERRORMESSAGE
 			INSERT INTO #CHORDSReferentialIntegrityResults  
-				VALUES (@TargetTable,  @TargetColumn, null, null, null, 'Error Validting Values; ' +  @TargetTable + ', ' + @TargetColumn + ', ' + @RefTable + ', or ' + @RefColumn + ' not found')
+				VALUES (@TargetTable,  @TargetColumn, null, null, null, 'Error Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + ', ' + @RefTable + ', ' + @RefColumn + '; ' + @ErrorMessageRef)
 	   END CATCH
 	   SET @counter = @counter + 1;
     END;
@@ -2157,12 +2166,13 @@ WHILE @counter < @max
 		   EXEC sp_executesql @SQL;
 	   END TRY
 	   BEGIN CATCH
+			Declare @ErrorMessageData as varchar(max);
+			SELECT @ErrorMessageData = ERROR_MESSAGE();
 			INSERT INTO #CHORDSDataValueResults  
-				VALUES (@TargetTable, @TargetColumn, null, 'Error Validting Values; ' +  @TargetTable + ', or ' + @TargetColumn + ' not found')
+				VALUES (@TargetTable, @TargetColumn, null, 'Error Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + '; ' + @ErrorMessageData)
 	   END CATCH
 	   SET @counter = @counter + 1;
     END;
-SELECT 'Y'
 /*
 SELECT
        *

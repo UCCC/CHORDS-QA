@@ -43,7 +43,8 @@ library(knitr)
 library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
-                warning = FALSE)
+                warning = FALSE,
+                error = TRUE)
 startTime <- Sys.time()
 
 # supporting look up tables
@@ -2909,7 +2910,7 @@ kable(tab17, col.names = c("Year", "Records", "Correctional Care", "Commercial/P
 
 ## Table 18. LINKAGE Table Information
 
-```{r, echo=FALSE, echo = F, include=T, error=T}
+```{r tab18.0, echo=FALSE, echo = F, include=T, error=T}
 tab18 <- run_query(
                           paste0("SELECT COUNT(DISTINCT PERSON_ID) as npats,
                           COUNT(DISTINCT LINK_ID) as nlink

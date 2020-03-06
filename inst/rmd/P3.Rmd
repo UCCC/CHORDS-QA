@@ -43,7 +43,7 @@ library(tidyverse)
 knitr::opts_chunk$set(echo = FALSE,
                 message = FALSE,
                 warning = FALSE,
-                error= FALSE)
+                error= TRUE)
 startTime <- Sys.time()
 ```
 
@@ -51,7 +51,7 @@ startTime <- Sys.time()
 connectionString <- getConnectionString(params)
 ```
 
-```{r run queries, include=FALSE, error=TRUE}
+```{r run queries, include=FALSE}
 run_query <- function(query_text, ...){
   result <- run_db_query(connectionString, query_text )
   return(result)
@@ -81,7 +81,7 @@ Query Run Date:  `r Sys.Date()`
 
 ## Data Check 1.01: Required tables are not present
 
-```{r 1.01, echo = F, include=T, error=T}
+```{r 1.01, echo = F, include=T}
 # Table to check for quality
 tableCheckList <- c(lab_results,   encounters, prescribing,procedures  , social_history  , provider_specialty,diagnoses ,vital_signs  , census_location, demographics  , pro_surveys   ,  pro_questions ,pro_responses)
 
@@ -111,7 +111,7 @@ missingTableMessage <- if(length(missingTables)==0) {"All tables accounted for."
 
 ## Data Check 1.02: Required tables are not populated
 
-```{r 1.02, echo = F, include=T, error=T}
+```{r 1.02, echo = F, include=T}
 table_N_lst <- list() #vector(length=length(nonMissingDBTables))
 for(i in 1:length(nonMissingDBTables)){
   table_N_lst[[i]] <- run_query(paste("select distinct '_aaa_' as _aaa_, count(*) as tabN from ",nonMissingDBTables[i], sep=' '))#[,'tabN',drop=T]
@@ -132,7 +132,7 @@ nonPopMessage <- if(length(nonPopTables)==0) {"All tables populated, among those
 
 `r nonPopMessage`
 
-```{r 1.03 Data, echo = F, include=T, error=T }
+```{r 1.03 Data, echo = F, include=T}
 sqlFiles <- system.file('sql', package='chordsTables')
 schema_validation_query <- read_file(dir(sqlFiles, "VDW_Schema_Validation.sql", f=TRUE))
 
@@ -146,7 +146,7 @@ odbcClose(connection103)
 
 
 ## Data Check 1.03: Required fields are not present
-```{r 1.03 Output, echo = F, include=T, error=T}
+```{r 1.03 Output, echo = F, include=T}
 
 missing_columnsTables <- select(schema_validation[schema_validation$Result == "TABLE OR COLUMN MISSING", ], "TableName", "ColumnName", "Result")
 
@@ -157,7 +157,7 @@ knitr::kable(missing_columnsTables, row.names = FALSE)
 
 ## Data Check 1.04: Required fields do not conform to data model specifications for data type, length, or name
 
-```{r 1.04 Output, echo = F, include=T, error=T}
+```{r 1.04 Output, echo = F, include=T}
 
 config_mismatch <- subset(schema_validation, Result == "CONFIG-MISMATCH") 
 misconfig <- subset(config_mismatch, ExpectedIsNullable == FoundIsNullable)
@@ -170,7 +170,7 @@ knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Colu
 
 
 ## Data Check 1.05: Tables have primary key definition errors
-```{r 1.05 Data PrimaryKeyChecks Data, echo = F, include=T, error=T}
+```{r 1.05 Data PrimaryKeyChecks Data, echo = F, include=T}
 primary_key_data <- run_query("
 /*TABLEREPLACEMENTINFILE*/
 /*****************************************************************************
@@ -421,7 +421,7 @@ END Analysis Section
 
 ```
 
-```{r 1.05 Data PrimaryKeyChecks Result, echo = F, include=T, error=T}
+```{r 1.05 Data PrimaryKeyChecks Result, echo = F, include=T}
 
 violated_primary_keys <- subset(primary_key_data, Key_Match_Result != "OK")
 
@@ -430,7 +430,7 @@ knitr::kable(violated_primary_keys, row.names = FALSE)
 ```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
-```{r 1.06 Data,echo =F, include=T, error=T}
+```{r 1.06 Data,echo =F, include=T}
 sqlFiles <- system.file('sql', package='chordsTables')
 data_validation_query <- read_file(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE))
 
@@ -462,7 +462,7 @@ knitr::kable(data_validation)
 
 
 ## Data Check 1.07: Required fields have non-permissible missing values
-```{r 1.07, echo=F, include=T, error=T}
+```{r 1.07, echo=F, include=T}
 nullable_mismatch = select(config_mismatch, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
 
 FoundNullable <- subset(nullable_mismatch, ExpectedIsNullable != FoundIsNullable)
@@ -470,21 +470,21 @@ knitr::kable(FoundNullable, row.names = FALSE, col.names = c("Table Name", "Colu
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
-```{r 1.08, echo=F, include=T, error=T}
+```{r 1.08, echo=F, include=T}
 orphan_person_ids <- subset(ref_integrity, TargetColumn == "PERSON_ID" | ReferenceColumn == "PERSON_ID")
 knitr::kable(orphan_person_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 
 ## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
-```{r 1.09, echo=F, include=T, error=T}
+```{r 1.09, echo=F, include=T}
 orphan_enc_ids <- subset(ref_integrity, TargetColumn == "ENC_ID" | ReferenceColumn == "ENC_ID")
 knitr::kable(orphan_enc_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
 
-```{r 1.10, echo = F, include=T, error=T}
+```{r 1.10, echo = F, include=T}
 
 repErrors <- run_query(
                       paste0(
@@ -523,7 +523,7 @@ knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
 ## Data Check 1.11: More than 5% of encounters are assigned to more than one patient 
 
 
-```{r 1.11, echo = F, include=T, error=T}
+```{r 1.11, echo = F, include=T}
 
 GR1Person <- run_query(
                       paste0(
@@ -562,14 +562,14 @@ encItoManyMsg <- if(GR1Person$pct>5){
 
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
 
-```{r 1.12, echo=F, include=T, error=T}
+```{r 1.12, echo=F, include=T}
 orphan_provider_ids <- subset(ref_integrity, TargetColumn %in% c("RXMD", "PROVIDER") | ReferenceColumn %in% c("RXMD", "PROVIDER"))
 knitr::kable(orphan_provider_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 
 ## Data Check 1.13: More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content
-```{r 1.13, include=T, include=T, error=T}
+```{r 1.13, include=T, include=T}
 connection113 <- get_connection()
 code_conform_table_counts <- sqlQuery(connection113, paste0("
  /*
@@ -865,22 +865,32 @@ knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Cod
 
 ## Data Check 2.01: More than 5% of records have future dates
 
-```{r 2.01, echo = F, include=T, error=T}
+```{r 2.01, echo = F, include=T}
 # DC 2.01
-tabDates <- run_query('select distinct a.name as tabname, b.name as colname from sys.tables as a inner join sys.columns as b on a.object_id = b.object_id order by a.name') %>% 
+
+tabDates <- run_query("
+SELECT DISTINCT 
+       a.name AS tabname, 
+       b.name AS colname
+FROM   
+     sys.objects a
+     INNER JOIN sys.columns b
+          ON a.object_id = b.object_id
+WHERE  type IN('U', 'V')
+ORDER BY 
+         a.name;") %>% 
   subset(grepl('date',colname, ignore.case = T))
   
-modDates <- run_query('select name, modify_date from sys.tables')
-
+modDates <- run_query("select name, modify_date from sys.objects WHERE  type IN('U', 'V')")
 futureDateCode <- merge(tabDates, modDates, by.x='tabname', by.y='name') %>%
   within({
     sqlcode <- paste0("select '",tabname, "' as tableName, '", colname,"' as dateName ,count(*) as nrows, sum(case when a.",colname,">b.modify_date then 1 else 0 end) as futureDate from ",
-tabname, " as a , (select modify_date from sys.tables where name ='",tabname,"') as b"
+tabname, " as a , (select modify_date from sys.objects where type IN('U', 'V') AND name ='",tabname,"') as b"
 
 )
   })
 
-test <- run_query(futureDateCode[1, "sqlcode"])
+#test <- run_query(futureDateCode[1, "sqlcode"])
 
 fdatelst <- list()
 for (i in 1:nrow(futureDateCode)){
@@ -909,7 +919,7 @@ futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0 & params$QAAlert==F
 ## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic
 ## blood pressure, systolic blood pressure, or dispensed days supply
 
-```{r 2.02, echo = F, include=T, error=T}
+```{r 2.02, echo = F, include=T}
 # select count(*) as personCount, sum(case when (minage not between 0 and 89) or (maxage not between 0 and 89) then 1 else 0 end ) as N_outOfRange
 
 patAgeRange <- run_query(paste0("
@@ -1013,7 +1023,7 @@ outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & p
 
 ## Data Check 2.03: More than 5% of patients have illogical date relationships
 
-```{r 2.03, echo = F, include=T, error=T}
+```{r 2.03, echo = F, include=T}
 
 encTabBirth2.03 <- run_query(paste0("
  select sum(dobPostAdate) as dobPostAdate,
@@ -1325,7 +1335,7 @@ check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0 & params$QAAlert==F){
 
 
 ## Data Check 3.05: Less than 50% of patients with encounters have PROCEDURES records 
-```{r 3.05, echo = F, include=T, error=T}
+```{r 3.05, echo = F, include=T}
 
 patsWithEncs <- run_query(paste0("select count(*) as nrows, sum(patsWEncDiag) as patsWEncDiag, sum(patsWEncProc) as patsWEncProc from ( select  case when person_id in (select person_id from ", diagnoses, ") then 1 else 0 end as patsWEncDiag",
  ",case when person_id in (select person_id from ", procedures, ") then 1 else 0 end as patsWEncProc",
@@ -1363,7 +1373,7 @@ knitr::kable(
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal diagnosis
 
-```{r 3.06, echo = F, include=T, error=T}
+```{r 3.06, echo = F, include=T}
 ipedei_no_principal_diag <- run_query(paste0("SELECT        
        InpatientEnc, 
        InpatientEnc - InpatientEncWPrincipalDiag AS InpatientEncWOPrincipalDiag, 
@@ -1394,7 +1404,7 @@ knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Pati
 
 ## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
 
-```{r 3.07 Data, include=FALSE, error=FALSE}
+```{r 3.07 Data, include=FALSE}
 
 benchmark_start <- run_query(paste0("
   SET NOCOUNT ON;
