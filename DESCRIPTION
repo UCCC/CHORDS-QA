@@ -21,7 +21,8 @@ Imports:
     dplyr,
     DBI,
     shiny,
-    qwraps2
+    qwraps2,
+    R.utils
 License: What license is it under?
 URL: http://github.com/UCC/CHORDS-QA
 BugReports: http://github.com/UCC/CHORDS-QA/issues

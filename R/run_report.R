@@ -21,7 +21,7 @@
 #' @import DBI
 #' @import shiny
 #' @import httr
-#' @improt R.utils
+#' @import R.utils
 #' @rdname run_report
 #' @export
 
@@ -131,7 +131,7 @@ getConnectionString <- function(params){
 #' run_db_query(Connection_String, query_text)
 #' }
 #' @import RODBC
-#' @improt R.utils
+#' @import R.utils
 #' @rdname run_report
 #' @export
 

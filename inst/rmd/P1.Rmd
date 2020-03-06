@@ -1042,8 +1042,8 @@ WITH CTE_RACE_AS
      AS (SELECT RACEDESC, 
                 COUNT(*) cnt
          FROM %DEMOGRAPHICS%, @RACES
-         WHERE  RACE IN(Race1)
-			AND 'UN' IN(Race5)
+         WHERE  (RACE IN (Race1) OR RACE1 IS NULL)
+			AND ('UN' IN(Race5) OR RACE5 IS NULL)
          GROUP BY RACEDESC),
      CTE_RACE_WH
      AS (SELECT RACEDESC, 
