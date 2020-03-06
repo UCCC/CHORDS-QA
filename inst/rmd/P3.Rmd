@@ -849,7 +849,7 @@ FROM
     ) InvalidCount
 ) Top50
 WHERE  RowNum <= 50
-ORDER BY TableName,  CountInvalid Desc, CodeType;
+ORDER BY CountInvalid Desc, TableName, CodeType;
 ")
 
 odbcClose(connection113)
