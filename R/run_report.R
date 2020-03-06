@@ -21,6 +21,7 @@
 #' @import DBI
 #' @import shiny
 #' @import httr
+#' @improt R.utils
 #' @rdname run_report
 #' @export
 
@@ -109,10 +110,10 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 
 getConnectionString <- function(params){
   if (nchar(params$DBUser) == 0) {
-    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
+    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
 
   }else{
-    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
 
   if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
@@ -130,6 +131,7 @@ getConnectionString <- function(params){
 #' run_db_query(Connection_String, query_text)
 #' }
 #' @import RODBC
+#' @improt R.utils
 #' @rdname run_report
 #' @export
 
@@ -137,7 +139,7 @@ run_db_query <- function(Connection_String, query_text) {
   tryCatch(
     {
       db_conn <- get_new_connection(Connection_String)
-      result <- sqlQuery(channel = db_conn, query = query_text, as.is = TRUE)
+      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, as.is = TRUE), timeout = 2100)
       return(result)
     },
     error = function(cond){
@@ -256,14 +258,14 @@ runTableReplacements <- function(ConnectionString) {
     procedures <<-  "procedures"
     benefit <<-  "benefit"
     linkage <<-  "linkage"
-    social_history <<-  "SOCIAL_HISTORY"
-    provider_specialty <<- "PROVIDER_SPECIALTY"
-    pro_surveys <<-  "PRO_SURVEYS"
-    pro_questions <<-  "PRO_QUESTIONS"
-    pro_responses <<-  "PRO_RESPONSES"
-    death <<-  "DEATH"
-    pharmacy <<-  "PHARMACY"
-    prescribing <<- "PRESCRIBING"
+    social_history <<-  "social_history"
+    provider_specialty <<- "provider_specialty"
+    pro_surveys <<-  "pro_surveys"
+    pro_questions <<-  "pro_questions"
+    pro_responses <<-  "pro_responses"
+    death <<-  "death"
+    pharmacy <<-  "pharmacy"
+    prescribing <<- "prescribing"
   }
 
 }
