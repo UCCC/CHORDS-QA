@@ -304,8 +304,10 @@ SELECT
        ExpectKeys.COLUMN_NAMES AS Expected_Primary_Key, 
        CurrKeys.COLUMN_NAMES AS Found_Primary_Key,
        CASE
+           WHEN ob.type = 'V'
+		       THEN 'VIEW FOUND'
            WHEN CurrKeys.TABLE_NAME IS NULL
-           THEN 'TABLE OR KEYS NOT FOUND'
+           THEN 'TABLE/VIEW OR KEYS NOT FOUND'
            WHEN ExpectKeys.COLUMN_NAMES != CurrKeys.COLUMN_NAMES
            THEN 'KEY MISMATCH'
            WHEN ExpectKeys.COLUMN_NAMES = CurrKeys.COLUMN_NAMES
@@ -362,7 +364,9 @@ LEFT JOIN
     ) T
     WHERE T.COL IS NOT NULL
 ) CurrKeys
-     ON CurrKeys.TABLE_NAME = ExpectKeys.TABLE_NAME) KeyMatch;
+     ON CurrKeys.TABLE_NAME = ExpectKeys.TABLE_NAME
+	 LEFT JOIN sys.objects ob ON ob.object_id = OBJECT_ID(ExpectKeys.TABLE_NAME)
+	 and ob.type in ('U', 'V')) KeyMatch;
 
 BEGIN
     
