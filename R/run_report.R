@@ -16,12 +16,12 @@
 #' @import tidyverse
 #' @import rmarkdown
 #' @import RODBC
+#' @importFrom R.utils withTimeout
 #' @import odbc
 #' @import knitr
 #' @import DBI
 #' @import shiny
 #' @import httr
-#' @import R.utils
 #' @rdname run_report
 #' @export
 
@@ -131,7 +131,7 @@ getConnectionString <- function(params){
 #' run_db_query(Connection_String, query_text)
 #' }
 #' @import RODBC
-#' @import R.utils
+#' @importFrom R.utils withTimeout
 #' @rdname run_report
 #' @export
 
