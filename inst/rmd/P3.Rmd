@@ -68,6 +68,11 @@ get_connection <- function(){
 tbresult <-runTableReplacements(connectionString)
 ```
 
+```{r validation messages, echo = F,  include = T}
+QA_Alert_Messages <- data.frame('Alert Code'=character(),
+                 'Alert Message'=character(), stringsAsFactors = FALSE)
+```
+
 ## CHORDS QA Report: VDW P3 Tables
 
 The purpose of the data quality program is to conduct data quality checks that correspond to similar data checks carried out by PCORnet (Version 7). The checks cover 4 realms of data quality: data model conformance, data plausibility, data completeness, and data persistence. The program uses a series of SQL queries operationalized using RStudio to produce this report. The program is designed to support tables/figures that provide detailed information about each data quality check as well as an alert if a data error appears to be present (based on criteria developed by PCORnet or the CHORDS team). 
@@ -150,6 +155,12 @@ odbcClose(connection103)
 
 missing_columnsTables <- select(schema_validation[schema_validation$Result == "TABLE OR COLUMN MISSING", ], "TableName", "ColumnName", "Result")
 
+if (params$QAAlert == TRUE){
+  missing_columnsTables$message <- paste0(missing_columnsTables$TableName, ".", missing_columnsTables$ColumnName, sep="")
+  QA_Alert_Message_103_items <- paste0(missing_columnsTables$message, collapse = ', ')
+  QA_Alert_Message_103 <- paste0("The following required fields are not present: ", QA_Alert_Message_103_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.03",QA_Alert_Message_103)
+}
 knitr::kable(missing_columnsTables, row.names = FALSE)
 
 ```
@@ -164,7 +175,16 @@ misconfig <- subset(config_mismatch, ExpectedIsNullable == FoundIsNullable)
 
 invalid_specs <- select(misconfig, c("TableName", "ColumnName", "ExpectedNumberPrecision", "FoundNumberPrecision", "ExpectedNumberScale", "FoundNumberScale", "ExpectedCharLength", "FoundCharLength", "ExpectedDatePrecision", "FoundDatePrecision"))
 
+if (params$QAAlert == TRUE){
+  misconfig$message <- paste0(misconfig$TableName, ".", misconfig$ColumnName, sep="")
+  QA_Alert_Message_104_items <- paste0(misconfig$message, collapse = ', ')
+  QA_Alert_Message_104 <- paste0("The following required fields do not conform to data model specifications for data type, length, or name: ",
+                                  QA_Alert_Message_104_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.04",QA_Alert_Message_104)
+}
+
 knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Number Precision", "Found Number Precision", "Expected Number Scale", "Found Number Scale", "Expected Char Length", "Found Char Length", "Expected Date Precision", "Found Date Precision"))
+
 
 ```
 
@@ -429,6 +449,15 @@ END Analysis Section
 
 violated_primary_keys <- subset(primary_key_data, Key_Match_Result != "OK")
 
+if (params$QAAlert == TRUE){
+  violated_primary_keys_table <- subset(violated_primary_keys, (Violation_Count > 0 & Key_Match_Result == "VIEW FOUND") | (Key_Match_Result != "VIEW FOUND")) 
+  violated_primary_keys_table$message <- paste0(violated_primary_keys_table$TABLE_NAME, sep="")
+  QA_Alert_Message_105_items <- paste0(violated_primary_keys_table$message, collapse = ', ')
+  QA_Alert_Message_105 <- paste0("The following tables have primary key definition errors:  ",
+                                  QA_Alert_Message_105_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.05",QA_Alert_Message_105)
+}
+
 knitr::kable(violated_primary_keys, row.names = FALSE)
 
 ```
@@ -460,6 +489,15 @@ ref_integrity <- sqlQuery(connection106, "
 
 odbcClose(connection106)
 
+if (params$QAAlert == TRUE){
+  data_validation_table <- data.frame(data_validation, stringsAsFactors = FALSE)
+  data_validation_table$message <- paste0(data_validation_table$TargetTable, ".", data_validation_table$TargetColumn, sep="")
+  QA_Alert_Message_106_items <- paste0(data_validation_table$message, collapse = ', ')
+  QA_Alert_Message_106 <- paste0("The following required fields contain values outside of data model specifications: ",
+                                  QA_Alert_Message_106_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.06", QA_Alert_Message_106)
+}
+
 knitr::kable(data_validation)
 
 ```
@@ -469,20 +507,50 @@ knitr::kable(data_validation)
 ```{r 1.07, echo=F, include=T}
 nullable_mismatch = select(config_mismatch, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
 
-FoundNullable <- subset(nullable_mismatch, ExpectedIsNullable != FoundIsNullable)
-knitr::kable(FoundNullable, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected IsNullable", "Found IsNullable"))
+foundNullable <- subset(nullable_mismatch, ExpectedIsNullable != FoundIsNullable)
+
+if (params$QAAlert == TRUE){
+  foundNullable_table <- data.frame(foundNullable, stringsAsFactors = FALSE)
+  foundNullable_table$message <- paste0(foundNullable_table$TableName, ".", foundNullable_table$ColumnName, sep="")
+  QA_Alert_Message_107_items <- paste0(foundNullable_table$message, collapse = ', ')
+  QA_Alert_Message_107 <- paste0("The following required fields have non-permissible missing values: ",
+                                  QA_Alert_Message_107_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.07",QA_Alert_Message_107)
+}
+
+knitr::kable(foundNullable, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected IsNullable", "Found IsNullable"))
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
 ```{r 1.08, echo=F, include=T}
-orphan_person_ids <- subset(ref_integrity, TargetColumn == "PERSON_ID" | ReferenceColumn == "PERSON_ID")
+orphan_person_ids <- subset(ref_integrity, (TargetColumn == "PERSON_ID" | ReferenceColumn == "PERSON_ID") & ValuesNotFound > 0)
+
+if (params$QAAlert == TRUE){
+  orphan_person_ids_table <- data.frame(orphan_person_ids, stringsAsFactors = FALSE)
+  orphan_person_ids_table$message <- paste0(orphan_person_ids_table$TargetTable, sep="")
+  QA_Alert_Message_108_items <- paste0(orphan_person_ids_table$message, collapse = ', ')
+  QA_Alert_Message_108 <- paste0("The following tables contain orphan PERSON_IDs: ",
+                                  QA_Alert_Message_108_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.08",QA_Alert_Message_108)
+}
+
 knitr::kable(orphan_person_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
 
 ## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
 ```{r 1.09, echo=F, include=T}
-orphan_enc_ids <- subset(ref_integrity, TargetColumn == "ENC_ID" | ReferenceColumn == "ENC_ID")
+orphan_enc_ids <- subset(ref_integrity, (TargetColumn == "ENC_ID" | ReferenceColumn == "ENC_ID") & ValuesNotFound > 0)
+
+if (params$QAAlert == TRUE){
+  orphan_enc_ids_table <- data.frame(orphan_enc_ids, stringsAsFactors = FALSE)
+  orphan_enc_ids_table$message <- paste0(orphan_enc_ids_table$TargetTable, sep="")
+  QA_Alert_Message_109_items <- paste0(orphan_enc_ids_table$message, collapse = ', ')
+  QA_Alert_Message_109 <- paste0("The following tables contain orphan ENCOUNTER_IDs: ",
+                                  QA_Alert_Message_109_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.09",QA_Alert_Message_109)
+}
+
 knitr::kable(orphan_enc_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
@@ -567,7 +635,17 @@ encItoManyMsg <- if(GR1Person$pct>5){
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
 
 ```{r 1.12, echo=F, include=T}
-orphan_provider_ids <- subset(ref_integrity, TargetColumn %in% c("RXMD", "PROVIDER") | ReferenceColumn %in% c("RXMD", "PROVIDER"))
+orphan_provider_ids <- subset(ref_integrity, ((TargetColumn %in% c("RXMD", "PROVIDER") | ReferenceColumn %in% c("RXMD", "PROVIDER"))) & ValuesNotFound > 0)
+
+if (params$QAAlert == TRUE){
+  orphan_provider_ids_table <- data.frame(orphan_provider_ids, stringsAsFactors = FALSE)
+  orphan_provider_ids_table$message <- paste0(orphan_provider_ids_table$TargetTable, sep="")
+  QA_Alert_Message_112_items <- paste0(orphan_provider_ids_table$message, collapse = ', ')
+  QA_Alert_Message_112 <- paste0("The following tables contain orphan PROVIDER_IDs: ",
+                                  QA_Alert_Message_112_items)
+  QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.12",QA_Alert_Message_112)
+}
+
 knitr::kable(orphan_provider_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
 ```
 
@@ -857,6 +935,17 @@ ORDER BY CountInvalid Desc, TableName, CodeType;
 ")
 
 odbcClose(connection113)
+
+if (params$QAAlert == TRUE){
+  code_conform_table_counts_table <- subset(code_conform_table_counts, PercentInvalid > 5.0)
+  if (!rlang::is_empty(code_conform_table_counts_table)){
+    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, sep="")
+    QA_Alert_Message_113_items <- paste0(code_conform_table_counts_table$message, collapse = ', ')
+    QA_Alert_Message_113 <- paste0("More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content: ",
+                                  QA_Alert_Message_113_items)
+    QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.13",QA_Alert_Message_113)
+  }
+}
 
 knitr::kable(code_conform_table_counts, row.names = FALSE, col.names =c("Table Name", "Code Type", "Count All", "Count Invalid", "% Invalid"))
 
@@ -1403,6 +1492,14 @@ FROM
     WHERE e.ENCTYPE IN('IP', 'EI')
 ) PxDiags;"))
 
+if (params$QAAlert == TRUE){
+  ipedei_no_principal_diag_table <- subset(ipedei_no_principal_diag, "InpatientEncWOPrincipalDiagPcnt" > 10.0)
+  if (!rlang::is_empty(ipedei_no_principal_diag_table)){
+    QA_Alert_Message_306 <- paste0("More than 10% of IP (inpatient) encounters with any diagnosis don't have a principal diagnosis")
+    QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.06",QA_Alert_Message_306)
+  }
+}
+
 knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Patient Type Encounters", "In-Patient Encounters W/O Principal Diagnoses", "% of In-Patient Type Encounters W/O Principal Diagnoses"))
 ```
 
@@ -1423,7 +1520,7 @@ benchmark_start <- run_query(paste0("
   SELECT @BenchmarkStartDate;
 "))
 
-data_result <- run_query(str_replace_all(paste0("
+data_result_75_complete <- run_query(str_replace_all(paste0("
   SET NOCOUNT ON;
   DECLARE @BenchmarkPriorYearAvg INT;
   SET @BenchmarkPriorYearAvg =
@@ -1458,12 +1555,24 @@ data_result <- run_query(str_replace_all(paste0("
 
 ```{r 3.07 Output, error=FALSE, include=TRUE}
 cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
-knitr::kable(data_result,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "% of Benchmark"))
+
+if (params$QAAlert == TRUE){
+  data_result_75_complete_table <- subset(data_result_75_complete, "PercentofBenchMark" < 75.0 )
+  if (!rlang::is_empty(data_result_75_complete_table)){
+    QA_Alert_Message_307 <- paste0("Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), or inpatient (IP) setting are less than 75% complete three months prior to the current month")
+    QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.07",QA_Alert_Message_307)
+  }
+}
+
+knitr::kable(data_result_75_complete,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "% of Benchmark"))
 
 ```
 
-## Data Check 3.11: Vital, prescribing, or laboratory records are less than 75% complete three months prior to the current month
+## QA Alerts
 
+```{r validationMessage Output}
+knitr::kable(QA_Alert_Messages, row.names = FALSE)
+```
 
 ####Total program run time:
 ```{r calc_runtime, echo=F}
