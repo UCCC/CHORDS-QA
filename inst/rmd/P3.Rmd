@@ -1493,8 +1493,8 @@ FROM
 ) PxDiags;"))
 
 if (params$QAAlert == TRUE){
-  ipedei_no_principal_diag_table <- subset(ipedei_no_principal_diag, "InpatientEncWOPrincipalDiagPcnt" > 10.0)
-  if (!rlang::is_empty(ipedei_no_principal_diag_table)){
+  ipedei_no_principal_diag_table <- subset(ipedei_no_principal_diag, InpatientEncWOPrincipalDiagPcnt > 10.0)
+  if (!rlang::is_empty(ipedei_no_principal_diag_table) & nrow(ipedei_no_principal_diag_table) > 0){
     QA_Alert_Message_306 <- paste0("More than 10% of IP (inpatient) encounters with any diagnosis don't have a principal diagnosis")
     QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.06",QA_Alert_Message_306)
   }
@@ -1557,8 +1557,9 @@ data_result_75_complete <- run_query(str_replace_all(paste0("
 cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
 
 if (params$QAAlert == TRUE){
-  data_result_75_complete_table <- subset(data_result_75_complete, "PercentofBenchMark" < 75.0 )
-  if (!rlang::is_empty(data_result_75_complete_table)){
+  browser()
+  data_result_75_complete_table <- subset(data_result_75_complete, PercentofBenchMark < 75.0 )
+  if (!rlang::is_empty(data_result_75_complete_table) & nrow(data_result_75_complete_table) > 0){
     QA_Alert_Message_307 <- paste0("Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), or inpatient (IP) setting are less than 75% complete three months prior to the current month")
     QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.07",QA_Alert_Message_307)
   }
