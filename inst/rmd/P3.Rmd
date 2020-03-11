@@ -1557,7 +1557,6 @@ data_result_75_complete <- run_query(str_replace_all(paste0("
 cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
 
 if (params$QAAlert == TRUE){
-  browser()
   data_result_75_complete_table <- subset(data_result_75_complete, PercentofBenchMark < 75.0 )
   if (!rlang::is_empty(data_result_75_complete_table) & nrow(data_result_75_complete_table) > 0){
     QA_Alert_Message_307 <- paste0("Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), or inpatient (IP) setting are less than 75% complete three months prior to the current month")
