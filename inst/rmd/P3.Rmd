@@ -153,15 +153,17 @@ odbcClose(connection103)
 ## Data Check 1.03: Required fields are not present
 ```{r 1.03 Output, echo = F, include=T}
 
-missing_columnsTables <- select(schema_validation[schema_validation$Result == "TABLE OR COLUMN MISSING", ], "TableName", "ColumnName", "Result")
+missing_columns <- subset(schema_validation, Result == "TABLE/VIEW OR COLUMN MISSING")
 
-if (params$QAAlert == TRUE){
+missing_columnsTables <- select(missing_columns, c("TableName", "ColumnName", "ExpectedNumberPrecision", "FoundNumberPrecision", "ExpectedNumberScale", "FoundNumberScale", "ExpectedCharLength", "FoundCharLength", "ExpectedDatePrecision", "FoundDatePrecision"))
+
+if (params$QAAlert == TRUE & nrow(missing_columnsTables) > 0){
   missing_columnsTables$message <- paste0(missing_columnsTables$TableName, ".", missing_columnsTables$ColumnName, sep="")
   QA_Alert_Message_103_items <- paste0(missing_columnsTables$message, collapse = ', ')
   QA_Alert_Message_103 <- paste0("The following required fields are not present: ", QA_Alert_Message_103_items)
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.03",QA_Alert_Message_103)
 }
-knitr::kable(missing_columnsTables, row.names = FALSE)
+knitr::kable(select(missing_columnsTables, ), row.names = FALSE)
 
 ```
 
@@ -170,12 +172,11 @@ knitr::kable(missing_columnsTables, row.names = FALSE)
 
 ```{r 1.04 Output, echo = F, include=T}
 
-config_mismatch <- subset(schema_validation, Result == "CONFIG-MISMATCH") 
-misconfig <- subset(config_mismatch, ExpectedIsNullable == FoundIsNullable)
+misconfig <- subset(schema_validation, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable == FoundIsNullable)) 
 
 invalid_specs <- select(misconfig, c("TableName", "ColumnName", "ExpectedNumberPrecision", "FoundNumberPrecision", "ExpectedNumberScale", "FoundNumberScale", "ExpectedCharLength", "FoundCharLength", "ExpectedDatePrecision", "FoundDatePrecision"))
 
-if (params$QAAlert == TRUE){
+if (params$QAAlert == TRUE & nrow(invalid_specs) > 0){
   misconfig$message <- paste0(misconfig$TableName, ".", misconfig$ColumnName, sep="")
   QA_Alert_Message_104_items <- paste0(misconfig$message, collapse = ', ')
   QA_Alert_Message_104 <- paste0("The following required fields do not conform to data model specifications for data type, length, or name: ",
@@ -449,7 +450,7 @@ END Analysis Section
 
 violated_primary_keys <- subset(primary_key_data, Key_Match_Result != "OK")
 
-if (params$QAAlert == TRUE){
+if (params$QAAlert == TRUE & nrow(violated_primary_keys) > 0){
   violated_primary_keys_table <- subset(violated_primary_keys, (Violation_Count > 0 & Key_Match_Result == "VIEW FOUND") | (Key_Match_Result != "VIEW FOUND")) 
   violated_primary_keys_table$message <- paste0(violated_primary_keys_table$TABLE_NAME, sep="")
   QA_Alert_Message_105_items <- paste0(violated_primary_keys_table$message, collapse = ', ')
@@ -466,10 +467,8 @@ knitr::kable(violated_primary_keys, row.names = FALSE)
 ```{r 1.06 Data,echo =F, include=T}
 sqlFiles <- system.file('sql', package='chordsTables')
 data_validation_query <- read_file(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE))
-
 connection106 <- get_connection()
 results <- sqlQuery(connection106, data_validation_query, as.is=TRUE)
-
 
 data_validation <- sqlQuery(connection106, "
   SELECT
@@ -488,8 +487,7 @@ ref_integrity <- sqlQuery(connection106, "
   ", as.is = TRUE)
 
 odbcClose(connection106)
-
-if (params$QAAlert == TRUE){
+if (params$QAAlert == TRUE & nrow(data_validation) > 0){
   data_validation_table <- data.frame(data_validation, stringsAsFactors = FALSE)
   data_validation_table$message <- paste0(data_validation_table$TargetTable, ".", data_validation_table$TargetColumn, sep="")
   QA_Alert_Message_106_items <- paste0(data_validation_table$message, collapse = ', ')
@@ -505,53 +503,54 @@ knitr::kable(data_validation)
 
 ## Data Check 1.07: Required fields have non-permissible missing values
 ```{r 1.07, echo=F, include=T}
-nullable_mismatch = select(config_mismatch, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
+nullableValues = subset(misconfig, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable != FoundIsNullable))
 
-foundNullable <- subset(nullable_mismatch, ExpectedIsNullable != FoundIsNullable)
+nullableValues_Table <- select(nullableValues, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
 
-if (params$QAAlert == TRUE){
-  foundNullable_table <- data.frame(foundNullable, stringsAsFactors = FALSE)
-  foundNullable_table$message <- paste0(foundNullable_table$TableName, ".", foundNullable_table$ColumnName, sep="")
-  QA_Alert_Message_107_items <- paste0(foundNullable_table$message, collapse = ', ')
+if (params$QAAlert == TRUE & nrow(nullableValues_Table) > 0){
+  nullableValues_Table$message <- paste0(nullableValues_Table$TableName, ".", nullableValues_Table$ColumnName, sep="")
+  QA_Alert_Message_107_items <- paste0(nullableValues_Table$message, collapse = ', ')
   QA_Alert_Message_107 <- paste0("The following required fields have non-permissible missing values: ",
                                   QA_Alert_Message_107_items)
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.07",QA_Alert_Message_107)
 }
 
-knitr::kable(foundNullable, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected IsNullable", "Found IsNullable"))
+knitr::kable(nullableValues_Table, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows-Null Value", "Found Field Allows -Null Value"))
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
 ```{r 1.08, echo=F, include=T}
-orphan_person_ids <- subset(ref_integrity, (TargetColumn == "PERSON_ID" | ReferenceColumn == "PERSON_ID") & ValuesNotFound > 0)
+orphan_person_ids <- subset(ref_integrity, ((TargetColumn == "PERSON_ID" | ReferenceColumn == "PERSON_ID") & ValuesNotFound > 0))
+orphan_person_ids_table <- select(orphan_person_ids, c("TargetTable", "TargetColumn", "ReferenceTable", "ReferenceColumn", "ValuesNotFound", "TargetTableDistinctCount", "PercentOfDistinctTargetColumnMissing"))
 
-if (params$QAAlert == TRUE){
-  orphan_person_ids_table <- data.frame(orphan_person_ids, stringsAsFactors = FALSE)
-  orphan_person_ids_table$message <- paste0(orphan_person_ids_table$TargetTable, sep="")
-  QA_Alert_Message_108_items <- paste0(orphan_person_ids_table$message, collapse = ', ')
+if (params$QAAlert == TRUE & nrow(orphan_person_ids_table) > 0){
+  orphan_person_ids_sub_table <- data.frame(orphan_person_ids_table, stringsAsFactors = FALSE)
+  orphan_person_ids_sub_table$message <- paste0(orphan_person_ids_sub_table$TargetTable, sep="")
+  QA_Alert_Message_108_items <- paste0(orphan_person_ids_sub_table$message, collapse = ', ')
   QA_Alert_Message_108 <- paste0("The following tables contain orphan PERSON_IDs: ",
                                   QA_Alert_Message_108_items)
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.08",QA_Alert_Message_108)
 }
 
-knitr::kable(orphan_person_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
+knitr::kable(orphan_person_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
 ```
 
 
 ## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
 ```{r 1.09, echo=F, include=T}
 orphan_enc_ids <- subset(ref_integrity, (TargetColumn == "ENC_ID" | ReferenceColumn == "ENC_ID") & ValuesNotFound > 0)
+orphan_enc_ids_table <- select(orphan_enc_ids, c("TargetTable", "TargetColumn", "ReferenceTable", "ReferenceColumn", "ValuesNotFound", "TargetTableDistinctCount", "PercentOfDistinctTargetColumnMissing"))
 
-if (params$QAAlert == TRUE){
-  orphan_enc_ids_table <- data.frame(orphan_enc_ids, stringsAsFactors = FALSE)
-  orphan_enc_ids_table$message <- paste0(orphan_enc_ids_table$TargetTable, sep="")
-  QA_Alert_Message_109_items <- paste0(orphan_enc_ids_table$message, collapse = ', ')
+if (params$QAAlert == TRUE & nrow(orphan_enc_ids_table) > 0){
+  orphan_person_ids_sub_table <- data.frame(orphan_enc_ids_table, stringsAsFactors = FALSE)
+  orphan_person_ids_sub_table$message <- paste0(orphan_person_ids_sub_table$TargetTable, sep="")
+  QA_Alert_Message_109_items <- paste0(orphan_person_ids_sub_table$message, collapse = ', ')
   QA_Alert_Message_109 <- paste0("The following tables contain orphan ENCOUNTER_IDs: ",
                                   QA_Alert_Message_109_items)
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.09",QA_Alert_Message_109)
 }
 
-knitr::kable(orphan_enc_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
+knitr::kable(orphan_enc_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
 ```
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
@@ -636,17 +635,18 @@ encItoManyMsg <- if(GR1Person$pct>5){
 
 ```{r 1.12, echo=F, include=T}
 orphan_provider_ids <- subset(ref_integrity, ((TargetColumn %in% c("RXMD", "PROVIDER") | ReferenceColumn %in% c("RXMD", "PROVIDER"))) & ValuesNotFound > 0)
+orphan_provider_ids_table <- select(orphan_provider_ids, c("TargetTable", "TargetColumn", "ReferenceTable", "ReferenceColumn", "ValuesNotFound", "TargetTableDistinctCount", "PercentOfDistinctTargetColumnMissing"))
 
-if (params$QAAlert == TRUE){
-  orphan_provider_ids_table <- data.frame(orphan_provider_ids, stringsAsFactors = FALSE)
-  orphan_provider_ids_table$message <- paste0(orphan_provider_ids_table$TargetTable, sep="")
-  QA_Alert_Message_112_items <- paste0(orphan_provider_ids_table$message, collapse = ', ')
+if (params$QAAlert == TRUE & nrow(orphan_provider_ids_table) > 0){
+  orphan_provider_ids_sub_table <- data.frame(orphan_provider_ids_table, stringsAsFactors = FALSE)
+  orphan_provider_ids_sub_table$message <- paste0(orphan_provider_ids_sub_table$TargetTable, sep="")
+  QA_Alert_Message_112_items <- paste0(orphan_provider_ids_sub_table$message, collapse = ', ')
   QA_Alert_Message_112 <- paste0("The following tables contain orphan PROVIDER_IDs: ",
                                   QA_Alert_Message_112_items)
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.12",QA_Alert_Message_112)
 }
 
-knitr::kable(orphan_provider_ids, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Message"))
+knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
 ```
 
 
@@ -931,7 +931,7 @@ FROM
     ) InvalidCount
 ) Top50
 WHERE  RowNum <= 50
-ORDER BY CountInvalid Desc, TableName, CodeType;
+ORDER BY TableName, CodeType, CountInvalid Desc;
 ")
 
 odbcClose(connection113)
@@ -1550,6 +1550,8 @@ data_result_75_complete <- run_query(str_replace_all(paste0("
                             
 "), "@BenchmarkStartDate", paste0('\'', benchmark_start[1,1], '\'', sep='')))
 
+data_result_75_complete$PercentofBenchMark <- as.numeric(as.character(data_result_75_complete$PercentofBenchMark)) 
+
 ```
 
 
@@ -1557,7 +1559,7 @@ data_result_75_complete <- run_query(str_replace_all(paste0("
 cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
 
 if (params$QAAlert == TRUE){
-  data_result_75_complete_table <- subset(data_result_75_complete, PercentofBenchMark < 75.0 )
+  data_result_75_complete_table <- subset(data_result_75_complete, PercentofBenchMark < 75 )
   if (!rlang::is_empty(data_result_75_complete_table) & nrow(data_result_75_complete_table) > 0){
     QA_Alert_Message_307 <- paste0("Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), or inpatient (IP) setting are less than 75% complete three months prior to the current month")
     QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.07",QA_Alert_Message_307)

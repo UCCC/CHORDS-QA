@@ -1812,9 +1812,9 @@ VALUES		(
 			'PRO_RESPONSES',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'PRO_RESPONSES',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID');
 
-INSERT INTO @dataintegvalidation
-VALUES		(
-			'TUMOR',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
+-- INSERT INTO @dataintegvalidation
+-- VALUES		(
+			-- 'TUMOR',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
 			
 INSERT INTO @dataintegvalidation
 VALUES		(
@@ -1828,13 +1828,13 @@ INSERT INTO @dataintegvalidation
 VALUES		(
 			'LINKAGE',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
 						
-INSERT INTO @dataintegvalidation
-VALUES		(
-			'DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
+-- INSERT INTO @dataintegvalidation
+-- VALUES		(
+			-- 'DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
 
-INSERT INTO @dataintegvalidation
-VALUES		(
-			'CAUSE_OF_DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
+-- INSERT INTO @dataintegvalidation
+-- VALUES		(
+			-- 'CAUSE_OF_DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
 
 /*****************************************************************************
 END DataValueValidation table creation. 
@@ -1962,13 +1962,13 @@ VALUES		(
 			'VITAL_SIGNS', 'BP_TYPE', 'BP_TYPE_LU', 'ABBREVIATION'	), (
 			'VITAL_SIGNS', 'POSITION', 'POSITION_LU', 'ABBREVIATION'	);			
 			
-INSERT INTO @datavaluevalidation
-VALUES		(
-			'TUMOR', 'RACE1', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE2', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE3', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE4', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE5', 'RACE_LU', 'ABBREVIATION'	);
+-- INSERT INTO @datavaluevalidation
+-- VALUES		(
+			-- 'TUMOR', 'RACE1', 'RACE_LU', 'ABBREVIATION'	), (
+			-- 'TUMOR', 'RACE2', 'RACE_LU', 'ABBREVIATION'	), (
+			-- 'TUMOR', 'RACE3', 'RACE_LU', 'ABBREVIATION'	), (
+			-- 'TUMOR', 'RACE4', 'RACE_LU', 'ABBREVIATION'	), (
+			-- 'TUMOR', 'RACE5', 'RACE_LU', 'ABBREVIATION'	);
 			
 INSERT INTO @datavaluevalidation
 VALUES		(
@@ -1980,16 +1980,16 @@ INSERT INTO @datavaluevalidation
 VALUES		(
 			'CENSUS_LOCATION', 'ADDRESS_TYPE_CODE', 'ADDRESS_TYPE_CODE_LU', 'ABBREVIATION'	);	
 
-INSERT INTO @datavaluevalidation
-VALUES		(
-			'DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
-			'DEATH', 'DTIMPUTE', 'DTIMPUTE_LU', 'ABBREVIATION'	);
+-- INSERT INTO @datavaluevalidation
+-- VALUES		(
+			-- 'DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
+			-- 'DEATH', 'DTIMPUTE', 'DTIMPUTE_LU', 'ABBREVIATION'	);
 			
-INSERT INTO @datavaluevalidation
-VALUES		(
-			'CAUSE_OF_DEATH', 'CAUSETYPE', 'CAUSETYPE_LU', 'ABBREVIATION'	), (
-			'CAUSE_OF_DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
-			'CAUSE_OF_DEATH', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	);
+-- INSERT INTO @datavaluevalidation
+-- VALUES		(
+			-- 'CAUSE_OF_DEATH', 'CAUSETYPE', 'CAUSETYPE_LU', 'ABBREVIATION'	), (
+			-- 'CAUSE_OF_DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
+			-- 'CAUSE_OF_DEATH', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	);
 			
 INSERT INTO @datavaluevalidation
 VALUES		(			
@@ -2064,7 +2064,9 @@ CREATE TABLE #CHORDSReferentialIntegrityResults
 	ReferenceTable varchar(500) DEFAULT NULL,
 	ReferenceColumn varchar(500) DEFAULT NULL,
 	ValuesNotFound int,
-	Message varchar(500) DEFAULT NULL
+	TargetTableDistinctCount int DEFAULT NULL,
+	PercentOfDistinctTargetColumnMissing decimal(5, 2) NULL,
+	ErrorMessage varchar(500) DEFAULT NULL
 );
   
 DECLARE @SQL NVARCHAR(3000);
@@ -2090,28 +2092,47 @@ WHILE @counter < @max
 	   SELECT  @RefTable = RefTable from @dataintegvalidation where PK = @counter;
 
 	   SET @SQL = 
-		  'INSERT INTO #CHORDSReferentialIntegrityResults  
-		   SELECT ''' + @TargetTable + ''', ''' 
-				+ @TargetColumn  + ''', ''' 
-				+ @RefTable  + ''', ''' 
-				+ @RefColumn + ''',
-				Count(c.TargetColumn),
-				null
-		   FROM (
-				SELECT *
-				FROM (
-					SELECT DISTINCT ' + @TargetColumn +' as TargetColumn 
-					FROM
-						' + @TargetTable + '
-					) a
-				LEFT JOIN (
-					SELECT DISTINCT ' + @RefColumn + ' as RefColumn 
-					FROM ' + @RefTable + ' ) b 
-					ON b.RefColumn = a.TargetColumn
-				WHERE b.RefColumn is NULL
-		   ) c
-		   WHERE c.TargetColumn IS NOT NULL
-		   HAVING Count(c.TargetColumn) > 0;'
+		  '
+		  WITH CTE_TABLE_COUNT
+		  AS (SELECT 
+				COUNT(DISTINCT '+ @TargetColumn  + ') AS TableCountDistinct
+          FROM   
+              ' + @TargetTable  + ')
+			  
+		  INSERT INTO #CHORDSReferentialIntegrityResults
+		  SELECT
+			TargetTable,
+			TargetColumn,
+			RefTable,
+			RefColumn,
+			ValuesNotFound, 
+			TableCountDistinct,
+            ROUND(CAST(ValuesNotFound AS FLOAT) / CAST(TableCountDistinct AS FLOAT) * CAST(100.0 AS FLOAT), 2) AS PercentOfDistinctTargetColumnMissing, 
+            NULL AS ErrorMessage
+		  FROM
+		  (
+			SELECT ''' + @TargetTable + ''' as TargetTable, ''' 
+					+ @TargetColumn  + ''' as TargetColumn, ''' 
+					+ @RefTable  + ''' as RefTable, ''' 
+					+ @RefColumn + ''' as RefColumn,
+					Count(c.TargetColumn) as ValuesNotFound,
+					null as Message
+			FROM (
+					SELECT *
+					FROM (
+						SELECT DISTINCT ' + @TargetColumn +' as TargetColumn 
+						FROM
+							' + @TargetTable + '
+						) a
+					LEFT JOIN (
+						SELECT DISTINCT ' + @RefColumn + ' as RefColumn 
+						FROM ' + @RefTable + ' ) b 
+						ON b.RefColumn = a.TargetColumn
+					WHERE b.RefColumn is NULL
+			) c
+			WHERE c.TargetColumn IS NOT NULL
+			HAVING Count(c.TargetColumn) > 0
+		  )d, CTE_TABLE_COUNT;'
 	   BEGIN TRY
 			--print @SQL;
 			EXEC sp_executesql @SQL;
@@ -2121,7 +2142,7 @@ WHILE @counter < @max
 			SELECT @ErrorMessageRef = ERROR_MESSAGE();
 			--print @ERRORMESSAGE
 			INSERT INTO #CHORDSReferentialIntegrityResults  
-				VALUES (@TargetTable,  @TargetColumn, null, null, null, 'Error Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + ', ' + @RefTable + ', ' + @RefColumn + '; ' + @ErrorMessageRef)
+				VALUES (@TargetTable,  @TargetColumn, null, null, null, null, null, 'Error Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + ', ' + @RefTable + ', ' + @RefColumn + '; ' + @ErrorMessageRef)
 	   END CATCH
 	   SET @counter = @counter + 1;
     END;
