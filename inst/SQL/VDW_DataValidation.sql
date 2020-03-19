@@ -1740,7 +1740,7 @@ column matches.
 *****************************************************************************/
 --PRINT 'Creating Referential Integrity Validation Values';
 
-DECLARE @dataintegvalidation TABLE
+CREATE TABLE #dataintegvalidation
 (PK           INT IDENTITY(1, 1),
  TargetTable  VARCHAR(250),
  TargetColumn VARCHAR(250),
@@ -1748,93 +1748,95 @@ DECLARE @dataintegvalidation TABLE
  RefColumn    VARCHAR(250)
 );
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'ENCOUNTERS',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'ENCOUNTERS',	'PROVIDER',	'PROVIDER_SPECIALTY',	'PROVIDER');
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'BENEFIT',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'BENEFIT',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID');			
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'DIAGNOSES',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'DIAGNOSES',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID'), (
 			'DIAGNOSES',	'DIAGPROVIDER',	'PROVIDER_SPECIALTY',	'PROVIDER'), (
 			'DIAGNOSES',	'PROVIDER',	'PROVIDER_SPECIALTY',	'PROVIDER');
 			
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'ENROLLMENT',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'ENROLLMENT',	'PCP',	'PROVIDER_SPECIALTY',	'PROVIDER');
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'LAB_RESULTS',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'LAB_RESULTS',	'ORDER_PROV',	'PROVIDER_SPECIALTY',	'PROVIDER');
 			
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PHARMACY',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'PHARMACY',	'RXMD',	'PROVIDER_SPECIALTY',	'PROVIDER');
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PRESCRIBING',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'PRESCRIBING',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID'), (
 			'PRESCRIBING',	'RXMD',	'PROVIDER_SPECIALTY',	'PROVIDER');
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PROCEDURES',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'PROCEDURES',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID'), (
 			'PROCEDURES',	'PROVIDER',	'PROVIDER_SPECIALTY',	'PROVIDER'), (
 			'PROCEDURES',	'PERFORMINGPROVIDER',	'PROVIDER_SPECIALTY',	'PROVIDER');
 			
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'SOCIAL_HISTORY',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'SOCIAL_HISTORY',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID');
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'VITAL_SIGNS',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'VITAL_SIGNS',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID');
 			
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PRO_QUESTIONS',	'PRO_ID',	'PRO_SURVEYS',	'PRO_ID');			
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PRO_RESPONSES',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID'), (
 			'PRO_RESPONSES',	'ENC_ID',	'ENCOUNTERS',	'ENC_ID');
-
--- INSERT INTO @dataintegvalidation
--- VALUES		(
-			-- 'TUMOR',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
-			
-INSERT INTO @dataintegvalidation
+/*
+INSERT INTO #dataintegvalidation
+VALUES		(
+			'TUMOR',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
+*/			
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'LANGUAGES',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'CENSUS_LOCATION',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
 
-INSERT INTO @dataintegvalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'LINKAGE',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
-						
--- INSERT INTO @dataintegvalidation
--- VALUES		(
-			-- 'DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
 
--- INSERT INTO @dataintegvalidation
--- VALUES		(
-			-- 'CAUSE_OF_DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
+/*						
+INSERT INTO #dataintegvalidation
+VALUES		(
+			'DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
+
+INSERT INTO #dataintegvalidation
+VALUES		(
+			'CAUSE_OF_DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
+*/			
 
 /*****************************************************************************
 END DataValueValidation table creation. 
@@ -1846,7 +1848,7 @@ to the field in the VDW. This ensures acceptable values are used in specific fie
 *****************************************************************************/
 --PRINT 'Creating Data Value Validation Values';
 
-DECLARE @datavaluevalidation TABLE
+CREATE TABLE #datavaluevalidation
 (PK           INT IDENTITY(1, 1),
  TargetTable  VARCHAR(250),
  TargetColumn VARCHAR(250),
@@ -1854,7 +1856,7 @@ DECLARE @datavaluevalidation TABLE
  RefColumn    VARCHAR(250)
 );
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'DEMOGRAPHICS',	'PRIMARY_LANGUAGE',	'LANGUAGES_ISO_LU',	'[ISO_639-2_CODE]'), (
 			'DEMOGRAPHICS',	'GENDER_IDENTITY',	'GENDER_IDENTITY_LU',	'ABBREVIATION'), (
@@ -1868,7 +1870,7 @@ VALUES		(
 			'DEMOGRAPHICS',	'NEEDS_INTERPRETER',	'YNU_LU',	'ABBREVIATION'), (
 			'DEMOGRAPHICS',	'HISPANIC',	'YNU_LU',	'ABBREVIATION');
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'ENCOUNTERS', 'ADMITTING_SOURCE', 'ADMITTING_SOURCE_LU', 'ABBREVIATION'	), (
 			'ENCOUNTERS', 'DEPARTMENT', 'DEPARTMENT_LU', 'ABBREVIATION'	), (
@@ -1877,19 +1879,19 @@ VALUES		(
 			'ENCOUNTERS', 'ENCOUNTER_SUBTYPE', 'ENCOUNTER_SUBTYPE_LU', 'ABBREVIATION'	), (
 			'ENCOUNTERS', 'ENCTYPE', 'ENCTYPE_LU', 'ABBREVIATION');
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'BENEFIT', 'BENEFIT_TYPE', 'BENEFIT_TYPE_LU', 'ABBREVIATION'	), (
 			'BENEFIT', 'BENEFIT_CAT', 'BENEFIT_CAT_LU', 'ABBREVIATION'	);	
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'DIAGNOSES', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	), (
 			'DIAGNOSES', 'PRIMARY_DX', 'PRIMARY_DX_LU', 'ABBREVIATION'	), (
 			'DIAGNOSES', 'PRINCIPAL_DX', 'PRINCIPAL_DX_LU', 'ABBREVIATION'	), (
 			'DIAGNOSES', 'DX_ORIGIN', 'DX_ORIGIN_LU', 'ABBREVIATION'	);
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'ENROLLMENT', 'INS_MEDICAID', 'YNU_LU', 'ABBREVIATION'	), (
 			'ENROLLMENT', 'INS_COMMERCIAL', 'PRIMARY_DX_LU', 'ABBREVIATION'	), (
@@ -1910,7 +1912,7 @@ VALUES		(
 			'ENROLLMENT', 'DRUGCOV', 'YNU_LU', 'ABBREVIATION'	), (
 			'ENROLLMENT', 'OUTSIDE_UTILIZATION', 'YNU_LU', 'ABBREVIATION'	);
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'LAB_RESULTS', 'ABN_IND', 'ABN_IND_LU', 'ABBREVIATION'	), (
 			'LAB_RESULTS', 'CODETYPE', 'CODETYPE_LU', 'ABBREVIATION'	), (
@@ -1920,17 +1922,17 @@ VALUES		(
 			'LAB_RESULTS', 'SPECIMEN_SOURCE', 'SPECIMEN_SOURCE_LU', 'ABBREVIATION'	), (
 			'LAB_RESULTS', 'STAT', 'STAT_LU', 'ABBREVIATION'	);
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PRESCRIBING', 'RX_BASIS', 'RX_BASIS_LU', 'ABBREVIATION'	), (
 			'PRESCRIBING', 'RX_FREQUENCY', 'RX_FREQUENCY_LU', 'ABBREVIATION'	), (
 			'PRESCRIBING', 'RX_QUANTITY_UNIT', 'RX_QUANTITY_UNIT_LU', 'ABBREVIATION'	);			
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'PROCEDURES', 'PX_CODETYPE', 'PX_CODETYPE_LU', 'ABBREVIATION'	);			
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'SOCIAL_HISTORY', 'ONC_SMOKING_STATUS', 'ONC_SMOKING_STATUS_LU', 'ABBREVIATION'	), (
 			'SOCIAL_HISTORY', 'SEXUALLY_ACTV', 'SEXUALLY_ACTV_LU', 'ABBREVIATION'	), (
@@ -1957,50 +1959,54 @@ VALUES		(
 			'SOCIAL_HISTORY', 'BC_INSERTS_YN', 'YNU_LU', 'ABBREVIATION'	), (
 			'SOCIAL_HISTORY', 'ABSTINENCE_YN', 'YNU_LU', 'ABBREVIATION'	);
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'VITAL_SIGNS', 'BP_TYPE', 'BP_TYPE_LU', 'ABBREVIATION'	), (
 			'VITAL_SIGNS', 'POSITION', 'POSITION_LU', 'ABBREVIATION'	);			
+
+/*			
+INSERT INTO #dataintegvalidation
+VALUES		(
+			'TUMOR', 'RACE1', 'RACE_LU', 'ABBREVIATION'	), (
+			'TUMOR', 'RACE2', 'RACE_LU', 'ABBREVIATION'	), (
+			'TUMOR', 'RACE3', 'RACE_LU', 'ABBREVIATION'	), (
+			'TUMOR', 'RACE4', 'RACE_LU', 'ABBREVIATION'	), (
+			'TUMOR', 'RACE5', 'RACE_LU', 'ABBREVIATION'	);
+*/
 			
--- INSERT INTO @datavaluevalidation
--- VALUES		(
-			-- 'TUMOR', 'RACE1', 'RACE_LU', 'ABBREVIATION'	), (
-			-- 'TUMOR', 'RACE2', 'RACE_LU', 'ABBREVIATION'	), (
-			-- 'TUMOR', 'RACE3', 'RACE_LU', 'ABBREVIATION'	), (
-			-- 'TUMOR', 'RACE4', 'RACE_LU', 'ABBREVIATION'	), (
-			-- 'TUMOR', 'RACE5', 'RACE_LU', 'ABBREVIATION'	);
-			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'LANGUAGES', 'LANG_ISO', 'LANGUAGES_ISO_LU', '[ISO_639-2_CODE]'	), (
 			'LANGUAGES', 'LANG_USAGE', 'LANG_USAGE_LU', 'ABBREVIATION'	), (
 			'LANGUAGES', 'LANG_PRIMARY', 'YNU_LU', 'ABBREVIATION'	);
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(
 			'CENSUS_LOCATION', 'ADDRESS_TYPE_CODE', 'ADDRESS_TYPE_CODE_LU', 'ABBREVIATION'	);	
 
--- INSERT INTO @datavaluevalidation
--- VALUES		(
-			-- 'DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
-			-- 'DEATH', 'DTIMPUTE', 'DTIMPUTE_LU', 'ABBREVIATION'	);
+/*
+INSERT INTO #dataintegvalidation
+VALUES		(
+			'DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
+			'DEATH', 'DTIMPUTE', 'DTIMPUTE_LU', 'ABBREVIATION'	);
 			
--- INSERT INTO @datavaluevalidation
--- VALUES		(
-			-- 'CAUSE_OF_DEATH', 'CAUSETYPE', 'CAUSETYPE_LU', 'ABBREVIATION'	), (
-			-- 'CAUSE_OF_DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
-			-- 'CAUSE_OF_DEATH', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	);
+INSERT INTO #dataintegvalidation
+VALUES		(
+			'CAUSE_OF_DEATH', 'CAUSETYPE', 'CAUSETYPE_LU', 'ABBREVIATION'	), (
+			'CAUSE_OF_DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
+			'CAUSE_OF_DEATH', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	);
+*/
 			
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(			
 			'PRO_SURVEYS', 'PRO_SURVEY', 'PRO_SURVEY_LU', 'ABBREVIATION'	), (
 			'PRO_SURVEYS', 'PRO_SURVEY_TYPE', 'PRO_SURVEY_TYPE_LU', 'ABBREVIATION'	);
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(			
 			'PRO_QUESTIONS', 'QUESTION_DOMAIN', 'QUESTION_DOMAIN_LU', 'ABBREVIATION'	);
 
-INSERT INTO @datavaluevalidation
+INSERT INTO #dataintegvalidation
 VALUES		(			
 			'PRO_RESPONSES', 'SURVEY_MEDIUM', 'MEDIUM_LU', 'ABBREVIATION'), (
 			'PRO_RESPONSES', 'RESPONSE_SOURCE', 'RESPONSE_SOURCE_LU', 'ABBREVIATION'	), (
@@ -2021,19 +2027,19 @@ BEGIN
     UPDATE a
       SET
           a.TargetTable = b.NEW_NAME
-      FROM   @dataintegvalidation a
+      FROM   #dataintegvalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.TargetTable;
     UPDATE a
       SET
           a.RefTable = b.NEW_NAME
-      FROM   @dataintegvalidation a
+      FROM   #dataintegvalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.RefTable;
 	UPDATE a
       SET
           a.TargetTable = b.NEW_NAME
-      FROM   @datavaluevalidation a
+      FROM   #dataintegvalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.TargetTable;
 END;
@@ -2082,14 +2088,14 @@ DECLARE @counter INT = 1;
 SELECT
        @max = COUNT(*)
 FROM
-     @dataintegvalidation;
+     #dataintegvalidation;
 
 WHILE @counter < @max
     BEGIN
-	   SELECT @TargetTable = TargetTable from @dataintegvalidation where PK = @counter;
-	   SELECT  @TargetColumn = TargetColumn from @dataintegvalidation where PK = @counter;
-	   SELECT  @RefColumn = RefColumn from @dataintegvalidation where PK = @counter;
-	   SELECT  @RefTable = RefTable from @dataintegvalidation where PK = @counter;
+	   SELECT @TargetTable = TargetTable from #dataintegvalidation where PK = @counter;
+	   SELECT  @TargetColumn = TargetColumn from #dataintegvalidation where PK = @counter;
+	   SELECT  @RefColumn = RefColumn from #dataintegvalidation where PK = @counter;
+	   SELECT  @RefTable = RefTable from #dataintegvalidation where PK = @counter;
 
 	   SET @SQL = 
 		  '
@@ -2153,14 +2159,14 @@ SET @counter = 1;
 SELECT
        @max = COUNT(*)
 FROM
-     @datavaluevalidation;
+     #dataintegvalidation;
 
 WHILE @counter < @max
     BEGIN
-	   SELECT @TargetTable = TargetTable from @datavaluevalidation where PK = @counter;
-	   SELECT  @TargetColumn = TargetColumn from @datavaluevalidation where PK = @counter;
-	   SELECT  @RefColumn = RefColumn from @datavaluevalidation where PK = @counter;
-	   SELECT  @RefTable = RefTable from @datavaluevalidation where PK = @counter;
+	   SELECT @TargetTable = TargetTable from #dataintegvalidation where PK = @counter;
+	   SELECT  @TargetColumn = TargetColumn from #dataintegvalidation where PK = @counter;
+	   SELECT  @RefColumn = RefColumn from #dataintegvalidation where PK = @counter;
+	   SELECT  @RefTable = RefTable from #dataintegvalidation where PK = @counter;
 
 	   SET @SQL = 
 		  'INSERT INTO #CHORDSDataValueResults  

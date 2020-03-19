@@ -24,7 +24,7 @@ To Update the script for partner use:
 into this document and update the table names to temporary table names, 
 e.g.: from Demographics to #Demographics
 
-2) Update the @TableNameList variable for all of the added tables that
+2) Update the #TableNameList variable for all of the added tables that
 will be validated
 
 Examples below
@@ -66,10 +66,11 @@ BEGIN
                  [Scale]        INT ,
                  DT_Preceision  INT
                 );
-    
-    DECLARE @TableNameList TABLE (
+				
+    CREATE TABLE #TableNameList (
                  TableNames VARCHAR(1000)
             );
+	
 END;
 /*****************************************************************************
 END TempTable Clearing and Creation
@@ -81,119 +82,120 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 *****************************************************************************/
 
  BEGIN   
-	 --CREATE TABLE #CENSUS_DEMOG (
-  --            CENSUS_YEAR           INT NOT NULL ,
-  --            GEOCODE               NVARCHAR(15) NOT NULL ,
-  --            [BLOCK]               NVARCHAR(3) NULL ,
-  --            CENSUS_DATA_SRC       NVARCHAR(26) NULL ,
-  --            CHORDS_GEOLEVEL       NVARCHAR(10) NULL ,
-  --            [STATE]               NVARCHAR(2) NULL ,
-  --            COUNTY                NVARCHAR(3) NULL ,
-  --            TRACT                 NVARCHAR(6) NULL ,
-  --            BLOCKGP               NVARCHAR(1) NULL ,
-  --            HOUSES_N              INT NULL ,
-  --            RA_NHS_WH             DECIMAL(11 , 10) NULL ,
-  --            RA_NHS_BL             DECIMAL(11 , 10) NULL ,
-  --            RA_NHS_AM             DECIMAL(11 , 10) NULL ,
-  --            RA_NHS_AS             DECIMAL(11 , 10) NULL ,
-  --            RA_NHS_HA             DECIMAL(11 , 10) NULL ,
-  --            RA_NHS_OT             DECIMAL(11 , 10) NULL ,
-  --            RA_NHS_ML             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_WH             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_BL             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_AM             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_AS             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_HA             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_OT             DECIMAL(11 , 10) NULL ,
-  --            RA_HIS_ML             DECIMAL(11 , 10) NULL ,
-  --            HOUSES_OCCUPIED       DECIMAL(11 , 10) NULL ,
-  --            HOUSES_OWN            DECIMAL(11 , 10) NULL ,
-  --            HOUSES_RENT           DECIMAL(11 , 10) NULL ,
-  --            HOUSES_UNOCC_FORRENT  DECIMAL(11 , 10) NULL ,
-  --            HOUSES_UNOCC_FORSALE  DECIMAL(11 , 10) NULL ,
-  --            HOUSES_UNOCC_RENTSOLD DECIMAL(11 , 10) NULL ,
-  --            HOUSES_UNOCC_SEASONAL DECIMAL(11 , 10) NULL ,
-  --            HOUSES_UNOCC_MIGRANT  DECIMAL(11 , 10) NULL ,
-  --            HOUSES_UNOCC_OTHER    DECIMAL(11 , 10) NULL ,
-  --            EDUCATION1            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION2            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION3            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION4            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION5            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION6            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION7            DECIMAL(11 , 10) NULL ,
-  --            EDUCATION8            DECIMAL(11 , 10) NULL ,
-  --            MEDFAMINCOME          INT NULL ,
-  --            FAMINCOME1            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME2            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME3            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME4            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME5            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME6            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME7            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME8            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME9            DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME10           DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME11           DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME12           DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME13           DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME14           DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME15           DECIMAL(11 , 10) NULL ,
-  --            FAMINCOME16           DECIMAL(11 , 10) NULL ,
-  --            MEDHOUSINCOME         INT NULL ,
-  --            HOUSINCOME1           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME2           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME3           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME4           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME5           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME6           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME7           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME8           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME9           DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME10          DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME11          DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME12          DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME13          DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME14          DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME15          DECIMAL(11 , 10) NULL ,
-  --            HOUSINCOME16          DECIMAL(11 , 10) NULL ,
-  --            POV_LT_50             DECIMAL(11 , 10) NULL ,
-  --            POV_50_74             DECIMAL(11 , 10) NULL ,
-  --            POV_75_99             DECIMAL(11 , 10) NULL ,
-  --            POV_100_124           DECIMAL(11 , 10) NULL ,
-  --            POV_125_149           DECIMAL(11 , 10) NULL ,
-  --            POV_150_174           DECIMAL(11 , 10) NULL ,
-  --            POV_175_184           DECIMAL(11 , 10) NULL ,
-  --            POV_185_199           DECIMAL(11 , 10) NULL ,
-  --            POV_GT_200            DECIMAL(11 , 10) NULL ,
-  --            ENGLISH_SPEAKER       DECIMAL(11 , 10) NULL ,
-  --            SPANISH_SPEAKER       DECIMAL(11 , 10) NULL ,
-  --            BORNINUS              DECIMAL(11 , 10) NULL ,
-  --            MOVEDINLAST12MON      DECIMAL(11 , 10) NULL ,
-  --            MARRIED               DECIMAL(11 , 10) NULL ,
-  --            DIVORCED              DECIMAL(11 , 10) NULL ,
-  --            DISABILITY            DECIMAL(11 , 10) NULL ,
-  --            UNEMPLOYMENT          DECIMAL(11 , 10) NULL ,
-  --            UNEMPLOYMENT_MALE     DECIMAL(11 , 10) NULL ,
-  --            INS_MEDICARE          DECIMAL(11 , 10) NULL ,
-  --            INS_MEDICAID          DECIMAL(11 , 10) NULL ,
-  --            HH_NOCAR              DECIMAL(11 , 10) NULL ,
-  --            HH_PUBLIC_ASSISTANCE  DECIMAL(11 , 10) NULL ,
-  --            HMOWNER_COSTS_MORT    DECIMAL(11 , 10) NULL ,
-  --            HMOWNER_COSTS_NO_MORT DECIMAL(11 , 10) NULL ,
-  --            HOMES_MEDVALUE        INT NULL ,
-  --            PCT_CROWDING          DECIMAL(11 , 10) NULL ,
-  --            FEMALE_HEAD_OF_HH     DECIMAL(11 , 10) NULL ,
-  --            MGR_FEMALE            DECIMAL(11 , 10) NULL ,
-  --            MGR_MALE              DECIMAL(11 , 10) NULL ,
-  --            RESIDENTS_65          DECIMAL(11 , 10) NULL ,
-  --            SAME_RESIDENCE        DECIMAL(11 , 10) NULL ,
-  --            FAMPOVERTY            DECIMAL(11 , 10) NULL ,
-  --            HOUSPOVERTY           DECIMAL(11 , 10) NULL ,
-  --            ZIP                   NVARCHAR(5) NULL
-	 --);
-	 --INSERT INTO @TableNameList VALUES  ('CENSUS_DEMOG');
-		   
+/*	 
+CREATE TABLE #CENSUS_DEMOG (
+             CENSUS_YEAR           INT NOT NULL ,
+             GEOCODE               NVARCHAR(15) NOT NULL ,
+             [BLOCK]               NVARCHAR(3) NULL ,
+             CENSUS_DATA_SRC       NVARCHAR(26) NULL ,
+             CHORDS_GEOLEVEL       NVARCHAR(10) NULL ,
+             [STATE]               NVARCHAR(2) NULL ,
+             COUNTY                NVARCHAR(3) NULL ,
+             TRACT                 NVARCHAR(6) NULL ,
+             BLOCKGP               NVARCHAR(1) NULL ,
+             HOUSES_N              INT NULL ,
+             RA_NHS_WH             DECIMAL(11 , 10) NULL ,
+             RA_NHS_BL             DECIMAL(11 , 10) NULL ,
+             RA_NHS_AM             DECIMAL(11 , 10) NULL ,
+             RA_NHS_AS             DECIMAL(11 , 10) NULL ,
+             RA_NHS_HA             DECIMAL(11 , 10) NULL ,
+             RA_NHS_OT             DECIMAL(11 , 10) NULL ,
+             RA_NHS_ML             DECIMAL(11 , 10) NULL ,
+             RA_HIS_WH             DECIMAL(11 , 10) NULL ,
+             RA_HIS_BL             DECIMAL(11 , 10) NULL ,
+             RA_HIS_AM             DECIMAL(11 , 10) NULL ,
+             RA_HIS_AS             DECIMAL(11 , 10) NULL ,
+             RA_HIS_HA             DECIMAL(11 , 10) NULL ,
+             RA_HIS_OT             DECIMAL(11 , 10) NULL ,
+             RA_HIS_ML             DECIMAL(11 , 10) NULL ,
+             HOUSES_OCCUPIED       DECIMAL(11 , 10) NULL ,
+             HOUSES_OWN            DECIMAL(11 , 10) NULL ,
+             HOUSES_RENT           DECIMAL(11 , 10) NULL ,
+             HOUSES_UNOCC_FORRENT  DECIMAL(11 , 10) NULL ,
+             HOUSES_UNOCC_FORSALE  DECIMAL(11 , 10) NULL ,
+             HOUSES_UNOCC_RENTSOLD DECIMAL(11 , 10) NULL ,
+             HOUSES_UNOCC_SEASONAL DECIMAL(11 , 10) NULL ,
+             HOUSES_UNOCC_MIGRANT  DECIMAL(11 , 10) NULL ,
+             HOUSES_UNOCC_OTHER    DECIMAL(11 , 10) NULL ,
+             EDUCATION1            DECIMAL(11 , 10) NULL ,
+             EDUCATION2            DECIMAL(11 , 10) NULL ,
+             EDUCATION3            DECIMAL(11 , 10) NULL ,
+             EDUCATION4            DECIMAL(11 , 10) NULL ,
+             EDUCATION5            DECIMAL(11 , 10) NULL ,
+             EDUCATION6            DECIMAL(11 , 10) NULL ,
+             EDUCATION7            DECIMAL(11 , 10) NULL ,
+             EDUCATION8            DECIMAL(11 , 10) NULL ,
+             MEDFAMINCOME          INT NULL ,
+             FAMINCOME1            DECIMAL(11 , 10) NULL ,
+             FAMINCOME2            DECIMAL(11 , 10) NULL ,
+             FAMINCOME3            DECIMAL(11 , 10) NULL ,
+             FAMINCOME4            DECIMAL(11 , 10) NULL ,
+             FAMINCOME5            DECIMAL(11 , 10) NULL ,
+             FAMINCOME6            DECIMAL(11 , 10) NULL ,
+             FAMINCOME7            DECIMAL(11 , 10) NULL ,
+             FAMINCOME8            DECIMAL(11 , 10) NULL ,
+             FAMINCOME9            DECIMAL(11 , 10) NULL ,
+             FAMINCOME10           DECIMAL(11 , 10) NULL ,
+             FAMINCOME11           DECIMAL(11 , 10) NULL ,
+             FAMINCOME12           DECIMAL(11 , 10) NULL ,
+             FAMINCOME13           DECIMAL(11 , 10) NULL ,
+             FAMINCOME14           DECIMAL(11 , 10) NULL ,
+             FAMINCOME15           DECIMAL(11 , 10) NULL ,
+             FAMINCOME16           DECIMAL(11 , 10) NULL ,
+             MEDHOUSINCOME         INT NULL ,
+             HOUSINCOME1           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME2           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME3           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME4           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME5           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME6           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME7           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME8           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME9           DECIMAL(11 , 10) NULL ,
+             HOUSINCOME10          DECIMAL(11 , 10) NULL ,
+             HOUSINCOME11          DECIMAL(11 , 10) NULL ,
+             HOUSINCOME12          DECIMAL(11 , 10) NULL ,
+             HOUSINCOME13          DECIMAL(11 , 10) NULL ,
+             HOUSINCOME14          DECIMAL(11 , 10) NULL ,
+             HOUSINCOME15          DECIMAL(11 , 10) NULL ,
+             HOUSINCOME16          DECIMAL(11 , 10) NULL ,
+             POV_LT_50             DECIMAL(11 , 10) NULL ,
+             POV_50_74             DECIMAL(11 , 10) NULL ,
+             POV_75_99             DECIMAL(11 , 10) NULL ,
+             POV_100_124           DECIMAL(11 , 10) NULL ,
+             POV_125_149           DECIMAL(11 , 10) NULL ,
+             POV_150_174           DECIMAL(11 , 10) NULL ,
+             POV_175_184           DECIMAL(11 , 10) NULL ,
+             POV_185_199           DECIMAL(11 , 10) NULL ,
+             POV_GT_200            DECIMAL(11 , 10) NULL ,
+             ENGLISH_SPEAKER       DECIMAL(11 , 10) NULL ,
+             SPANISH_SPEAKER       DECIMAL(11 , 10) NULL ,
+             BORNINUS              DECIMAL(11 , 10) NULL ,
+             MOVEDINLAST12MON      DECIMAL(11 , 10) NULL ,
+             MARRIED               DECIMAL(11 , 10) NULL ,
+             DIVORCED              DECIMAL(11 , 10) NULL ,
+             DISABILITY            DECIMAL(11 , 10) NULL ,
+             UNEMPLOYMENT          DECIMAL(11 , 10) NULL ,
+             UNEMPLOYMENT_MALE     DECIMAL(11 , 10) NULL ,
+             INS_MEDICARE          DECIMAL(11 , 10) NULL ,
+             INS_MEDICAID          DECIMAL(11 , 10) NULL ,
+             HH_NOCAR              DECIMAL(11 , 10) NULL ,
+             HH_PUBLIC_ASSISTANCE  DECIMAL(11 , 10) NULL ,
+             HMOWNER_COSTS_MORT    DECIMAL(11 , 10) NULL ,
+             HMOWNER_COSTS_NO_MORT DECIMAL(11 , 10) NULL ,
+             HOMES_MEDVALUE        INT NULL ,
+             PCT_CROWDING          DECIMAL(11 , 10) NULL ,
+             FEMALE_HEAD_OF_HH     DECIMAL(11 , 10) NULL ,
+             MGR_FEMALE            DECIMAL(11 , 10) NULL ,
+             MGR_MALE              DECIMAL(11 , 10) NULL ,
+             RESIDENTS_65          DECIMAL(11 , 10) NULL ,
+             SAME_RESIDENCE        DECIMAL(11 , 10) NULL ,
+             FAMPOVERTY            DECIMAL(11 , 10) NULL ,
+             HOUSPOVERTY           DECIMAL(11 , 10) NULL ,
+             ZIP                   NVARCHAR(5) NULL
+	 );
+	 INSERT INTO #TableNameList VALUES  ('CENSUS_DEMOG');
+*/
 	CREATE TABLE #EVERNDC
 	(
 					  NDC        nvarchar(11) NOT NULL,
@@ -208,7 +210,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  AHFS6      nvarchar(8),
 					  AHFS7      nvarchar(8)
 	);
-	INSERT INTO @TableNameList VALUES  ('EVERNDC');
+	INSERT INTO #TableNameList VALUES  ('EVERNDC');
 	 
 	CREATE TABLE #PROVIDER_SPECIALTY
 	(
@@ -224,29 +226,30 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  PROVIDER_HISPANIC      nchar DEFAULT 'U',
 					  YEAR_GRADUATED         numeric(4)
 	);
-	INSERT INTO @TableNameList VALUES  ('PROVIDER_SPECIALTY');
-	 
-	-- CREATE TABLE #DEATH
-	-- (
-					  -- PERSON_ID     nvarchar(36) NOT NULL,
-					  -- DEATHDT       date,
-					  -- DTIMPUTE      nchar,
-					  -- [SOURCE]      nchar NOT NULL,
-					  -- CONFIDENCE    nchar NULL
-	-- );
-	-- INSERT INTO @TableNameList VALUES  ('DEATH');
-	 
-	-- CREATE TABLE #CAUSE_OF_DEATH
-	-- (
-					  -- PERSON_ID      nvarchar(36) NOT NULL,
-					  -- COD            nvarchar(6) NOT NULL,
-					  -- DX_CODETYPE    nvarchar(2),
-					  -- CAUSETYPE      nchar,
-					  -- [SOURCE]       nchar NOT NULL,
-					  -- CONFIDENCE     nchar NULL
-	-- );
-	-- INSERT INTO @TableNameList VALUES  ('CAUSE_OF_DEATH');
- 
+	INSERT INTO #TableNameList VALUES  ('PROVIDER_SPECIALTY');
+	
+/*	
+	CREATE TABLE #DEATH
+	(
+			PERSON_ID     nvarchar(36) NOT NULL,
+			DEATHDT       date,
+			DTIMPUTE      nchar,
+			[SOURCE]      nchar NOT NULL,
+			CONFIDENCE    nchar NULL
+	);
+	INSERT INTO #TableNameList VALUES  ('DEATH');
+	
+	CREATE TABLE #CAUSE_OF_DEATH
+	(
+			PERSON_ID      nvarchar(36) NOT NULL,
+			COD            nvarchar(6) NOT NULL,
+			DX_CODETYPE    nvarchar(2),
+			CAUSETYPE      nchar,
+			[SOURCE]       nchar NOT NULL,
+			CONFIDENCE     nchar NULL
+	);
+	INSERT INTO #TableNameList VALUES  ('CAUSE_OF_DEATH');
+ */
 	CREATE TABLE #DEMOGRAPHICS
 	(
 					  PERSON_ID             nvarchar(36) NOT NULL,
@@ -264,7 +267,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  SEXUAL_ORIENTATION    nvarchar(2) NOT NULL DEFAULT 'UN',
 					  GENDER_IDENTITY       nvarchar(2) DEFAULT 'UN'
 	);
-	INSERT INTO @TableNameList VALUES  ('DEMOGRAPHICS');
+	INSERT INTO #TableNameList VALUES  ('DEMOGRAPHICS');
 	
 	CREATE TABLE #LINKAGE
 	(
@@ -273,7 +276,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  LINE			smallint NOT NULL,
 					  LINK_SRC_ID   nvarchar(12) NOT NULL
 	);
-	INSERT INTO @TableNameList VALUES  ('LINKAGE');
+	INSERT INTO #TableNameList VALUES  ('LINKAGE');
 	 
 	CREATE TABLE #BENEFIT
 	(
@@ -290,7 +293,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  [START_DATE]		    datetime,
 					  [END_DATE]		    datetime
 	);
-	INSERT INTO @TableNameList VALUES  ('BENEFIT');
+	INSERT INTO #TableNameList VALUES  ('BENEFIT');
 	 
 	CREATE TABLE #ENCOUNTERS
 	(
@@ -310,7 +313,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  ADMITTING_SOURCE         nvarchar(2)	DEFAULT 'UN',
 					  DEPARTMENT               nvarchar(4)	DEFAULT 'UNK'
 	);
-	INSERT INTO @TableNameList VALUES  ('ENCOUNTERS');
+	INSERT INTO #TableNameList VALUES  ('ENCOUNTERS');
 	 
 	CREATE TABLE #DIAGNOSES
 	(
@@ -330,7 +333,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  PRINCIPAL_DX    nchar NOT NULL	DEFAULT 'X',
 					  PRIMARY_DX      nchar NOT NULL	DEFAULT 'X'
 	);
-	INSERT INTO @TableNameList VALUES  ('DIAGNOSES');
+	INSERT INTO #TableNameList VALUES  ('DIAGNOSES');
 	 
 	CREATE TABLE #ENROLLMENT
 	(
@@ -359,7 +362,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  PCC                    nvarchar(4),
 					  PCP                    nvarchar(36)
 	);
-	INSERT INTO @TableNameList VALUES  ('ENROLLMENT');
+	INSERT INTO #TableNameList VALUES  ('ENROLLMENT');
 	
 	CREATE TABLE #LAB_RESULTS
 	(
@@ -396,7 +399,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  SPECIMEN_SOURCE    nvarchar(6),
 					  ROW_ID             nvarchar(8)
 	);
-	INSERT INTO @TableNameList VALUES  ('LAB_RESULTS');
+	INSERT INTO #TableNameList VALUES  ('LAB_RESULTS');
 	
 	CREATE TABLE #PRO_SURVEYS
 	(
@@ -408,7 +411,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 		PRO_SURVEY_TYPE_NOTES nvarchar(255) NULL,
 		PRO_SURVEY_TYPE_LOINC nvarchar(18) NULL
 	);
-	INSERT INTO @TableNameList VALUES  ('PRO_SURVEYS');
+	INSERT INTO #TableNameList VALUES  ('PRO_SURVEYS');
 	
 	CREATE TABLE #PRO_QUESTIONS
 	(
@@ -420,7 +423,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 		QUESTION_LOINC nvarchar(18) NULL,
 		QUESTION_DOMAIN nvarchar(36) NULL
 	);
-	INSERT INTO @TableNameList VALUES  ('PRO_QUESTIONS');
+	INSERT INTO #TableNameList VALUES  ('PRO_QUESTIONS');
 	
 	CREATE TABLE #PRO_RESPONSES
 	(
@@ -438,7 +441,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 		SURVEY_ADMINISTERED_BY nvarchar(2) NULL,
 		SURVEY_MEDIUM nvarchar(2) NULL
 	);
-	INSERT INTO @TableNameList VALUES  ('PRO_RESPONSES');
+	INSERT INTO #TableNameList VALUES  ('PRO_RESPONSES');
 	
 	CREATE TABLE #PHARMACY
 	(
@@ -450,7 +453,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  RXAMT        decimal(16, 4) NOT NULL,
 					  RXMD         nvarchar(36) NOT NULL DEFAULT 'UNKNOWN'
 	);
-	INSERT INTO @TableNameList VALUES  ('PHARMACY');
+	INSERT INTO #TableNameList VALUES  ('PHARMACY');
 	
 	CREATE TABLE #PRESCRIBING
 	(
@@ -475,7 +478,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  RX_DOSE_ORDERED	  numeric(8),
 					  RX_DOSE_ORDERED_UNIT	nvarchar(20)
 	);
-	INSERT INTO @TableNameList VALUES  ('PRESCRIBING');
+	INSERT INTO #TableNameList VALUES  ('PRESCRIBING');
 	
 	CREATE TABLE #PROCEDURES
 	(
@@ -495,7 +498,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  CPTMOD2               nvarchar(2),
 					  CPTMOD3               nvarchar(2)
 	);
-	INSERT INTO @TableNameList VALUES  ('PROCEDURES');
+	INSERT INTO #TableNameList VALUES  ('PROCEDURES');
 	
 	CREATE TABLE #SOCIAL_HISTORY
 	(
@@ -541,7 +544,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  YEARS_EDUCATION         nvarchar(15),
 					  SEXUALLY_ACTV           nchar DEFAULT 'U'
 	);
-	INSERT INTO @TableNameList VALUES  ('SOCIAL_HISTORY');
+	INSERT INTO #TableNameList VALUES  ('SOCIAL_HISTORY');
 	
 	CREATE TABLE #VITAL_SIGNS
 	(
@@ -567,133 +570,133 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  TEMP_RAW         nvarchar(6),
 					  PULSE_RAW        nvarchar(6)
 	);
-	INSERT INTO @TableNameList VALUES  ('VITAL_SIGNS');	
-	
-	-- CREATE TABLE #TUMOR
-	-- (
-					  -- TUMOR_ID	    int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
-					  -- PERSON_ID        nvarchar(36) NOT NULL,
-					  -- DXDATE           date NOT NULL,
-					  -- ICDOSITE         nvarchar(4) NOT NULL,
-					  -- STAGEGEN         nchar NOT NULL,
-					  -- SS1977           nchar,
-					  -- SS2000           nchar,
-					  -- STAGEAJ          nvarchar(4) NOT NULL,
-					  -- AJCC_ED          nchar,
-					  -- AJCC_GRP         nvarchar(2),
-					  -- AJCC_FULL_DER    nvarchar(20),
-					  -- MORPH            nvarchar(4) NOT NULL,
-					  -- BEHAV            nchar NOT NULL,
-					  -- GRADE            nchar NOT NULL,
-					  -- DXYEAR           numeric(4) NOT NULL,
-					  -- DXAGE            numeric(3) NOT NULL,
-					  -- BDATE            date NOT NULL,
-					  -- GENDER           nchar NOT NULL,
-					  -- RACE1            nvarchar(2) NOT NULL,
-					  -- RACE2            nvarchar(2) NOT NULL,
-					  -- RACE3            nvarchar(2) NOT NULL,
-					  -- RACE4            nvarchar(2) NOT NULL,
-					  -- RACE5            nvarchar(2) NOT NULL,
-					  -- HISPANIC         nchar NOT NULL,
-					  -- CLASS            nvarchar(2) NOT NULL,
-					  -- VITAL            nchar NOT NULL,
-					  -- DCAUSE           nvarchar(6),
-					  -- DOD              date,
-					  -- DT_FU            date,
-					  -- LATERALITY       nchar NOT NULL,
-					  -- IDPLAN           nvarchar(2) NOT NULL,
-					  -- DCNFRM           nchar NOT NULL,
-					  -- DSTZ             nvarchar(3),
-					  -- DAJC1T_P         nvarchar(5),
-					  -- DAJC1N_P         nvarchar(5),
-					  -- DAJC1M_P         nvarchar(5),
-					  -- DAJC1T_C         nvarchar(5),
-					  -- DAJC1N_C         nvarchar(5),
-					  -- DAJC1M_C         nvarchar(5),
-					  -- DSRG_FAC         nvarchar(2) NOT NULL,
-					  -- DRAD_FAC         nvarchar(2) NOT NULL,
-					  -- DCHM_FAC         nvarchar(2) NOT NULL,
-					  -- DHRM_FAC         nvarchar(2) NOT NULL,
-					  -- DIMM_FAC         nvarchar(2) NOT NULL,
-					  -- DOTH_FAC         nvarchar(2) NOT NULL,
-					  -- DNDI             nvarchar(2) NOT NULL,
-					  -- DNDX             nvarchar(2) NOT NULL,
-					  -- DTMRK1           nchar,
-					  -- DTMRK2           nchar,
-					  -- DTMRK3           nchar,
-					  -- CLN_STG          nvarchar(4) NOT NULL,
-					  -- EOD              nvarchar(12),
-					  -- DT_SURG          date,
-					  -- DT_CHEMO         date,
-					  -- DT_HORM          date,
-					  -- DT_RAD           date,
-					  -- DT_BRM           date,
-					  -- DT_OTH           date,
-					  -- R_N_SURG         nchar NOT NULL,
-					  -- R_N_CHEMO        nvarchar(2) NOT NULL,
-					  -- R_N_HORM         nchar NOT NULL,
-					  -- R_N_RAD          nchar NOT NULL,
-					  -- R_N_BRM          nchar NOT NULL,
-					  -- R_N_OTH          nchar NOT NULL,
-					  -- DSRG_SUM         nvarchar(2) NOT NULL,
-					  -- DRAD_SUM         nvarchar(2) NOT NULL,
-					  -- DCHM_SUM         nvarchar(2) NOT NULL,
-					  -- DHRM_SUM         nvarchar(2) NOT NULL,
-					  -- DIMM_SUM         nvarchar(2) NOT NULL,
-					  -- DOTH_SUM         nvarchar(2) NOT NULL,
-					  -- CS_SZ            nvarchar(3),
-					  -- CS_EXT           nvarchar(3),
-					  -- CS_NODES         nvarchar(3),
-					  -- CS_NODES_EVAL    nchar,
-					  -- CS_METS          nvarchar(2),
-					  -- CS_METS_EVAL     nchar,
-					  -- SSF1             nvarchar(3),
-					  -- SSF2             nvarchar(3),
-					  -- SSF3             nvarchar(3),
-					  -- SSF4             nvarchar(3),
-					  -- SSF5             nvarchar(3),
-					  -- SSF6             nvarchar(3),
-					  -- SSF7             nvarchar(3),
-					  -- SSF8             nvarchar(3),
-					  -- SSF9             nvarchar(3),
-					  -- SSF10            nvarchar(3),
-					  -- SSF11            nvarchar(3),
-					  -- SSF12            nvarchar(3),
-					  -- SSF13            nvarchar(3),
-					  -- SSF14            nvarchar(3),
-					  -- SSF15            nvarchar(3),
-					  -- SSF16            nvarchar(3),
-					  -- SSF17            nvarchar(3),
-					  -- SSF18            nvarchar(3),
-					  -- SSF19            nvarchar(3),
-					  -- SSF20            nvarchar(3),
-					  -- SSF21            nvarchar(3),
-					  -- SSF22            nvarchar(3),
-					  -- SSF23            nvarchar(3),
-					  -- SSF24            nvarchar(3),
-					  -- SSF25            nvarchar(3),
-					  -- PAL_FAC          nchar NOT NULL,
-					  -- PAL_SUM          nchar NOT NULL,
-					  -- DER_T6           nvarchar(3),
-					  -- DER_T6_D         nchar,
-					  -- DER_N6           nvarchar(3),
-					  -- DER_N6_D         nchar,
-					  -- DER_M6           nvarchar(3),
-					  -- DER_M6_D         nchar,
-					  -- DER_T7           nvarchar(3),
-					  -- DER_T7_D         nchar,
-					  -- DER_N7           nvarchar(3),
-					  -- DER_N7_D         nchar,
-					  -- DER_M7           nvarchar(3),
-					  -- DER_M7_D         nchar,
-					  -- DER_SS2000F      nchar,
-					  -- RECUR_DT         datetime,
-					  -- RECUR_TYPE       nvarchar(2) NOT NULL,
-					  -- RECUR_FL         nvarchar(2),
-					  -- [DATA_SOURCE]    nvarchar(4)
-	-- );
-	-- INSERT INTO @TableNameList VALUES  ('TUMOR');	
-	
+	INSERT INTO #TableNameList VALUES  ('VITAL_SIGNS');	
+/*	
+	CREATE TABLE #TUMOR
+	(
+					  TUMOR_ID	    int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
+					  PERSON_ID        nvarchar(36) NOT NULL,
+					  DXDATE           date NOT NULL,
+					  ICDOSITE         nvarchar(4) NOT NULL,
+					  STAGEGEN         nchar NOT NULL,
+					  SS1977           nchar,
+					  SS2000           nchar,
+					  STAGEAJ          nvarchar(4) NOT NULL,
+					  AJCC_ED          nchar,
+					  AJCC_GRP         nvarchar(2),
+					  AJCC_FULL_DER    nvarchar(20),
+					  MORPH            nvarchar(4) NOT NULL,
+					  BEHAV            nchar NOT NULL,
+					  GRADE            nchar NOT NULL,
+					  DXYEAR           numeric(4) NOT NULL,
+					  DXAGE            numeric(3) NOT NULL,
+					  BDATE            date NOT NULL,
+					  GENDER           nchar NOT NULL,
+					  RACE1            nvarchar(2) NOT NULL,
+					  RACE2            nvarchar(2) NOT NULL,
+					  RACE3            nvarchar(2) NOT NULL,
+					  RACE4            nvarchar(2) NOT NULL,
+					  RACE5            nvarchar(2) NOT NULL,
+					  HISPANIC         nchar NOT NULL,
+					  CLASS            nvarchar(2) NOT NULL,
+					  VITAL            nchar NOT NULL,
+					  DCAUSE           nvarchar(6),
+					  DOD              date,
+					  DT_FU            date,
+					  LATERALITY       nchar NOT NULL,
+					  IDPLAN           nvarchar(2) NOT NULL,
+					  DCNFRM           nchar NOT NULL,
+					  DSTZ             nvarchar(3),
+					  DAJC1T_P         nvarchar(5),
+					  DAJC1N_P         nvarchar(5),
+					  DAJC1M_P         nvarchar(5),
+					  DAJC1T_C         nvarchar(5),
+					  DAJC1N_C         nvarchar(5),
+					  DAJC1M_C         nvarchar(5),
+					  DSRG_FAC         nvarchar(2) NOT NULL,
+					  DRAD_FAC         nvarchar(2) NOT NULL,
+					  DCHM_FAC         nvarchar(2) NOT NULL,
+					  DHRM_FAC         nvarchar(2) NOT NULL,
+					  DIMM_FAC         nvarchar(2) NOT NULL,
+					  DOTH_FAC         nvarchar(2) NOT NULL,
+					  DNDI             nvarchar(2) NOT NULL,
+					  DNDX             nvarchar(2) NOT NULL,
+					  DTMRK1           nchar,
+					  DTMRK2           nchar,
+					  DTMRK3           nchar,
+					  CLN_STG          nvarchar(4) NOT NULL,
+					  EOD              nvarchar(12),
+					  DT_SURG          date,
+					  DT_CHEMO         date,
+					  DT_HORM          date,
+					  DT_RAD           date,
+					  DT_BRM           date,
+					  DT_OTH           date,
+					  R_N_SURG         nchar NOT NULL,
+					  R_N_CHEMO        nvarchar(2) NOT NULL,
+					  R_N_HORM         nchar NOT NULL,
+					  R_N_RAD          nchar NOT NULL,
+					  R_N_BRM          nchar NOT NULL,
+					  R_N_OTH          nchar NOT NULL,
+					  DSRG_SUM         nvarchar(2) NOT NULL,
+					  DRAD_SUM         nvarchar(2) NOT NULL,
+					  DCHM_SUM         nvarchar(2) NOT NULL,
+					  DHRM_SUM         nvarchar(2) NOT NULL,
+					  DIMM_SUM         nvarchar(2) NOT NULL,
+					  DOTH_SUM         nvarchar(2) NOT NULL,
+					  CS_SZ            nvarchar(3),
+					  CS_EXT           nvarchar(3),
+					  CS_NODES         nvarchar(3),
+					  CS_NODES_EVAL    nchar,
+					  CS_METS          nvarchar(2),
+					  CS_METS_EVAL     nchar,
+					  SSF1             nvarchar(3),
+					  SSF2             nvarchar(3),
+					  SSF3             nvarchar(3),
+					  SSF4             nvarchar(3),
+					  SSF5             nvarchar(3),
+					  SSF6             nvarchar(3),
+					  SSF7             nvarchar(3),
+					  SSF8             nvarchar(3),
+					  SSF9             nvarchar(3),
+					  SSF10            nvarchar(3),
+					  SSF11            nvarchar(3),
+					  SSF12            nvarchar(3),
+					  SSF13            nvarchar(3),
+					  SSF14            nvarchar(3),
+					  SSF15            nvarchar(3),
+					  SSF16            nvarchar(3),
+					  SSF17            nvarchar(3),
+					  SSF18            nvarchar(3),
+					  SSF19            nvarchar(3),
+					  SSF20            nvarchar(3),
+					  SSF21            nvarchar(3),
+					  SSF22            nvarchar(3),
+					  SSF23            nvarchar(3),
+					  SSF24            nvarchar(3),
+					  SSF25            nvarchar(3),
+					  PAL_FAC          nchar NOT NULL,
+					  PAL_SUM          nchar NOT NULL,
+					  DER_T6           nvarchar(3),
+					  DER_T6_D         nchar,
+					  DER_N6           nvarchar(3),
+					  DER_N6_D         nchar,
+					  DER_M6           nvarchar(3),
+					  DER_M6_D         nchar,
+					  DER_T7           nvarchar(3),
+					  DER_T7_D         nchar,
+					  DER_N7           nvarchar(3),
+					  DER_N7_D         nchar,
+					  DER_M7           nvarchar(3),
+					  DER_M7_D         nchar,
+					  DER_SS2000F      nchar,
+					  RECUR_DT         datetime,
+					  RECUR_TYPE       nvarchar(2) NOT NULL,
+					  RECUR_FL         nvarchar(2),
+					  [DATA_SOURCE]    nvarchar(4)
+	);
+	INSERT INTO #TableNameList VALUES  ('TUMOR');	
+*/	
 	CREATE TABLE #LANGUAGES
 	(
 					  PERSON_ID       nvarchar(36) NOT NULL,
@@ -701,7 +704,7 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  LANG_USAGE      nchar	DEFAULT 'U',
 					  LANG_PRIMARY    nchar DEFAULT 'U'
 	);
-	INSERT INTO @TableNameList VALUES  ('LANGUAGES');	
+	INSERT INTO #TableNameList VALUES  ('LANGUAGES');	
     
 	CREATE TABLE #CENSUS_LOCATION
 	(
@@ -719,14 +722,14 @@ BEGIN Table Create Section: Copy Table statements from the DDL and change table 
 					  GEOCODE_COUNTY		   nvarchar(35) NOT NULL,
 					  ADDRESS_TYPE_CODE		   nchar(2)
 	);
-	INSERT INTO @TableNameList VALUES  ('CENSUS_LOCATION');	
+	INSERT INTO #TableNameList VALUES  ('CENSUS_LOCATION');	
 END
 /*****************************************************************************
 END Table Create Section
 *****************************************************************************/
 
 /*****************************************************************************
-BEGIN Table Name List: Add or update any table names created or added to @TableNameList
+BEGIN Table Name List: Add or update any table names created or added to #TableNameList
 Example below
 *****************************************************************************/
 BEGIN
@@ -738,7 +741,7 @@ BEGIN
     FOR SELECT
                TableNames
         FROM
-             @TableNameList;
+             #TableNameList;
     
     OPEN CUR;
     
