@@ -31,6 +31,7 @@ To update the script for partner use:
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET NOCOUNT ON;
+SET ANSI_WARNINGS OFF;
 
 /*****************************************************************************
 BEGIN TempTable Lookup Value creation
