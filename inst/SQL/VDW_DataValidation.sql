@@ -36,7 +36,6 @@ SET ANSI_WARNINGS OFF;
 /*****************************************************************************
 BEGIN TempTable Lookup Value creation
 *****************************************************************************/
---PRINT 'Creating Faux Validation Tables';
 
 CREATE TABLE #ABN_IND_LU
 (
@@ -1739,7 +1738,6 @@ to another primary table in the VDW. For example that the person_ids in ENCOUNTE
 appear in DEMOGRAPHICS.  This script can only do single column matches, not multi-
 column matches.
 *****************************************************************************/
---PRINT 'Creating Referential Integrity Validation Values';
 
 CREATE TABLE #dataintegvalidation
 (PK           INT IDENTITY(1, 1),
@@ -1847,7 +1845,6 @@ END DataValueValidation table creation.
 BEGIN DataValueValidation table creation.  Stores the mapping from one temp table 
 to the field in the VDW. This ensures acceptable values are used in specific fields.
 *****************************************************************************/
---PRINT 'Creating Data Value Validation Values';
 
 CREATE TABLE #datavaluevalidation
 (PK           INT IDENTITY(1, 1),
@@ -1857,7 +1854,7 @@ CREATE TABLE #datavaluevalidation
  RefColumn    VARCHAR(250)
 );
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'DEMOGRAPHICS',	'PRIMARY_LANGUAGE',	'LANGUAGES_ISO_LU',	'[ISO_639-2_CODE]'), (
 			'DEMOGRAPHICS',	'GENDER_IDENTITY',	'GENDER_IDENTITY_LU',	'ABBREVIATION'), (
@@ -1871,7 +1868,7 @@ VALUES		(
 			'DEMOGRAPHICS',	'NEEDS_INTERPRETER',	'YNU_LU',	'ABBREVIATION'), (
 			'DEMOGRAPHICS',	'HISPANIC',	'YNU_LU',	'ABBREVIATION');
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'ENCOUNTERS', 'ADMITTING_SOURCE', 'ADMITTING_SOURCE_LU', 'ABBREVIATION'	), (
 			'ENCOUNTERS', 'DEPARTMENT', 'DEPARTMENT_LU', 'ABBREVIATION'	), (
@@ -1880,19 +1877,19 @@ VALUES		(
 			'ENCOUNTERS', 'ENCOUNTER_SUBTYPE', 'ENCOUNTER_SUBTYPE_LU', 'ABBREVIATION'	), (
 			'ENCOUNTERS', 'ENCTYPE', 'ENCTYPE_LU', 'ABBREVIATION');
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'BENEFIT', 'BENEFIT_TYPE', 'BENEFIT_TYPE_LU', 'ABBREVIATION'	), (
 			'BENEFIT', 'BENEFIT_CAT', 'BENEFIT_CAT_LU', 'ABBREVIATION'	);	
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'DIAGNOSES', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	), (
 			'DIAGNOSES', 'PRIMARY_DX', 'PRIMARY_DX_LU', 'ABBREVIATION'	), (
 			'DIAGNOSES', 'PRINCIPAL_DX', 'PRINCIPAL_DX_LU', 'ABBREVIATION'	), (
 			'DIAGNOSES', 'DX_ORIGIN', 'DX_ORIGIN_LU', 'ABBREVIATION'	);
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'ENROLLMENT', 'INS_MEDICAID', 'YNU_LU', 'ABBREVIATION'	), (
 			'ENROLLMENT', 'INS_COMMERCIAL', 'PRIMARY_DX_LU', 'ABBREVIATION'	), (
@@ -1913,7 +1910,7 @@ VALUES		(
 			'ENROLLMENT', 'DRUGCOV', 'YNU_LU', 'ABBREVIATION'	), (
 			'ENROLLMENT', 'OUTSIDE_UTILIZATION', 'YNU_LU', 'ABBREVIATION'	);
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'LAB_RESULTS', 'ABN_IND', 'ABN_IND_LU', 'ABBREVIATION'	), (
 			'LAB_RESULTS', 'CODETYPE', 'CODETYPE_LU', 'ABBREVIATION'	), (
@@ -1923,17 +1920,17 @@ VALUES		(
 			'LAB_RESULTS', 'SPECIMEN_SOURCE', 'SPECIMEN_SOURCE_LU', 'ABBREVIATION'	), (
 			'LAB_RESULTS', 'STAT', 'STAT_LU', 'ABBREVIATION'	);
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'PRESCRIBING', 'RX_BASIS', 'RX_BASIS_LU', 'ABBREVIATION'	), (
 			'PRESCRIBING', 'RX_FREQUENCY', 'RX_FREQUENCY_LU', 'ABBREVIATION'	), (
 			'PRESCRIBING', 'RX_QUANTITY_UNIT', 'RX_QUANTITY_UNIT_LU', 'ABBREVIATION'	);			
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'PROCEDURES', 'PX_CODETYPE', 'PX_CODETYPE_LU', 'ABBREVIATION'	);			
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'SOCIAL_HISTORY', 'ONC_SMOKING_STATUS', 'ONC_SMOKING_STATUS_LU', 'ABBREVIATION'	), (
 			'SOCIAL_HISTORY', 'SEXUALLY_ACTV', 'SEXUALLY_ACTV_LU', 'ABBREVIATION'	), (
@@ -1960,28 +1957,18 @@ VALUES		(
 			'SOCIAL_HISTORY', 'BC_INSERTS_YN', 'YNU_LU', 'ABBREVIATION'	), (
 			'SOCIAL_HISTORY', 'ABSTINENCE_YN', 'YNU_LU', 'ABBREVIATION'	);
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'VITAL_SIGNS', 'BP_TYPE', 'BP_TYPE_LU', 'ABBREVIATION'	), (
 			'VITAL_SIGNS', 'POSITION', 'POSITION_LU', 'ABBREVIATION'	);			
-
-/*			
-INSERT INTO #dataintegvalidation
-VALUES		(
-			'TUMOR', 'RACE1', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE2', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE3', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE4', 'RACE_LU', 'ABBREVIATION'	), (
-			'TUMOR', 'RACE5', 'RACE_LU', 'ABBREVIATION'	);
-*/
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'LANGUAGES', 'LANG_ISO', 'LANGUAGES_ISO_LU', '[ISO_639-2_CODE]'	), (
 			'LANGUAGES', 'LANG_USAGE', 'LANG_USAGE_LU', 'ABBREVIATION'	), (
 			'LANGUAGES', 'LANG_PRIMARY', 'YNU_LU', 'ABBREVIATION'	);
 			
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(
 			'CENSUS_LOCATION', 'ADDRESS_TYPE_CODE', 'ADDRESS_TYPE_CODE_LU', 'ABBREVIATION'	);	
 
@@ -2003,11 +1990,11 @@ VALUES		(
 			'PRO_SURVEYS', 'PRO_SURVEY', 'PRO_SURVEY_LU', 'ABBREVIATION'	), (
 			'PRO_SURVEYS', 'PRO_SURVEY_TYPE', 'PRO_SURVEY_TYPE_LU', 'ABBREVIATION'	);
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(			
 			'PRO_QUESTIONS', 'QUESTION_DOMAIN', 'QUESTION_DOMAIN_LU', 'ABBREVIATION'	);
 
-INSERT INTO #dataintegvalidation
+INSERT INTO #datavaluevalidation
 VALUES		(			
 			'PRO_RESPONSES', 'SURVEY_MEDIUM', 'MEDIUM_LU', 'ABBREVIATION'), (
 			'PRO_RESPONSES', 'RESPONSE_SOURCE', 'RESPONSE_SOURCE_LU', 'ABBREVIATION'	), (
@@ -2041,6 +2028,25 @@ BEGIN
       SET
           a.TargetTable = b.NEW_NAME
       FROM   #dataintegvalidation a
+           JOIN CHORDS_TABLENAMES b
+                ON b.ORG_NAME = a.TargetTable;
+
+    UPDATE a
+      SET
+          a.TargetTable = b.NEW_NAME
+      FROM   #datavaluevalidation a
+           JOIN CHORDS_TABLENAMES b
+                ON b.ORG_NAME = a.TargetTable;
+    UPDATE a
+      SET
+          a.RefTable = b.NEW_NAME
+      FROM   #datavaluevalidation a
+           JOIN CHORDS_TABLENAMES b
+                ON b.ORG_NAME = a.RefTable;
+	UPDATE a
+      SET
+          a.TargetTable = b.NEW_NAME
+      FROM   #datavaluevalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.TargetTable;
 END;
@@ -2083,8 +2089,6 @@ DECLARE @RefColumn VARCHAR(500);
 DECLARE @RefTable VARCHAR(500);
 DECLARE @max INT;
 DECLARE @counter INT = 1;
-
---PRINT 'Validating Table Reference Integrity';
 
 SELECT
        @max = COUNT(*)
@@ -2141,33 +2145,30 @@ WHILE @counter < @max
 			HAVING Count(c.TargetColumn) > 0
 		  )d, CTE_TABLE_COUNT;'
 	   BEGIN TRY
-			--print @SQL;
 			EXEC sp_executesql @SQL;
 	   END TRY
 	   BEGIN CATCH
 	   		Declare @ErrorMessageRef as varchar(max);
 			SELECT @ErrorMessageRef = ERROR_MESSAGE();
-			--print @ERRORMESSAGE
 			INSERT INTO #CHORDSReferentialIntegrityResults  
-				VALUES (@TargetTable,  @TargetColumn, null, null, null, null, null, 'Error Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + ', ' + @RefTable + ', ' + @RefColumn + '; ' + @ErrorMessageRef)
+				VALUES (@TargetTable,  @TargetColumn, null, null, null, null, null, 'Error Ref Integrity Values; ' +  @TargetTable + ', ' + @TargetColumn + ', ' + @RefTable + ', ' + @RefColumn + '; ' + @ErrorMessageRef)
 	   END CATCH
 	   SET @counter = @counter + 1;
     END;
 
---PRINT 'Validating Table Values Integrity';
 SET @counter = 1;
 
 SELECT
        @max = COUNT(*)
 FROM
-     #dataintegvalidation;
+     #datavaluevalidation;
 
 WHILE @counter < @max
     BEGIN
-	   SELECT @TargetTable = TargetTable from #dataintegvalidation where PK = @counter;
-	   SELECT  @TargetColumn = TargetColumn from #dataintegvalidation where PK = @counter;
-	   SELECT  @RefColumn = RefColumn from #dataintegvalidation where PK = @counter;
-	   SELECT  @RefTable = RefTable from #dataintegvalidation where PK = @counter;
+	   SELECT @TargetTable = TargetTable from #datavaluevalidation where PK = @counter;
+	   SELECT  @TargetColumn = TargetColumn from #datavaluevalidation where PK = @counter;
+	   SELECT  @RefColumn = RefColumn from #datavaluevalidation where PK = @counter;
+	   SELECT  @RefTable = RefTable from #datavaluevalidation where PK = @counter;
 
 	   SET @SQL = 
 		  'INSERT INTO #CHORDSDataValueResults  
@@ -2190,14 +2191,13 @@ WHILE @counter < @max
 		   ) c
 		   WHERE c.TargetColumn IS NOT NULL;';
 	   BEGIN TRY
-	   	   --print @SQL;
 		   EXEC sp_executesql @SQL;
 	   END TRY
 	   BEGIN CATCH
 			Declare @ErrorMessageData as varchar(max);
 			SELECT @ErrorMessageData = ERROR_MESSAGE();
 			INSERT INTO #CHORDSDataValueResults  
-				VALUES (@TargetTable, @TargetColumn, null, 'Error Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + '; ' + @ErrorMessageData)
+				VALUES (@TargetTable, @TargetColumn, null, 'Error Data Validating Values; ' +  @TargetTable + ', ' + @TargetColumn + '; ' + @ErrorMessageData)
 	   END CATCH
 	   SET @counter = @counter + 1;
     END;

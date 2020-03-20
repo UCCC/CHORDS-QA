@@ -152,18 +152,17 @@ odbcClose(connection103)
 
 ## Data Check 1.03: Required fields are not present
 ```{r 1.03 Output, echo = F, include=T}
-
 missing_columns <- subset(schema_validation, Result == "TABLE/VIEW OR COLUMN MISSING")
 
-missing_columnsTables <- select(missing_columns, c("TableName", "ColumnName", "ExpectedNumberPrecision", "FoundNumberPrecision", "ExpectedNumberScale", "FoundNumberScale", "ExpectedCharLength", "FoundCharLength", "ExpectedDatePrecision", "FoundDatePrecision"))
+missing_columnsTables <- select(missing_columns, c("TableName", "ColumnName"))
 
 if (params$QAAlert == TRUE & nrow(missing_columnsTables) > 0){
-  missing_columnsTables$message <- paste0(missing_columnsTables$TableName, ".", missing_columnsTables$ColumnName, sep="")
-  QA_Alert_Message_103_items <- paste0(missing_columnsTables$message, collapse = ', ')
+  missing_columns$message <- paste0(missing_columns$TableName, ".", missing_columns$ColumnName, sep="")
+  QA_Alert_Message_103_items <- paste0(missing_columns$message, collapse = ', ')
   QA_Alert_Message_103 <- paste0("The following required fields are not present: ", QA_Alert_Message_103_items)
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.03",QA_Alert_Message_103)
 }
-knitr::kable(select(missing_columnsTables, ), row.names = FALSE)
+knitr::kable(missing_columnsTables, row.names = FALSE, col.names = c("Table Name", "Column Name"))
 
 ```
 
@@ -226,7 +225,11 @@ Output:
 /*****************************************************************************
 BEGIN TempTable Clearing and Creation
 *****************************************************************************/
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 SET NOCOUNT ON;
+SET ANSI_WARNINGS OFF;
+
 BEGIN
    
     IF OBJECT_ID('tempdb..#PKVALIDATION') IS NOT NULL
@@ -421,7 +424,6 @@ BEGIN
 			INSERT INTO #PKVIOLATIONS
 			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT
 			FROM CTETOT, CTEKEY;'
-            --PRINT @SQL;
             EXEC Sp_executesql
                  @SQL;
             FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
@@ -441,8 +443,7 @@ FROM
           ON v.Table_Name = m.TABLE_NAME;
 /*****************************************************************************
 END Analysis Section
-*****************************************************************************/
-  ")
+*****************************************************************************/")
 
 ```
 
