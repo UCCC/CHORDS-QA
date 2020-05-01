@@ -17,7 +17,8 @@ Imports:
     RODBC,
     knitr,
     dplyr,
-    R.utils
+    R.utils,
+    shiny
 License: What license is it under?
 URL: http://github.com/UCC/CHORDS-QA
 BugReports: http://github.com/UCC/CHORDS-QA/issues
