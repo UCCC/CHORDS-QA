@@ -19,6 +19,7 @@
 #' @import RODBC
 #' @importFrom R.utils withTimeout
 #' @import knitr
+#' @import shiny
 #' @rdname run_report
 #' @export
 
