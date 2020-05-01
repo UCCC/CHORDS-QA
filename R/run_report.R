@@ -13,20 +13,17 @@
 #' \dontrun{
 #' run_report("P1")
 #' }
-#' @import tidyverse
+#' @import dplyr
+#' @import tidyr
 #' @import rmarkdown
 #' @import RODBC
 #' @importFrom R.utils withTimeout
-#' @import odbc
 #' @import knitr
-#' @import DBI
-#' @import shiny
-#' @import httr
 #' @rdname run_report
 #' @export
 
 run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
-
+  
   if(is.null(dbuser)){
     dbuser = ""
   }
@@ -40,62 +37,62 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
     dbencrypt = ""
   }
   if (is.null(outputdir) || outputdir == ''){
-	  outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
+    outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
   }
   if (priority == "P1"){
-	  if (!is.null(batchmode) && batchmode == TRUE){
-		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"),
-		                    params = list(
-		                        DBServerName = dbserver,
-		                      DBName = dbname,
-		                      DBUser = dbuser,
-		                      DBPassword = dbpassword,
-		                      DBPort = dbport,
-		                      DBEncrypt = dbencrypt
-		                      ),
-		                    output_dir = outputdir)
-	  } else{
-		  rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
-	  }
+    if (!is.null(batchmode) && batchmode == TRUE){
+      rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"),
+                        params = list(
+                          DBServerName = dbserver,
+                          DBName = dbname,
+                          DBUser = dbuser,
+                          DBPassword = dbpassword,
+                          DBPort = dbport,
+                          DBEncrypt = dbencrypt
+                        ),
+                        output_dir = outputdir)
+    } else{
+      rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+    }
   }
   else if (priority == "P2"){
-	  if (!is.null(batchmode) && batchmode == TRUE){
-		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"),
-		                    params = list(
-		                      DBServerName = dbserver,
-		                      DBName = dbname,
-		                      DBUser = dbuser,
-		                      DBPassword = dbpassword,
-		                      DBPort = dbport,
-		                      DBEncrypt = dbencrypt
-		                    ),
-		                    output_dir = outputdir)
-	  } else {
-		  rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
-	  }
+    if (!is.null(batchmode) && batchmode == TRUE){
+      rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"),
+                        params = list(
+                          DBServerName = dbserver,
+                          DBName = dbname,
+                          DBUser = dbuser,
+                          DBPassword = dbpassword,
+                          DBPort = dbport,
+                          DBEncrypt = dbencrypt
+                        ),
+                        output_dir = outputdir)
+    } else {
+      rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+    }
   }
   else if (priority == "P3"){
     if (!is.null(batchmode) && batchmode == TRUE){
-		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"),
-		                    params = list(
-		                      DBServerName = dbserver,
-		                      DBName = dbname,
-		                      DBUser = dbuser,
-		                      DBPassword = dbpassword,
-		                      DBPort = dbport,
-		                      DBEncrypt = dbencrypt
-		                    ),
-		                    output_dir = outputdir)
-	  } else {
-		  rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
-	  }
+      rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"),
+                        params = list(
+                          DBServerName = dbserver,
+                          DBName = dbname,
+                          DBUser = dbuser,
+                          DBPassword = dbpassword,
+                          DBPort = dbport,
+                          DBEncrypt = dbencrypt
+                        ),
+                        output_dir = outputdir)
+    } else {
+      rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
+    }
   }
   else if (!(priority %in% c("P1", "P2", "P3"))){
     warning(paste("Priority table ",
                   priority,
                   "is not a vaild argument.  Acceptable arguments are P1, P2, or P3.  Be sure to include parentheses around your argument."))
   }
-
+  
 }
 
 #' Get Connection String Functions
@@ -111,11 +108,11 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 getConnectionString <- function(params){
   if (nchar(params$DBUser) == 0) {
     connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
-
+    
   }else{
     connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
-
+  
   if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
     connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
   }
@@ -221,14 +218,14 @@ runTableReplacements <- function(ConnectionString) {
                                [NEW_NAME]
                                FROM[CHORDS_TABLENAMES];
                                END; ")
-  if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir")){
+  if (!is.null(dfChordsTbls) & !(lenth(dfChordsTbls)==0) & exists("outputdir")){
     tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
     if (file.exists(tableReplaceFile)){
       print("updating for QA using tablereplace.csv")
       dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
     }
   }
-  if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
+  if (!is.null(dfChordsTbls) & !(lenth(dfChordsTbls)==0)) {
     demographics <<- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
     encounters <<- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
     census_location <<- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
@@ -246,7 +243,7 @@ runTableReplacements <- function(ConnectionString) {
     death <<- ifelse("death" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("death"), tolower(dfChordsTbls$ORG_NAME))], "death")
     pharmacy <<- ifelse("pharmacy" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pharmacy"), tolower(dfChordsTbls$ORG_NAME))], "pharmacy")
     prescribing <<- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
-
+    
   } else {
     # Names of database tables
     demographics <<-  "demographics"
@@ -267,7 +264,7 @@ runTableReplacements <- function(ConnectionString) {
     pharmacy <<-  "pharmacy"
     prescribing <<- "prescribing"
   }
-
+  
 }
 
 #' Returns a vector with the column numbers of character variables in the data frame
@@ -328,7 +325,7 @@ ageCatCalc <- function(age){
     levels=0:13,
     labels=c('Missing','Negative','0-1','2-4','5-9','10-14','15-18','19-21','22-44','45-64','65-74','75-89','90+','Other')
   )
-
+  
   return(ageCat)
 }
 
