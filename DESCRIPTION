@@ -10,18 +10,13 @@ Authors@R: c(
 Maintainer: Will Carter <William.A.Carter@cuanschutz.edu>
 Description: This package contains the function, .RMD files, and data files necessary for generating all CHORDS priority tables.
 Depends:
-    R (>= 3.6.0),
-    httr (>= 1.4.0)
+    R (>= 3.6.0)
 Imports: 
-    tidyverse,
+    tidyr,
     rmarkdown,
     RODBC,
-    odbc,
     knitr,
     dplyr,
-    DBI,
-    shiny,
-    qwraps2,
     R.utils
 License: What license is it under?
 URL: http://github.com/UCC/CHORDS-QA
