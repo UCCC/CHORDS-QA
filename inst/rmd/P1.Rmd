@@ -38,9 +38,26 @@ params:
 ---
 
 ```{r setup, include=FALSE}
+
+### for testing:
+
+params <- list()
+## connect to VDW
+ # enter the name of the server where your VDW resides (may need to talk to your DBA)
+params$DBServerName <- "cc-s-d05.ucdenver.pvt"
+ # Enter the name of the VDW
+params$DBName       <- "VDW_3_2_1_DH_0119"
+params$DBUser <- ''
+params$QAAlert <-F
+
+
+
 library(RODBC)
-library(knitr)
-library(tidyverse)
+library(chordsTables)
+library(dplyr)
+library(tidyr)
+#library(knitr)
+#library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE,
@@ -87,7 +104,7 @@ tbresult <-runTableReplacements(connectionString)
 
 ## CHORDS QA Report: VDW P1 Tables
 
-The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner’s VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
+The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
 
 ## Information about the QA Program 
 Data Partner: 
