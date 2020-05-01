@@ -219,14 +219,14 @@ runTableReplacements <- function(ConnectionString) {
                                [NEW_NAME]
                                FROM[CHORDS_TABLENAMES];
                                END; ")
-  if (!is.null(dfChordsTbls) & !(lenth(dfChordsTbls)==0) & exists("outputdir")){
+  if (!is.null(dfChordsTbls) & !(length(dfChordsTbls)==0) & exists("outputdir")){
     tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
     if (file.exists(tableReplaceFile)){
       print("updating for QA using tablereplace.csv")
       dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
     }
   }
-  if (!is.null(dfChordsTbls) & !(lenth(dfChordsTbls)==0)) {
+  if (!is.null(dfChordsTbls) & !(length(dfChordsTbls)==0)) {
     demographics <<- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
     encounters <<- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
     census_location <<- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
