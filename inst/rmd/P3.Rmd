@@ -139,7 +139,7 @@ nonPopMessage <- if(length(nonPopTables)==0) {"All tables populated, among those
 
 ```{r 1.03 Data, echo = F, include=T}
 sqlFiles <- system.file('sql', package='chordsTables')
-schema_validation_query <- paste(scan(paste0(sqlFiles, "/VDW_Schema_Validation.sql"), what = character()), collapse = ' ')#read_file(dir(sqlFiles, "VDW_Schema_Validation.sql", f=TRUE))
+schema_validation_query <- readChar(dir(sqlFiles, "VDW_Schema_Validation.sql", f=TRUE), file.info(dir(sqlFiles, "VDW_Schema_Validation.sql", f=TRUE))$size)#read_file(dir(sqlFiles, "VDW_Schema_Validation.sql", f=TRUE))
 connection103 <- get_connection()
 schema_validation <- sqlQuery(connection103, schema_validation_query, as.is=TRUE)
 odbcClose(connection103)
