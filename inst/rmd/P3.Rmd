@@ -1335,7 +1335,7 @@ benchmark_start <- run_query(paste0("
   );
   SELECT @BenchmarkStartDate;
 "))
-data_result_75_complete <- run_query(str_replace_all(paste0("
+data_result_75_complete <- run_query(gsub( "@BenchmarkStartDate", paste0('\'', benchmark_start[1,1], '\'', sep=''), paste0("
   SET NOCOUNT ON;
   DECLARE @BenchmarkPriorYearAvg INT;
   SET @BenchmarkPriorYearAvg =
@@ -1363,7 +1363,7 @@ data_result_75_complete <- run_query(str_replace_all(paste0("
   ORDER BY 
            FORMAT(ADATE, 'MM-MMM');                          
                             
-"), "@BenchmarkStartDate", paste0('\'', benchmark_start[1,1], '\'', sep='')))
+")))
 data_result_75_complete$PercentofBenchMark <- as.numeric(as.character(data_result_75_complete$PercentofBenchMark)) 
 ```
 
