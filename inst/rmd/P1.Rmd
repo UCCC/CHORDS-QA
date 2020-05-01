@@ -39,18 +39,6 @@ params:
 
 ```{r setup, include=FALSE}
 
-### for testing:
-
-params <- list()
-## connect to VDW
- # enter the name of the server where your VDW resides (may need to talk to your DBA)
-params$DBServerName <- "cc-s-d05.ucdenver.pvt"
- # Enter the name of the VDW
-params$DBName       <- "VDW_3_2_1_DH_0119"
-params$DBUser <- ''
-params$QAAlert <-F
-
-
 
 library(RODBC)
 library(chordsTables)
