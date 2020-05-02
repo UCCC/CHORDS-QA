@@ -429,7 +429,7 @@ if (params$QAAlert == TRUE & nrow(violated_primary_keys) > 0){
 
 ```{r 1.06 Data,echo =F, include=T}
 sqlFiles <- system.file('sql', package='chordsTables')
-data_validation_query <- read_file(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE))
+data_validation_query <- readChar(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE), file.info(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE))$size) #read_file(dir(sqlFiles, "VDW_DataValidation.sql", f=TRUE))
 connection106 <- get_connection()
 results <- sqlQuery(connection106, data_validation_query, as.is=TRUE)
 data_validation <- sqlQuery(connection106, "
