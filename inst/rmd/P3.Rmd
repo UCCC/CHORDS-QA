@@ -39,6 +39,7 @@ params:
 ```{r setup, include=FALSE}
 #library(RODBC)
 #library(knitr)
+#library(chordsTables)
 library(tidyr)
 library(dplyr)
 knitr::opts_chunk$set(echo = FALSE,
@@ -146,7 +147,7 @@ odbcClose(connection103)
 ```
 
 
-## Data Check 1.03: Required fields are not present
+
 ```{r 1.03 Output, echo = F, include=T}
 ## Data Check 1.03: Required fields are not present
 
@@ -523,7 +524,7 @@ repErrors_tx <- tidyr::gather(repErrors, 'field','n_bad',Person_ID, Adate, EncTy
   })
 
 
-QA_Alert_Message_1.10 <- if(nrow(subset(repErrors, n_bad>0))>0) {"There are Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables"} else {
+QA_Alert_Message_1.10 <- if(nrow(subset(repErrors_tx, n_bad>0))>0) {"There are Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables"} else {
   "There were no Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables found."
 }
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.10",QA_Alert_Message_1.10)
@@ -868,10 +869,7 @@ if (params$QAAlert == TRUE){
     QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("1.13",QA_Alert_Message_113)
   }
 }
-knitr::kable(code_conform_table_counts, row.names = FALSE, col.names =c("Table Name", "Code Type", "Count All", "Count Invalid", "% Invalid"))
 ```
-\newline
-
  
 ```{r 2.01, echo = F, include=T}
 # DC 2.01
