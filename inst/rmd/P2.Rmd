@@ -39,8 +39,11 @@ params:
 
 ```{r setup, include=FALSE}
 library(RODBC)
-library(knitr)
-library(tidyverse)
+#library(knitr)
+#library(tidyverse)
+library(dplyr)
+library(tidyr)
+
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE,
