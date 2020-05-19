@@ -92,7 +92,7 @@ Query Run Date:  `r Sys.Date()`
 tableCheckList <- c(lab_results,   encounters, prescribing,procedures  , social_history  , provider_specialty,diagnoses ,vital_signs  , census_location, demographics  , pro_surveys   ,  pro_questions ,pro_responses)
 # table list in DB
 sqlConnection <- get_connection()
-dbTables <- sqlTables(get_connection())  
+dbTables <- sqlTables(get_connection(), catalog = params$DBName)  
 RODBC::odbcClose(sqlConnection)
 tabledChecked <- vector(length=length(tableCheckList))
 for (i in 1:length(tableCheckList)){

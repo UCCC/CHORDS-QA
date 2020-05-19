@@ -44,6 +44,7 @@ library(RODBC)
 library(chordsTables)
 library(dplyr)
 library(tidyr)
+library(ggplot2)
 #library(knitr)
 #library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE,
@@ -463,7 +464,7 @@ knitr::kable(gender_identity[c('gender_identity','count','countPct')],
 
 ## Table 5.2. Gender Identity by Gender Distribution 
 
-```{r gender_by_gender_identity , echo = F, include=T, error=T} 
+```{r gender_by_gender_identity , echo = F, include=T, error=F} 
 tab_gender_identity<- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
 declare @GENDER TABLE (GI varchar(2), GENDER_IDENTITYDESC varchar(50));
@@ -477,7 +478,7 @@ insert into @GENDER values
        ,('TF', 'Transgender Female')
        ,('UN', 'Unknown');
  
-select GENDER_IDENTITYDESC as Gender_Identity,
+select GENDER_IDENTITYDESC as [Gender Identity],
        (select count(*)
         from %DEMOGRAPHICS%
         where GI in (gender_identity) and
@@ -492,10 +493,10 @@ select GENDER_IDENTITYDESC as Gender_Identity,
               'U' in (gender)) as 'Unknown Gender'
 from @GENDER;"))
 
-
 #Row totals
-rownames(tab_gender_identity) <- tab_gender_identity$Gender_Identity
-tab_gender_identity$Gender_Identity <- NULL
+rownames(tab_gender_identity) <- tab_gender_identity$'Gender Identity'
+
+tab_gender_identity$'Gender Identity' <- NULL
 tab_gender_identity<- tab_gender_identity [c("Male","Female","Transgender Male","Transgender Female","Other","Declined to answer","No information","Unknown"),]
 rowsum <-colSums(tab_gender_identity)
 tab_gender_identity <-rbind(tab_gender_identity, rowsum)
@@ -511,15 +512,15 @@ tab_gender_identity$Percent_Female <-round(tab_gender_identity$Female/(tab_gende
 digits=2)                                            
 
 #Renaming for final table
-colnames (tab_gender_identity) [4] <- "Total Frequency"
+colnames(tab_gender_identity) [4] <- "Total Frequency"
 rownames(tab_gender_identity) [9] <- "Total"
 
-tab_gender_identity <- tab_gender_identity %>%
-  rownames_to_column((var="Gender Identity"))
+category <- rownames(tab_gender_identity)
+tab_gender_identity <- cbind("Gender Identity" = category, tab_gender_identity)
 
 ```
 
-```{r tab5.2_disp, echo = F, include=T, error=T}
+```{r tab5.2_disp, echo = F, include=T, error=F}
 
 knitr::kable(tab_gender_identity[c('Gender Identity','Male','Percent_Male', 'Female', 'Percent_Female', 'Unknown Gender', 'Total Frequency')], 
             col.names = c('Gender Identity','Male','Percent Male', 'Female', 'Percent Female', 'Unknown Gender', 'Total Frequency'), 
@@ -722,7 +723,7 @@ WITH CTE_RACE_AS
 			AND 'WH' IN(Race2)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
@@ -745,8 +746,8 @@ WITH CTE_RACE_AS
                ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race2) <- tab_race1race2$RaceGroup
-tab_race1race2$RaceGroup <- NULL
+rownames(tab_race1race2) <- tab_race1race2$'Race Group'
+tab_race1race2$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race2)
 tab_race1race2 <-rbind(tab_race1race2, rowsum)
 
@@ -759,14 +760,13 @@ tab_race1race2 <- cbind(tab_race1race2,colsum)
 colnames (tab_race1race2) [7] <- "Total"
 rownames(tab_race1race2) [7] <- "Total"
 
-
-tab_race1race2 <- tab_race1race2 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race2)
+tab_race1race2 <- cbind("Race Group" = category, tab_race1race2)
 ```
 
 ```{r tab6.6_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race2,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 
 ```
 
@@ -834,7 +834,7 @@ WITH CTE_RACE_AS
 			AND 'WH' IN(Race3)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
@@ -857,8 +857,8 @@ WITH CTE_RACE_AS
                ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race3) <- tab_race1race3$RaceGroup
-tab_race1race3$RaceGroup <- NULL
+rownames(tab_race1race3) <- tab_race1race3$'Race Group'
+tab_race1race3$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race3)
 tab_race1race3 <-rbind(tab_race1race3, rowsum)
 
@@ -871,14 +871,13 @@ tab_race1race3 <- cbind(tab_race1race3,colsum)
 colnames (tab_race1race3) [7] <- "Total"
 rownames(tab_race1race3) [7] <- "Total"
 
-
-tab_race1race3 <- tab_race1race3 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race3)
+tab_race1race3 <- cbind("Race Group" = category, tab_race1race3)
 ```
 
 ```{r tab6.7_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race3,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```
 
 
@@ -946,7 +945,7 @@ WITH CTE_RACE_AS
 			AND 'WH' IN(Race4)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
@@ -969,8 +968,8 @@ WITH CTE_RACE_AS
                ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race4) <- tab_race1race4$RaceGroup
-tab_race1race4$RaceGroup <- NULL
+rownames(tab_race1race4) <- tab_race1race4$'Race Group'
+tab_race1race4$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race4)
 tab_race1race4 <-rbind(tab_race1race4, rowsum)
 
@@ -983,14 +982,13 @@ tab_race1race4 <- cbind(tab_race1race4,colsum)
 colnames (tab_race1race4) [7] <- "Total"
 rownames(tab_race1race4) [7] <- "Total"
 
-
-tab_race1race4 <- tab_race1race4 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race4)
+tab_race1race4 <- cbind("Race Group" = category, tab_race1race4)
 ```
 
 ```{r tab6.8_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race4,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 
 ```
 
@@ -1059,7 +1057,7 @@ WITH CTE_RACE_AS
 			AND 'WH' IN(Race5)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
@@ -1082,8 +1080,8 @@ WITH CTE_RACE_AS
                ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race5) <- tab_race1race5$RaceGroup
-tab_race1race5$RaceGroup <- NULL
+rownames(tab_race1race5) <- tab_race1race5$'Race Group'
+tab_race1race5$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race5)
 tab_race1race5 <-rbind(tab_race1race5, rowsum)
 
@@ -1096,14 +1094,13 @@ tab_race1race5 <- cbind(tab_race1race5,colsum)
 colnames (tab_race1race5) [7] <- "Total"
 rownames(tab_race1race5) [7] <- "Total"
 
-
-tab_race1race5 <- tab_race1race5 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race5)
+tab_race1race5 <- cbind("Race Group" = category, tab_race1race5)
 ```
 
 ```{r tab6.9_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race5,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```
 
 ## Table 7. Hispanic Ethnicity Distribution
@@ -1167,7 +1164,7 @@ WITH CTE_HISP_Y
 			AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1182,8 +1179,8 @@ WITH CTE_HISP_Y
 			   ORDER BY a.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1hispanic) <- tab_race1hispanic$RaceGroup
-tab_race1hispanic$RaceGroup <- NULL
+rownames(tab_race1hispanic) <- tab_race1hispanic$'Race Group'
+tab_race1hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race1hispanic)
 tab_race1hispanic <-rbind(tab_race1hispanic, rowsum)
 
@@ -1196,13 +1193,13 @@ tab_race1hispanic <- cbind(tab_race1hispanic,colsum)
 colnames (tab_race1hispanic) [4] <- "Total"
 rownames(tab_race1hispanic) [7] <- "Total"
 
-tab_race1hispanic <- tab_race1hispanic %>%
-  rownames_to_column((var="Race1 Group"))
+category <- rownames(tab_race1hispanic)
+tab_race1hispanic <- cbind("Race Group" = category, tab_race1hispanic)
 ```
 
 ```{r tab7.1_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```             
 
 ## Table 7.2. Race2 by Hispanic Ethnicity where Race1 is Unknown
@@ -1250,7 +1247,7 @@ WITH CTE_HISP_Y
 			    AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1267,8 +1264,8 @@ WITH CTE_HISP_Y
      
 
 #Row totals
-rownames(tab_race2hispanic) <- tab_race2hispanic$RaceGroup
-tab_race2hispanic$RaceGroup <- NULL
+rownames(tab_race2hispanic) <- tab_race2hispanic$'Race Group'
+tab_race2hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race2hispanic)
 tab_race2hispanic <-rbind(tab_race2hispanic, rowsum)
 
@@ -1281,13 +1278,13 @@ tab_race2hispanic <- cbind(tab_race2hispanic,colsum)
 colnames (tab_race2hispanic) [4] <- "Total"
 rownames(tab_race2hispanic) [7] <- "Total"
 
-tab_race2hispanic <- tab_race2hispanic %>%
-  rownames_to_column((var="Race2 Group"))
+category <- rownames(tab_race2hispanic)
+tab_race2hispanic <- cbind("Race Group" = category, tab_race2hispanic)
 ```
 
 ```{r tab7.2_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race2hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```        
 
 ## Table 7.3. Race3 by Hispanic Ethnicity where Race1 is Unknown
@@ -1335,7 +1332,7 @@ WITH CTE_HISP_Y
 			    AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1352,8 +1349,8 @@ WITH CTE_HISP_Y
      
 
 #Row totals
-rownames(tab_race3hispanic) <- tab_race3hispanic$RaceGroup
-tab_race3hispanic$RaceGroup <- NULL
+rownames(tab_race3hispanic) <- tab_race3hispanic$'Race Group'
+tab_race3hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race3hispanic)
 tab_race3hispanic <-rbind(tab_race3hispanic, rowsum)
 
@@ -1366,13 +1363,13 @@ tab_race3hispanic <- cbind(tab_race3hispanic,colsum)
 colnames (tab_race3hispanic) [4] <- "Total"
 rownames(tab_race3hispanic) [7] <- "Total"
 
-tab_race3hispanic <- tab_race3hispanic %>%
-  rownames_to_column((var="Race3 Group"))
+category <- rownames(tab_race3hispanic)
+tab_race3hispanic <- cbind("Race Group" = category, tab_race3hispanic)
 ```
 
 ```{r tab7.3_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race3hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```        
 
 
@@ -1421,7 +1418,7 @@ WITH CTE_HISP_Y
 			    AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1438,8 +1435,8 @@ WITH CTE_HISP_Y
      
 
 #Row totals
-rownames(tab_race4hispanic) <- tab_race4hispanic$RaceGroup
-tab_race4hispanic$RaceGroup <- NULL
+rownames(tab_race4hispanic) <- tab_race4hispanic$'Race Group'
+tab_race4hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race4hispanic)
 tab_race4hispanic <-rbind(tab_race4hispanic, rowsum)
 
@@ -1452,13 +1449,13 @@ tab_race4hispanic <- cbind(tab_race4hispanic,colsum)
 colnames (tab_race4hispanic) [4] <- "Total"
 rownames(tab_race4hispanic) [7] <- "Total"
 
-tab_race4hispanic <- tab_race4hispanic %>%
-  rownames_to_column((var="Race4 Group"))
+category <- rownames(tab_race4hispanic)
+tab_race4hispanic <- cbind("Race Group" = category, tab_race4hispanic)
 ```
 
 ```{r tab7.4_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race4hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```        
 
 ## Table 7.5. Race5 by Hispanic Ethnicity where Race1 is Unknown
@@ -1506,7 +1503,7 @@ WITH CTE_HISP_Y
 			    AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1521,8 +1518,8 @@ WITH CTE_HISP_Y
 			   ORDER BY a.RACEDESC;"))              
               
 #Row totals
-rownames(tab_race5hispanic) <- tab_race5hispanic$RaceGroup
-tab_race5hispanic$RaceGroup <- NULL
+rownames(tab_race5hispanic) <- tab_race5hispanic$'Race Group'
+tab_race5hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race5hispanic)
 tab_race5hispanic <-rbind(tab_race5hispanic, rowsum)
 
@@ -1535,13 +1532,13 @@ tab_race5hispanic <- cbind(tab_race5hispanic,colsum)
 colnames (tab_race5hispanic) [4] <- "Total"
 rownames(tab_race5hispanic) [7] <- "Total"
 
-tab_race5hispanic <- tab_race5hispanic %>%
-  rownames_to_column((var="Race5 Group"))
+category <- rownames(tab_race5hispanic)
+tab_race5hispanic <- cbind("Race Group" = category, tab_race5hispanic)
 ```
 
 ```{r tab7.5_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race5hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```
 
 ## Table 7.6. Race1 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1586,7 +1583,7 @@ WITH CTE_HISP_Y
 			AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1601,8 +1598,8 @@ WITH CTE_HISP_Y
 			   ORDER BY a.RACEDESC;"))              
 
 #Row totals
-rownames(tab_race1lang) <- tab_race1lang$RaceGroup
-tab_race1lang$RaceGroup <- NULL
+rownames(tab_race1lang) <- tab_race1lang$'Race Group'
+tab_race1lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race1lang)
 tab_race1lang <-rbind(tab_race1lang, rowsum)
 
@@ -1615,13 +1612,13 @@ tab_race1lang <- cbind(tab_race1lang,colsum)
 colnames (tab_race1lang) [4] <- "Total"
 rownames(tab_race1lang) [7] <- "Total"
 
-tab_race1lang <- tab_race1lang %>%
-  rownames_to_column((var="Race1 Group"))
+category <- rownames(tab_race1lang)
+tab_race1lang <- cbind("Race Group" = category, tab_race1lang)
 ```
 
 ```{r tab7.6_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.7. Race2 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1665,7 +1662,7 @@ WITH CTE_HISP_Y
 			AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1682,8 +1679,8 @@ WITH CTE_HISP_Y
      
 
 #Row totals
-rownames(tab_race2lang) <- tab_race2lang$RaceGroup
-tab_race2lang$RaceGroup <- NULL
+rownames(tab_race2lang) <- tab_race2lang$'Race Group'
+tab_race2lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race2lang)
 tab_race2lang <-rbind(tab_race2lang, rowsum)
 
@@ -1696,13 +1693,13 @@ tab_race2lang <- cbind(tab_race2lang,colsum)
 colnames (tab_race2lang) [4] <- "Total"
 rownames(tab_race2lang) [7] <- "Total"
 
-tab_race2lang <- tab_race2lang %>%
-  rownames_to_column((var="Race2 Group"))
+category <- rownames(tab_race2lang)
+tab_race2lang <- cbind("Race Group" = category, tab_race2lang)
 ```
 
 ```{r tab7.7_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race2lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.8. Race3 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1746,7 +1743,7 @@ WITH CTE_HISP_Y
 			AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1761,8 +1758,8 @@ WITH CTE_HISP_Y
 			   ORDER BY a.RACEDESC;"))              
               
 #Row totals
-rownames(tab_race3lang) <- tab_race3lang$RaceGroup
-tab_race3lang$RaceGroup <- NULL
+rownames(tab_race3lang) <- tab_race3lang$'Race Group'
+tab_race3lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race3lang)
 tab_race3lang <-rbind(tab_race3lang, rowsum)
 
@@ -1775,13 +1772,13 @@ tab_race3lang <- cbind(tab_race3lang,colsum)
 colnames (tab_race3lang) [4] <- "Total"
 rownames(tab_race3lang) [7] <- "Total"
 
-tab_race3lang <- tab_race3lang %>%
-  rownames_to_column((var="Race3 Group"))
+category <- rownames(tab_race3lang)
+tab_race3lang <- cbind("Race Group" = category, tab_race3lang)
 ```
 
 ```{r tab7.8_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race3lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.9. Race4 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1825,7 +1822,7 @@ WITH CTE_HISP_Y
 			AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1840,8 +1837,8 @@ WITH CTE_HISP_Y
 			   ORDER BY a.RACEDESC;"))              
               
 #Row totals
-rownames(tab_race4lang) <- tab_race4lang$RaceGroup
-tab_race4lang$RaceGroup <- NULL
+rownames(tab_race4lang) <- tab_race4lang$'Race Group'
+tab_race4lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race4lang)
 tab_race4lang <-rbind(tab_race4lang, rowsum)
 
@@ -1854,13 +1851,13 @@ tab_race4lang <- cbind(tab_race4lang,colsum)
 colnames (tab_race4lang) [4] <- "Total"
 rownames(tab_race4lang) [7] <- "Total"
 
-tab_race4lang <- tab_race4lang %>%
-  rownames_to_column((var="Race4 Group"))
+category <- rownames(tab_race4lang)
+tab_race4lang <- cbind("Race Group" = category, tab_race4lang)
 ```
 
 ```{r tab7.9_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race4lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.10. Race5 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1904,7 +1901,7 @@ WITH CTE_HISP_Y
 			AND 'U' in (Hispanic)
          GROUP BY RACEDESC)
      SELECT 
-            a.RACEDESC AS RaceGroup, 
+            a.RACEDESC AS [Race Group], 
             IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
             IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
             IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
@@ -1919,8 +1916,8 @@ WITH CTE_HISP_Y
 			   ORDER BY a.RACEDESC;"))              
 
 #Row totals
-rownames(tab_race5lang) <- tab_race5lang$RaceGroup
-tab_race5lang$RaceGroup <- NULL
+rownames(tab_race5lang) <- tab_race5lang$'Race Group'
+tab_race5lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race5lang)
 tab_race5lang <-rbind(tab_race5lang, rowsum)
 
@@ -1933,13 +1930,13 @@ tab_race5lang <- cbind(tab_race5lang,colsum)
 colnames (tab_race5lang) [4] <- "Total"
 rownames(tab_race5lang) [7] <- "Total"
 
-tab_race5lang <- tab_race5lang %>%
-  rownames_to_column((var="Race5 Group"))
+category <- rownames(tab_race5lang)
+tab_race5lang <- cbind("Race Group" = category, tab_race5lang)
 ```
 
 ```{r tab7.10_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race5lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 

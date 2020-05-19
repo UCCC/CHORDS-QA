@@ -8,6 +8,7 @@
 #' @param batchmode A boolean value.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters
 #' @param dbport A string value.  Optional parameter to specify the server port to use.
 #' @param dbencrypt A string value.  Parameter to establish if the encryption configurations should be added to the connection string.
+#' @param ... Extra arguments.
 #' @return Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)
 #' @examples
 #' \dontrun{
@@ -15,30 +16,36 @@
 #' }
 #' @import dplyr
 #' @import tidyr
+#' @import ggplot2
 #' @import rmarkdown
 #' @import RODBC
 #' @importFrom R.utils withTimeout
+#' @importFrom utils read.csv2
 #' @import knitr
 #' @import shiny
 #' @rdname run_report
 #' @export
 
 run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
-  
+
   if(is.null(dbuser)){
-    dbuser = ""
+    dbuser <- ""
   }
   if(is.null(dbpassword)){
-    dbpassword = ""
+    dbpassword <- ""
   }
   if(is.null(dbport)){
-    dbport = ""
+    dbport <- ""
   }
   if(is.null(dbencrypt)){
     dbencrypt = ""
   }
   if (is.null(outputdir) || outputdir == ''){
-    outputdir <- paste0("C:/Users/", Sys.info()["login"], "/Documents")
+    assign("outputdir", value = paste0("C:/Users/", Sys.info()["login"], "/Documents"), envir = .GlobalEnv)
+    outputdir <- get("outputdir", envir = .GlobalEnv)
+  }
+  else{
+    assign("outputdir", value = outputdir, envir = .GlobalEnv)
   }
   if (priority == "P1"){
     if (!is.null(batchmode) && batchmode == TRUE){
@@ -93,7 +100,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                   priority,
                   "is not a vaild argument.  Acceptable arguments are P1, P2, or P3.  Be sure to include parentheses around your argument."))
   }
-  
+
 }
 
 #' Get Connection String Functions
@@ -109,11 +116,11 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 getConnectionString <- function(params){
   if (nchar(params$DBUser) == 0) {
     connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
-    
+
   }else{
     connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
-  
+
   if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
     connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
   }
@@ -164,7 +171,7 @@ run_db_query <- function(Connection_String, query_text) {
 get_new_connection <- function(Connection_String){
   tryCatch(
     {
-      db_conn <- RODBC::odbcDriverConnect(connection = Connection_String)
+      db_conn <- RODBC::odbcDriverConnect(connection = Connection_String, believeNRows = FALSE, rows_at_time = 1)
       return(db_conn)
     },
     error = function(cond){
@@ -204,6 +211,7 @@ close_conection <- function(db_conn){
 #' @export
 
 runTableReplacements <- function(ConnectionString) {
+
   dfChordsTbls <- run_db_query(ConnectionString, "
                                IF EXISTS
                                (
@@ -220,52 +228,52 @@ runTableReplacements <- function(ConnectionString) {
                                FROM[CHORDS_TABLENAMES];
                                END; ")
   if (!is.null(dfChordsTbls) & !(length(dfChordsTbls)==0) & exists("outputdir")){
-    tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
+    tableReplaceFile <-  paste0(get("outputdir", envir = .GlobalEnv), "\\tablereplace.csv")
     if (file.exists(tableReplaceFile)){
       print("updating for QA using tablereplace.csv")
-      dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
+      dfChordsTbls <- read.csv2(tableReplaceFile, header = TRUE, sep = ",", stringsAsFactors=FALSE)
     }
   }
   if (!is.null(dfChordsTbls) & !(length(dfChordsTbls)==0)) {
-    demographics <<- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
-    encounters <<- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
-    census_location <<- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
-    diagnoses <<- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
-    vital_signs <<- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
-    lab_results <<- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
-    procedures <<-  ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
-    benefit <<- ifelse("benefit" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("benefit"), tolower(dfChordsTbls$ORG_NAME))], "benefit")
-    linkage <<- ifelse("linkage" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("linkage"), tolower(dfChordsTbls$ORG_NAME))], "linkage")
-    social_history <<- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
-    provider_specialty <<- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
-    pro_surveys <<- ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys")
-    pro_questions <<- ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions")
-    pro_responses <<- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
-    death <<- ifelse("death" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("death"), tolower(dfChordsTbls$ORG_NAME))], "death")
-    pharmacy <<- ifelse("pharmacy" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pharmacy"), tolower(dfChordsTbls$ORG_NAME))], "pharmacy")
-    prescribing <<- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
-    
+    assign("demographics", value = ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics"), envir = .GlobalEnv)
+    assign("encounters", value = ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters"), envir = .GlobalEnv)
+    assign("census_location", value = ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location"), envir = .GlobalEnv)
+    assign("diagnoses", value = ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses"), envir = .GlobalEnv)
+    assign("vital_signs", value = ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs"), envir = .GlobalEnv)
+    assign("lab_results", value = ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results"), envir = .GlobalEnv)
+    assign("procedures", value = ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures"), envir = .GlobalEnv)
+    assign("benefit", value = ifelse("benefit" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("benefit"), tolower(dfChordsTbls$ORG_NAME))], "benefit"), envir = .GlobalEnv)
+    assign("linkage", value = ifelse("linkage" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("linkage"), tolower(dfChordsTbls$ORG_NAME))], "linkage"), envir = .GlobalEnv)
+    assign("social_history", value = ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history"), envir = .GlobalEnv)
+    assign("provider_specialty", value = ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty"), envir = .GlobalEnv)
+    assign("pro_surveys", value = ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys"), envir = .GlobalEnv)
+    assign("pro_questions", value = ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions"), envir = .GlobalEnv)
+    assign("pro_responses", value = ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses"), envir = .GlobalEnv)
+    assign("death", value = ifelse("death" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("death"), tolower(dfChordsTbls$ORG_NAME))], "death"), envir = .GlobalEnv)
+    assign("pharmacy", value = ifelse("pharmacy" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pharmacy"), tolower(dfChordsTbls$ORG_NAME))], "pharmacy"), envir = .GlobalEnv)
+    assign("prescribing", value = ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing"), envir = .GlobalEnv)
+
   } else {
     # Names of database tables
-    demographics <<-  "demographics"
-    encounters <<-  "encounters"
-    census_location <<-  "census_location"
-    diagnoses <<-  "diagnoses"
-    vital_signs <<-  "vital_signs"
-    lab_results <<-  "lab_results"
-    procedures <<-  "procedures"
-    benefit <<-  "benefit"
-    linkage <<-  "linkage"
-    social_history <<-  "social_history"
-    provider_specialty <<- "provider_specialty"
-    pro_surveys <<-  "pro_surveys"
-    pro_questions <<-  "pro_questions"
-    pro_responses <<-  "pro_responses"
-    death <<-  "death"
-    pharmacy <<-  "pharmacy"
-    prescribing <<- "prescribing"
+    assign("demographics", value = "demographics", envir = .GlobalEnv)
+    assign("encounters", value = "encounters", envir = .GlobalEnv)
+    assign("census_location", value = "census_location", envir = .GlobalEnv)
+    assign("diagnoses", value = "diagnoses", envir = .GlobalEnv)
+    assign("vital_signs", value = "vital_signs", envir = .GlobalEnv)
+    assign("lab_results", value = "lab_results", envir = .GlobalEnv)
+    assign("procedures", value = "procedures", envir = .GlobalEnv)
+    assign("benefit", value = "benefit", envir = .GlobalEnv)
+    assign("linkage", value = "linkage", envir = .GlobalEnv)
+    assign("social_history", value = "social_history", envir = .GlobalEnv)
+    assign("provider_specialty", value = "provider_specialty", envir = .GlobalEnv)
+    assign("pro_surveys", value = "pro_surveys", envir = .GlobalEnv)
+    assign("pro_questions", value = "pro_questions", envir = .GlobalEnv)
+    assign("pro_responses", value = "pro_responses", envir = .GlobalEnv)
+    assign("death", value = "death", envir = .GlobalEnv)
+    assign("pharmacy", value = "pharmacy", envir = .GlobalEnv)
+    assign("prescribing", value = "prescribing", envir = .GlobalEnv)
   }
-  
+
 }
 
 #' Returns a vector with the column numbers of character variables in the data frame
@@ -326,8 +334,6 @@ ageCatCalc <- function(age){
     levels=0:13,
     labels=c('Missing','Negative','0-1','2-4','5-9','10-14','15-18','19-21','22-44','45-64','65-74','75-89','90+','Other')
   )
-  
+
   return(ageCat)
 }
-
-

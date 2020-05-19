@@ -60,6 +60,8 @@ ageCatCalc(age)
 
 \item{dbencrypt}{A string value.  Parameter to establish if the encryption configurations should be added to the connection string.}
 
+\item{...}{Extra arguments.}
+
 \item{params}{R Shiny params object}
 
 \item{Connection_String}{A string vector. A pre-formated connection string to a database}

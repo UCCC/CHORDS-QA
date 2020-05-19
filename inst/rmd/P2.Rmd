@@ -43,6 +43,7 @@ library(RODBC)
 #library(tidyverse)
 library(dplyr)
 library(tidyr)
+library(ggplot2)
 
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
