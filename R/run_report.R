@@ -114,11 +114,11 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 #' @export
 
 getConnectionString <- function(params){
-  if (nchar(params$DBUser) == 0) {
-    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
+  if (length(params$DBUser) == 0) {
+    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(length(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
 
   }else{
-    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(length(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
 
   if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
