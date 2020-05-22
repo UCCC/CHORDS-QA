@@ -3,6 +3,13 @@
 \docType{data}
 \name{ccsMDxI10}
 \alias{ccsMDxI10}
+\alias{ccsMDxI9}
+\alias{ccsSDxI9}
+\alias{isoLang}
+\alias{prov_type}
+\alias{specialties}
+\alias{stateCnty}
+\alias{valSets}
 \title{ccsMDxI10}
 \format{a \code{data.frame} with 9 variables
 \describe{
@@ -17,12 +24,54 @@
   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
 }}
 \source{
-ccsMDxI1019jun17.Rda
+ccsMDxI10.Rda
+
+ccsMDxI9.Rda
+
+ccsSDxI9.Rda
+
+isoLang.Rda
+
+prov_type.rda
+
+specialties.rda
+
+stateCnty.Rda
+
+valSets.Rda
 }
 \usage{
 ccsMDxI10
+
+ccsMDxI9
+
+ccsSDxI9
+
+isoLang
+
+prov_type
+
+specialties
+
+stateCnty
+
+valSets
 }
 \description{
 This table contains the CCS Medical Diagnosis for ICD 10 from 19jun17.
+
+This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
+
+This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
+
+This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
+
+This table contains the categories and complete title for provider types from the \code{PROVIDER_SPECIALTY} table.
+
+This table contains the categories and complete title for provider specialties from the \code{PROVIDER_SPECIALTY} table.
+
+This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
+
+This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
 }
 \keyword{datasets}

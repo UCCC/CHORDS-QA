@@ -39,123 +39,50 @@ params:
 
 ```{r setup, include=FALSE}
 library(RODBC)
-library(knitr)
-library(tidyverse)
+#library(knitr)
+#library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
-                warning = FALSE)
+                warning = FALSE,
+                error = TRUE)
 startTime <- Sys.time()
+
+# supporting look up tables
+specialties <- chordsTables::specialties
+prov_type <- chordsTables::prov_type
+
+# ISO language lookup
+isoLang <- chordsTables::isoLang
+
+# VDW value sets
+valSets <- chordsTables::valSets
+
+maxQryRows = 0
 ```
 
 ```{r connection strings, include=FALSE, error=FALSE}
-if (nchar(params$DBUser) == 0) {
-  	connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
-  
-}else{
-    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
-}
-
-if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
-  connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
-}
-
+connectionString <- getConnectionString(params)
 ```
 
 ```{r run queries, include=FALSE, error=TRUE}
-run_query <- function(query_text, ...) {
-  tryCatch(
-    {
-      db_conn <- get_connection()
-      result <- sqlQuery(db_conn, query = query_text, as.is = TRUE)
-      return(result)
-      },
-    error = function(cond){
-      stop(cond)
-      return(NA)
-    },
-    finally = {
-      close_conection(db_conn)
-    }
-  )
+run_query <- function(query_text, ...){
+  result <- run_db_query(connectionString, query_text)
+  return(result)
 }
 
 get_connection <- function(){
-  tryCatch(
-    {
-      db_conn <- RODBC::odbcDriverConnect(connection = connectionString)
-      return(db_conn)
-    },
-    error = function(cond){
-      stop(cond)
-      return(NA)
-    }
-  )
-}
-
-close_conection <- function(db_conn){
-  try({
-    RODBC::odbcClose(db_conn)
-  })
+  connection <- get_new_connection(connectionString)
+  return(connection)
 }
 
 ```
 
 ```{r table replacements, include=FALSE, error=FALSE}
-#Checks to see if partner is using table replacements.
-#Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
-dfChordsTbls <- run_query("                    
-    IF EXISTS
-    (
-        SELECT
-            *
-        FROM  SYSOBJECTS
-        WHERE XTYPE = 'U' AND
-              NAME = 'CHORDS_TableNames'
-    )
-    BEGIN
-        SELECT
-            [ORG_NAME],
-            [NEW_NAME]
-        FROM[CHORDS_TABLENAMES];
-    END; ")
-if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls) & exists("outputdir")){
-  tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
-  if (file.exists(tableReplaceFile)){
-    print("updating for QA using tablereplace.csv")
-    dfChordsTbls <- read.csv2(tableReplaces, header = TRUE, sep = ",", stringsAsFactors=FALSE)
-  }
-}
-if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
-  lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
-  encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
-  prescribing <- ifelse("prescribing" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("prescribing"), tolower(dfChordsTbls$ORG_NAME))], "prescribing")
-  procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
-  social_history <- ifelse("social_history" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("social_history"), tolower(dfChordsTbls$ORG_NAME))], "social_history")
-  provider_specialty <- ifelse("provider_specialty" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("provider_specialty"), tolower(dfChordsTbls$ORG_NAME))], "provider_specialty")
-  diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
-  vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
-  census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
-  demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
-  pro_surveys <- ifelse("pro_surveys" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_surveys"), tolower(dfChordsTbls$ORG_NAME))], "pro_surveys")
-  pro_questions <- ifelse("pro_questions" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_questions"), tolower(dfChordsTbls$ORG_NAME))], "pro_questions")
-  pro_responses <- ifelse("pro_responses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("pro_responses"), tolower(dfChordsTbls$ORG_NAME))], "pro_responses")
-  
-} else {
-  # Names of database tables
-  lab_results    <- "LAB_RESULTS"
-  encounters      <- "ENCOUNTERS"
-  prescribing <- "PRESCRIBING"
-  procedures     <- "PROCEDURES"
-  social_history  <- "SOCIAL_HISTORY"
-  provider_specialty <- "PROVIDER_SPECIALTY"
-  diagnoses <- "DIAGNOSES"
-  vital_signs <- "VITAL_SIGNS"
-  census_location <- "CENSUS_LOCATION"
-  demographics <- "DEMOGRAPHICS"
-  pro_surveys <- "PRO_SURVEYS"
-  pro_questions <- "PRO_QUESTIONS"
-  pro_responses <- "PRO_RESPONSES"
-}
+tbresult <- runTableReplacements(connectionString)
 ```
 
 ## CHORDS QA Report: VDW P2 Tables
@@ -168,11 +95,6 @@ This data quality report was generated from CHORDS `r params$DBName`.
 Data Partner: 
 Analyst: 
 Query Run Date:  `r Sys.Date()`
-
-```{r supporting_data_and_functions, include = FALSE}
-specialties <- chordsTables::specialties
-prov_type <- chordsTables::prov_type
-```
 
 ## Data Quality Report Results
 ## Table 1. Records, Patients, Encounters, and Date Ranges by Table
@@ -962,7 +884,7 @@ kable(tab20_order, col.names = c("PRO_ID", "QUESTION_ID", "Number of Records", "
 
 
 ####Total program run time:
-```{r calc_runtime}
+```{r calc_runtime, echo=FALSE}
 # close odbc
 RODBC::odbcCloseAll()
 endTime <- Sys.time()

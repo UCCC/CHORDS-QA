@@ -38,181 +38,67 @@ params:
 ---
 
 ```{r setup, include=FALSE}
+
+
 library(RODBC)
-library(knitr)
-library(tidyverse)
+library(chordsTables)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+#library(knitr)
+#library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
-                warning = FALSE)
+                warning = FALSE,
+                error = TRUE)
 startTime <- Sys.time()
+
+# supporting look up tables
+stateCnty <- chordsTables::stateCnty
+
+# ISO language lookup
+isoLang <- chordsTables::isoLang
+
+# VDW value sets
+valSets <- chordsTables::valSets
+
+ccsMDxI9 <- chordsTables::ccsMDxI9
+ccsMDxI10 <- chordsTables::ccsMDxI10
+ccsSDxI9 <- chordsTables::ccsSDxI9
+icdLU <- rbind(ccsMDxI10[c('dxCdTp','dxDesc')],ccsSDxI9[c('dxCdTp','dxDesc')]) 
+
+maxQryRows = 0
+
 ```
 
 ```{r connection strings, include=FALSE, error=FALSE}
-if (nchar(params$DBUser) == 0) {
-  	connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
-  
-}else{
-    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(nchar(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, sep="")
-}
-
-if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
-  connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
-}
-
+connectionString <- getConnectionString(params)
 ```
 
 ```{r run queries, include=FALSE, error=TRUE}
-run_query <- function(query_text, ...) {
-  tryCatch(
-    {
-      db_conn <- get_connection()
-      result <- sqlQuery(db_conn, query = query_text, as.is = TRUE)
-      return(result)
-      },
-    error = function(cond){
-      stop(cond)
-      return(NA)
-    },
-    finally = {
-      close_conection(db_conn)
-    }
-  )
+run_query <- function(query_text, ...){
+  result <- run_db_query(connectionString, query_text )
+  return(result)
 }
 
 get_connection <- function(){
-  tryCatch(
-    {
-      db_conn <- RODBC::odbcDriverConnect(connection = connectionString)
-      return(db_conn)
-    },
-    error = function(cond){
-      stop(cond)
-      return(NA)
-    }
-  )
+  connection <- get_new_connection(connectionString)
+  return(connection)
 }
-
-close_conection <- function(db_conn){
-  try({
-    RODBC::odbcClose(db_conn)
-  })
-}
-
 ```
 
 ```{r table replacements, include=FALSE, error=FALSE}
-#Checks to see if partner is using table replacements.
-#Checks if the CHORDS_TableNames table exists in their VDW.  If not, check if they are using a csv.  If not, applies default table names.
-dfChordsTbls <- run_query("                    
-    IF EXISTS
-    (
-        SELECT
-            *
-        FROM  SYSOBJECTS
-        WHERE XTYPE = 'U' AND
-              NAME = 'CHORDS_TableNames'
-    )
-    BEGIN
-        SELECT
-            [ORG_NAME],
-            [NEW_NAME]
-        FROM[CHORDS_TABLENAMES];
-    END; ")
-if (!is.null(dfChordsTbls) & rlang::is_empty(dfChordsTbls) & exists("outputdir")){
-  tableReplaceFile <-  paste0(outputdir, "\\tablereplace.csv")
-  if (file.exists(tableReplaceFile)){
-    print("updating for QA using tablereplace.csv")
-    dfChordsTbls <- read.csv2(tableReplaceFile, header = TRUE, sep = ",", stringsAsFactors=FALSE)
-  }
-}
-if (!is.null(dfChordsTbls) & !rlang::is_empty(dfChordsTbls)){
-  demographics <- ifelse("demographics" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("demographics"), tolower(dfChordsTbls$ORG_NAME))], "demographics")
-  encounters <- ifelse("encounters" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("encounters"), tolower(dfChordsTbls$ORG_NAME))], "encounters")
-  census_location <- ifelse("census_location" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("census_location"), tolower(dfChordsTbls$ORG_NAME))], "census_location")
-  diagnoses <- ifelse("diagnoses" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("diagnoses"), tolower(dfChordsTbls$ORG_NAME))], "diagnoses")
-  vital_signs <- ifelse("vital_signs" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("vital_signs"), tolower(dfChordsTbls$ORG_NAME))], "vital_signs")
-  lab_results <- ifelse("lab_results" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("lab_results"), tolower(dfChordsTbls$ORG_NAME))], "lab_results")
-  procedures <- ifelse("procedures" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("procedures"), tolower(dfChordsTbls$ORG_NAME))], "procedures")
-  benefit <- ifelse("benefit" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("benefit"), tolower(dfChordsTbls$ORG_NAME))], "benefit")
-  linkage <- ifelse("linkage" %in% tolower(dfChordsTbls$ORG_NAME),  dfChordsTbls$NEW_NAME[match(tolower("linkage"), tolower(dfChordsTbls$ORG_NAME))], "linkage")
-  
-} else {
-  # Names of database tables
-  demographics    <- "demographics"
-  encounters      <- "encounters"
-  census_location <- "census_location"
-  diagnoses       <- "diagnoses"
-  vital_signs     <- "vital_signs"
-  lab_results     <- "lab_results"
-  procedures      <- "procedures"
-  benefit        <- "benefit"
-  linkage        <- "linkage"
-}
-# set to zero for full read of the database
-# set to a positive number to limit the number of rows read from each table
-maxQryRows <- 0
-# load lib for SQL server connectivity
-# install.packages("RODBC")
-# install.packages("knitr")
-# install.packages("tidyverse")
+tbresult <-runTableReplacements(connectionString)
 ```
 
 ## CHORDS QA Report: VDW P1 Tables
 
-The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner’s VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
+The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
 
 ## Information about the QA Program 
 Data Partner: 
 Analyst: 
 Query Run Date:  `r Sys.Date()`
-
-
-```{r supporting data and functions, include = FALSE, error=T}
-## helper functions
- # returns a vector with the column numbers of character variables in the data frame
-charVars <- function(df) grep('^ch',sapply(df,class))
- # trims all character variables in a dataframe, sets blank to NA
-trimChrVars <- function(df){
-for(i in charVars(df)){
-  df[,i] <- gsub('\\s+$','',df[,i])
-  df[,i] <- ifelse(nchar(df[,i])==0,NA,df[,i])
-}
-  df
-}
-# age category calculator
-ageCatCalc <- function(age){
-  ageCat <- factor(
-    ifelse(is.na(age)==TRUE, 0,
-           ifelse(age<0              , 1, 
-                  ifelse(age>=0 & age<2, 2,
-                         ifelse(age>=2 & age<5, 3, 
-                                ifelse(age>=5 & age<10, 4, 
-                                       ifelse (age>=10 & age<15, 5, 
-                                               ifelse(age>=15 & age<19, 6,
-                                                      ifelse(age>=19 & age<22, 7,
-                                                             ifelse(age>=22 & age<45, 8, 
-                                                                    ifelse(age>=45 & age<65, 9, 
-                                                                           ifelse(age>=65 & age<75, 10, 
-                                                                                  ifelse(age>=75 & age<90, 11,
-                                                                                         ifelse(age>=90 , 12, 13)))))) ))))))),
-    levels=0:13,
-    labels=c('Missing','Negative','0-1','2-4','5-9','10-14','15-18','19-21','22-44','45-64','65-74','75-89','90+','Other')
-  )
-  
-  return(ageCat)
-}
-# supporting look up tables
-stateCnty <- chordsTables::stateCnty
-ccsMDxI9 <- chordsTables::ccsMDxI9
-ccsMDxI10 <- chordsTables::ccsMDxI10
-ccsSDxI9 <- chordsTables::ccsSDxI9
-icdLU <- rbind(ccsMDxI10[c('dxCdTp','dxDesc')],ccsSDxI9[c('dxCdTp','dxDesc')]) 
-# ISO language lookup
-isoLang <- chordsTables::isoLang 
- 
-# VDW value sets
-valSets <- chordsTables::valSets
-```
 
 ## Data Quality Report Results
 
@@ -264,7 +150,6 @@ tab1_vs <- run_query(paste0("select count(*) as nrows,
 	max(measure_date) as maxdt
 	from ", vital_signs))
 
-
 tab1_ben <- run_query(paste0("select count(*) as nrows,
   count(distinct person_id) as npats,
   'BENEFIT_DATE' as fieldname,
@@ -274,7 +159,7 @@ tab1_ben <- run_query(paste0("select count(*) as nrows,
 	from ", benefit))
 
 tab1_all <- bind_rows(tab1_dem, tab1_enc, tab1_loc, tab1_dx, tab1_vs, tab1_ben) %>% 
-  bind_cols(Table = c("DEMOGRAPHICS", "ENCOUNTERS", "CENSUS_LOCATION", "DIAGNOSES", "VITAL_SIGNS", "BENEFITS"), .)
+  bind_cols(Table = c("DEMOGRAPHICS", "ENCOUNTERS", "CENSUS_LOCATION", "DIAGNOSES", "VITAL_SIGNS", "BENEFIT"), .)
 
 ```
 
@@ -397,19 +282,54 @@ kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of R
 ```{r Demographic table, echo = F, include=T, error=T}
 nDemogRows <- run_query(paste0("select  count(*) as nDemogRows FROM ",   demographics)) 
 demogSummary <- run_query(
-                  paste('select  count(*) as nDemogRows ',
-                                ', count(distinct person_id) as nPatsDemog ',
-		                            ', sum(nPatsWithEncs) as nPatsWithEncs ',
-		                            ', sum(nPatsWithLoc) as nPatsWithLoc ',
-		                            ', sum(nPatsWithDiag) as nPatsWithDiag ',
-		                            ', sum(nPatsWithVital) as nPatsWithVital' ,
-		                            '  FROM (select distinct',
-		                                          ' person_id',
-		                                         ', case when person_id in (select distinct person_id from ', encounters,' ) then 1 else 0 end as nPatsWithEncs ',
-		                                        ',  case when person_id in (select distinct person_id from ', census_location,' ) then 1 else 0 end as nPatsWithLoc ',
-		                                        ',  case when person_id in (select distinct person_id from ', diagnoses,' ) then 1 else 0 end as nPatsWithDiag ',
-		                                        ',  case when person_id in (select distinct person_id from', vital_signs,' ) then 1 else 0 end as nPatsWithVital ',
-		                                        '  FROM ',  demographics,') as q',
+                  paste0('
+  WITH CTE_nDemogRows
+     AS (SELECT 
+                COUNT(*) AS nDemogRows
+         FROM ',  
+              demographics, '),
+     CTE_nPatsDemog
+     AS (SELECT COUNT(DISTINCT PERSON_ID) AS nPatsDemog
+         FROM ',  
+              demographics, '),
+     CTE_nPatsWithEncs
+     AS (SELECT COUNT(DISTINCT b.PERSON_ID) nPatsWithEncs
+         FROM ',  
+              demographics, ' a
+              JOIN ', encounters, ' b
+                   ON a.PERSON_ID = b.PERSON_ID),
+     CTE_nPatsWithLoc
+     AS (SELECT COUNT(DISTINCT b.PERSON_ID) nPatsWithLoc
+         FROM ',  
+              demographics, ' a
+              JOIN ', census_location, ' b
+                   ON a.PERSON_ID = b.PERSON_ID),
+     nPatsWithDiag
+     AS (SELECT COUNT(DISTINCT b.PERSON_ID) nPatsWithDiag
+         FROM ',  
+              demographics, ' a
+              JOIN ', diagnoses, ' b
+                   ON a.PERSON_ID = b.PERSON_ID),
+     nPatsWithVital
+     AS (SELECT COUNT(DISTINCT b.PERSON_ID) nPatsWithVital
+         FROM ',  
+              demographics, ' a
+              JOIN ', vital_signs, ' b
+                   ON a.PERSON_ID = b.PERSON_ID)
+     SELECT 
+            nDemogRows, 
+            nPatsDemog, 
+            nPatsWithEncs, 
+            nPatsWithLoc, 
+            nPatsWithDiag, 
+            nPatsWithVital
+     FROM   
+          CTE_nDemogRows
+        , CTE_nPatsDemog
+        , CTE_nPatsWithEncs
+        , CTE_nPatsWithLoc
+        , nPatsWithDiag
+        , nPatsWithVital;',
                         sep=" "
                  ),
                  max=maxQryRows
@@ -535,8 +455,8 @@ gender_identity <-   demogCounts %>%
 
 ```{r tab5.1_disp, echo = F, include=T, error=T}
  
-knitr::kable(gender_identity[c( 'Gender Identity','count','countPct')], 
-            col.names = c('gender_identity',"Frequency", "Percent"), 
+knitr::kable(gender_identity[c('gender_identity','count','countPct')], 
+            col.names = c('Gender Identity',"Frequency", "Percent"), 
             row.names=F, 
             format.args = list(big.mark = ","))
 ```
@@ -544,7 +464,7 @@ knitr::kable(gender_identity[c( 'Gender Identity','count','countPct')],
 
 ## Table 5.2. Gender Identity by Gender Distribution 
 
-```{r gender_by_gender_identity , echo = F, include=T, error=T} 
+```{r gender_by_gender_identity , echo = F, include=T, error=F} 
 tab_gender_identity<- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
 declare @GENDER TABLE (GI varchar(2), GENDER_IDENTITYDESC varchar(50));
@@ -558,7 +478,7 @@ insert into @GENDER values
        ,('TF', 'Transgender Female')
        ,('UN', 'Unknown');
  
-select GENDER_IDENTITYDESC as Gender_Identity,
+select GENDER_IDENTITYDESC as [Gender Identity],
        (select count(*)
         from %DEMOGRAPHICS%
         where GI in (gender_identity) and
@@ -573,10 +493,10 @@ select GENDER_IDENTITYDESC as Gender_Identity,
               'U' in (gender)) as 'Unknown Gender'
 from @GENDER;"))
 
-
 #Row totals
-rownames(tab_gender_identity) <- tab_gender_identity$Gender_Identity
-tab_gender_identity$Gender_Identity <- NULL
+rownames(tab_gender_identity) <- tab_gender_identity$'Gender Identity'
+
+tab_gender_identity$'Gender Identity' <- NULL
 tab_gender_identity<- tab_gender_identity [c("Male","Female","Transgender Male","Transgender Female","Other","Declined to answer","No information","Unknown"),]
 rowsum <-colSums(tab_gender_identity)
 tab_gender_identity <-rbind(tab_gender_identity, rowsum)
@@ -592,15 +512,15 @@ tab_gender_identity$Percent_Female <-round(tab_gender_identity$Female/(tab_gende
 digits=2)                                            
 
 #Renaming for final table
-colnames (tab_gender_identity) [4] <- "Total Frequency"
+colnames(tab_gender_identity) [4] <- "Total Frequency"
 rownames(tab_gender_identity) [9] <- "Total"
 
-tab_gender_identity <- tab_gender_identity %>%
-  rownames_to_column((var="Gender Identity"))
+category <- rownames(tab_gender_identity)
+tab_gender_identity <- cbind("Gender Identity" = category, tab_gender_identity)
 
 ```
 
-```{r tab5.2_disp, echo = F, include=T, error=T}
+```{r tab5.2_disp, echo = F, include=T, error=F}
 
 knitr::kable(tab_gender_identity[c('Gender Identity','Male','Percent_Male', 'Female', 'Percent_Female', 'Unknown Gender', 'Total Frequency')], 
             col.names = c('Gender Identity','Male','Percent Male', 'Female', 'Percent Female', 'Unknown Gender', 'Total Frequency'), 
@@ -745,45 +665,89 @@ knitr::kable(race5[    c('race5', 'decode','count','countPct')],
  
 tab_race1race2 <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACES TABLE (RACE varchar(2), RACEDESC varchar(50));
-insert into @RACES values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race1Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'AS' in (Race2)) as 'Asian',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'BA' in (Race2)) as 'Black or African American',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'HP' in (Race2)) as 'Native Hawaiian or Other Pacific Islander',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'IN' in (Race2)) as 'American Indian/Alaska Native',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where (RACE in (Race1) OR Race1 IS NULL) and
-              ('UN' in (Race2) OR Race2 IS NULL)) as 'Unknown or Not Reported',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'WH' in (Race2)) as 'White'
-from @RACES;"))
+
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_RACE_AS
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'AS' IN(Race2)
+         GROUP BY RACEDESC),
+     CTE_RACE_BA
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'BA' IN(Race2)
+         GROUP BY RACEDESC),
+     CTE_RACE_HP
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'HP' IN(Race2)
+         GROUP BY RACEDESC),
+     CTE_RACE_IN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'IN' IN(Race2)
+         GROUP BY RACEDESC),
+     CTE_RACE_UN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE (RACE IN(Race1) OR RACE1 IS NULL)
+			AND ('UN' IN (Race2) OR RACE2 IS NULL)
+         GROUP BY RACEDESC),
+     CTE_RACE_WH
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'WH' IN(Race2)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
+            IIF(e.cnt IS NULL, 0, e.cnt) 'American Indian/Alaska Native', 
+            IIF(f.cnt IS NULL, 0, f.cnt) 'Unknown or Not Reported', 
+            IIF(g.cnt IS NULL, 0, g.cnt) 'White'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_RACE_AS b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_RACE_BA c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_RACE_HP d
+               ON a.RACEDESC = d.RACEDESC
+          LEFT JOIN CTE_RACE_IN e
+               ON a.RACEDESC = e.RACEDESC
+          LEFT JOIN CTE_RACE_UN f
+               ON a.RACEDESC = f.RACEDESC
+          LEFT JOIN CTE_RACE_WH g
+               ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race2) <- tab_race1race2$Race1Group
-tab_race1race2$Race1Group <- NULL
+rownames(tab_race1race2) <- tab_race1race2$'Race Group'
+tab_race1race2$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race2)
 tab_race1race2 <-rbind(tab_race1race2, rowsum)
 
@@ -796,14 +760,13 @@ tab_race1race2 <- cbind(tab_race1race2,colsum)
 colnames (tab_race1race2) [7] <- "Total"
 rownames(tab_race1race2) [7] <- "Total"
 
-
-tab_race1race2 <- tab_race1race2 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race2)
+tab_race1race2 <- cbind("Race Group" = category, tab_race1race2)
 ```
 
 ```{r tab6.6_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race2,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 
 ```
 
@@ -811,46 +774,91 @@ knitr::kable(tab_race1race2,
 ```{r race1xrace3 , echo = F, include=T, error=T}
 
 tab_race1race3 <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
+
 SET NOCOUNT ON;
-declare @RACES TABLE (RACE varchar(2), RACEDESC varchar(50));
-insert into @RACES values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race1Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'AS' in (Race3)) as 'Asian',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'BA' in (Race3)) as 'Black or African American',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'HP' in (Race3)) as 'Native Hawaiian or Other Pacific Islander',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'IN' in (Race3)) as 'American Indian/Alaska Native',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where (RACE in (Race1) OR Race1 IS NULL) and
-              ('UN' in (Race3) OR Race2 IS NULL)) as 'Unknown or Not Reported',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'WH' in (Race3)) as 'White'
-from @RACES;"))
+
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_RACE_AS
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'AS' IN(Race3)
+         GROUP BY RACEDESC),
+     CTE_RACE_BA
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'BA' IN(Race3)
+         GROUP BY RACEDESC),
+     CTE_RACE_HP
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'HP' IN(Race3)
+         GROUP BY RACEDESC),
+     CTE_RACE_IN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'IN' IN(Race3)
+         GROUP BY RACEDESC),
+     CTE_RACE_UN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  (RACE IN(Race1) OR RACE1 IS NULL)
+			AND ('UN' IN(Race3) OR RACE3 IS NULL)
+         GROUP BY RACEDESC),
+     CTE_RACE_WH
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'WH' IN(Race3)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
+            IIF(e.cnt IS NULL, 0, e.cnt) 'American Indian/Alaska Native', 
+            IIF(f.cnt IS NULL, 0, f.cnt) 'Unknown or Not Reported', 
+            IIF(g.cnt IS NULL, 0, g.cnt) 'White'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_RACE_AS b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_RACE_BA c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_RACE_HP d
+               ON a.RACEDESC = d.RACEDESC
+          LEFT JOIN CTE_RACE_IN e
+               ON a.RACEDESC = e.RACEDESC
+          LEFT JOIN CTE_RACE_UN f
+               ON a.RACEDESC = f.RACEDESC
+          LEFT JOIN CTE_RACE_WH g
+               ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race3) <- tab_race1race3$Race1Group
-tab_race1race3$Race1Group <- NULL
+rownames(tab_race1race3) <- tab_race1race3$'Race Group'
+tab_race1race3$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race3)
 tab_race1race3 <-rbind(tab_race1race3, rowsum)
 
@@ -863,14 +871,13 @@ tab_race1race3 <- cbind(tab_race1race3,colsum)
 colnames (tab_race1race3) [7] <- "Total"
 rownames(tab_race1race3) [7] <- "Total"
 
-
-tab_race1race3 <- tab_race1race3 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race3)
+tab_race1race3 <- cbind("Race Group" = category, tab_race1race3)
 ```
 
 ```{r tab6.7_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race3,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```
 
 
@@ -880,45 +887,89 @@ knitr::kable(tab_race1race3,
 
 tab_race1race4 <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACES TABLE (RACE varchar(2), RACEDESC varchar(50));
-insert into @RACES values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race1Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'AS' in (Race4)) as 'Asian',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'BA' in (Race4)) as 'Black or African American',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'HP' in (Race4)) as 'Native Hawaiian or Other Pacific Islander',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'IN' in (Race4)) as 'American Indian/Alaska Native',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where (RACE in (Race1) OR Race1 IS NULL) and
-              ('UN' in (Race4) OR Race2 IS NULL)) as 'Unknown or Not Reported',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'WH' in (Race4)) as 'White'
-from @RACES;"))
+
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_RACE_AS
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'AS' IN(Race4)
+         GROUP BY RACEDESC),
+     CTE_RACE_BA
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'BA' IN(Race4)
+         GROUP BY RACEDESC),
+     CTE_RACE_HP
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'HP' IN(Race4)
+         GROUP BY RACEDESC),
+     CTE_RACE_IN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'IN' IN(Race4)
+         GROUP BY RACEDESC),
+     CTE_RACE_UN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  (RACE IN (Race1) OR Race1 is NULL)
+			AND ('UN' IN(Race4) OR Race4 is NULL)
+         GROUP BY RACEDESC),
+     CTE_RACE_WH
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'WH' IN(Race4)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
+            IIF(e.cnt IS NULL, 0, e.cnt) 'American Indian/Alaska Native', 
+            IIF(f.cnt IS NULL, 0, f.cnt) 'Unknown or Not Reported', 
+            IIF(g.cnt IS NULL, 0, g.cnt) 'White'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_RACE_AS b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_RACE_BA c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_RACE_HP d
+               ON a.RACEDESC = d.RACEDESC
+          LEFT JOIN CTE_RACE_IN e
+               ON a.RACEDESC = e.RACEDESC
+          LEFT JOIN CTE_RACE_UN f
+               ON a.RACEDESC = f.RACEDESC
+          LEFT JOIN CTE_RACE_WH g
+               ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race4) <- tab_race1race4$Race1Group
-tab_race1race4$Race1Group <- NULL
+rownames(tab_race1race4) <- tab_race1race4$'Race Group'
+tab_race1race4$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race4)
 tab_race1race4 <-rbind(tab_race1race4, rowsum)
 
@@ -931,14 +982,13 @@ tab_race1race4 <- cbind(tab_race1race4,colsum)
 colnames (tab_race1race4) [7] <- "Total"
 rownames(tab_race1race4) [7] <- "Total"
 
-
-tab_race1race4 <- tab_race1race4 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race4)
+tab_race1race4 <- cbind("Race Group" = category, tab_race1race4)
 ```
 
 ```{r tab6.8_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race4,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 
 ```
 
@@ -949,45 +999,89 @@ knitr::kable(tab_race1race4,
 
 tab_race1race5 <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACES TABLE (RACE varchar(2), RACEDESC varchar(50));
-insert into @RACES values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race1Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'AS' in (Race5)) as 'Asian',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'BA' in (Race5)) as 'Black or African American',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'HP' in (Race5)) as 'Native Hawaiian or Other Pacific Islander',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'IN' in (Race5)) as 'American Indian/Alaska Native',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where (RACE in (Race1) OR Race1 IS NULL) and
-              ('UN' in (Race5) OR Race2 IS NULL)) as 'Unknown or Not Reported',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'WH' in (Race5)) as 'White'
-from @RACES;"))
+
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_RACE_AS
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'AS' IN(Race5)
+         GROUP BY RACEDESC),
+     CTE_RACE_BA
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'BA' IN(Race5)
+         GROUP BY RACEDESC),
+     CTE_RACE_HP
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'HP' IN(Race5)
+         GROUP BY RACEDESC),
+     CTE_RACE_IN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'IN' IN(Race5)
+         GROUP BY RACEDESC),
+     CTE_RACE_UN
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  (RACE IN (Race1) OR RACE1 IS NULL)
+			AND ('UN' IN(Race5) OR RACE5 IS NULL)
+         GROUP BY RACEDESC),
+     CTE_RACE_WH
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'WH' IN(Race5)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Asian', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Black or African American', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Native Hawaiian or Other Pacific Islander', 
+            IIF(e.cnt IS NULL, 0, e.cnt) 'American Indian/Alaska Native', 
+            IIF(f.cnt IS NULL, 0, f.cnt) 'Unknown or Not Reported', 
+            IIF(g.cnt IS NULL, 0, g.cnt) 'White'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_RACE_AS b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_RACE_BA c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_RACE_HP d
+               ON a.RACEDESC = d.RACEDESC
+          LEFT JOIN CTE_RACE_IN e
+               ON a.RACEDESC = e.RACEDESC
+          LEFT JOIN CTE_RACE_UN f
+               ON a.RACEDESC = f.RACEDESC
+          LEFT JOIN CTE_RACE_WH g
+               ON a.RACEDESC = g.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1race5) <- tab_race1race5$Race1Group
-tab_race1race5$Race1Group <- NULL
+rownames(tab_race1race5) <- tab_race1race5$'Race Group'
+tab_race1race5$'Race Group' <- NULL
 rowsum <-colSums(tab_race1race5)
 tab_race1race5 <-rbind(tab_race1race5, rowsum)
 
@@ -1000,14 +1094,13 @@ tab_race1race5 <- cbind(tab_race1race5,colsum)
 colnames (tab_race1race5) [7] <- "Total"
 rownames(tab_race1race5) [7] <- "Total"
 
-
-tab_race1race5 <- tab_race1race5 %>%
-  rownames_to_column((var="Race Group"))
+category <- rownames(tab_race1race5)
+tab_race1race5 <- cbind("Race Group" = category, tab_race1race5)
 ```
 
 ```{r tab6.9_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1race5,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```
 
 ## Table 7. Hispanic Ethnicity Distribution
@@ -1035,33 +1128,59 @@ knitr::kable(ethn2, digits = 2,
 ```{r race1xethnicity , echo = F, include=T, error=T}
 tab_race1hispanic <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACETHN TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACETHN values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race1Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where RACE in (Race1) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-from @RACETHN;"))
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE  RACE IN(Race1)
+			AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))
 
 #Row totals
-rownames(tab_race1hispanic) <- tab_race1hispanic$Race1Group
-tab_race1hispanic$Race1Group <- NULL
+rownames(tab_race1hispanic) <- tab_race1hispanic$'Race Group'
+tab_race1hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race1hispanic)
 tab_race1hispanic <-rbind(tab_race1hispanic, rowsum)
 
@@ -1074,13 +1193,13 @@ tab_race1hispanic <- cbind(tab_race1hispanic,colsum)
 colnames (tab_race1hispanic) [4] <- "Total"
 rownames(tab_race1hispanic) [7] <- "Total"
 
-tab_race1hispanic <- tab_race1hispanic %>%
-  rownames_to_column((var="Race1 Group"))
+category <- rownames(tab_race1hispanic)
+tab_race1hispanic <- cbind("Race Group" = category, tab_race1hispanic)
 ```
 
 ```{r tab7.1_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```             
 
 ## Table 7.2. Race2 by Hispanic Ethnicity where Race1 is Unknown
@@ -1089,36 +1208,64 @@ knitr::kable(tab_race1hispanic,
 
 tab_race2hispanic <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACETHN TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACETHN values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race2Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race2) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race2) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race2) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACETHN;"))              
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN'
+          AND RACE IN(Race2)
+			    AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race2)
+			    AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race2)
+			    AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
               
      
 
 #Row totals
-rownames(tab_race2hispanic) <- tab_race2hispanic$Race2Group
-tab_race2hispanic$Race2Group <- NULL
+rownames(tab_race2hispanic) <- tab_race2hispanic$'Race Group'
+tab_race2hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race2hispanic)
 tab_race2hispanic <-rbind(tab_race2hispanic, rowsum)
 
@@ -1131,13 +1278,13 @@ tab_race2hispanic <- cbind(tab_race2hispanic,colsum)
 colnames (tab_race2hispanic) [4] <- "Total"
 rownames(tab_race2hispanic) [7] <- "Total"
 
-tab_race2hispanic <- tab_race2hispanic %>%
-  rownames_to_column((var="Race2 Group"))
+category <- rownames(tab_race2hispanic)
+tab_race2hispanic <- cbind("Race Group" = category, tab_race2hispanic)
 ```
 
 ```{r tab7.2_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race2hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```        
 
 ## Table 7.3. Race3 by Hispanic Ethnicity where Race1 is Unknown
@@ -1146,36 +1293,64 @@ knitr::kable(tab_race2hispanic,
 
 tab_race3hispanic <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACETHN TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACETHN values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race3Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race3) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race3) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race3) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACETHN;"))              
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race3)
+			    AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race3)
+			    AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race3)
+			    AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
               
      
 
 #Row totals
-rownames(tab_race3hispanic) <- tab_race3hispanic$Race3Group
-tab_race3hispanic$Race3Group <- NULL
+rownames(tab_race3hispanic) <- tab_race3hispanic$'Race Group'
+tab_race3hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race3hispanic)
 tab_race3hispanic <-rbind(tab_race3hispanic, rowsum)
 
@@ -1188,13 +1363,13 @@ tab_race3hispanic <- cbind(tab_race3hispanic,colsum)
 colnames (tab_race3hispanic) [4] <- "Total"
 rownames(tab_race3hispanic) [7] <- "Total"
 
-tab_race3hispanic <- tab_race3hispanic %>%
-  rownames_to_column((var="Race3 Group"))
+category <- rownames(tab_race3hispanic)
+tab_race3hispanic <- cbind("Race Group" = category, tab_race3hispanic)
 ```
 
 ```{r tab7.3_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race3hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```        
 
 
@@ -1204,36 +1379,64 @@ knitr::kable(tab_race3hispanic,
 
 tab_race4hispanic <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACETHN TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACETHN values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race4Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race4) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race4) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race4) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACETHN;"))              
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race4)
+			    AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race4)
+			    AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race4)
+			    AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
               
      
 
 #Row totals
-rownames(tab_race4hispanic) <- tab_race4hispanic$Race4Group
-tab_race4hispanic$Race4Group <- NULL
+rownames(tab_race4hispanic) <- tab_race4hispanic$'Race Group'
+tab_race4hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race4hispanic)
 tab_race4hispanic <-rbind(tab_race4hispanic, rowsum)
 
@@ -1246,13 +1449,13 @@ tab_race4hispanic <- cbind(tab_race4hispanic,colsum)
 colnames (tab_race4hispanic) [4] <- "Total"
 rownames(tab_race4hispanic) [7] <- "Total"
 
-tab_race4hispanic <- tab_race4hispanic %>%
-  rownames_to_column((var="Race4 Group"))
+category <- rownames(tab_race4hispanic)
+tab_race4hispanic <- cbind("Race Group" = category, tab_race4hispanic)
 ```
 
 ```{r tab7.4_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race4hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```        
 
 ## Table 7.5. Race5 by Hispanic Ethnicity where Race1 is Unknown
@@ -1261,34 +1464,62 @@ knitr::kable(tab_race4hispanic,
 
 tab_race5hispanic <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACETHN TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACETHN values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race5Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race5) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race5) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Race1='UN' and RACE in (Race5) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACETHN;"))              
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race5)
+			    AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race5)
+			    AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE RACE1 = 'UN' 
+          AND RACE IN(Race5)
+			    AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
               
 #Row totals
-rownames(tab_race5hispanic) <- tab_race5hispanic$Race5Group
-tab_race5hispanic$Race5Group <- NULL
+rownames(tab_race5hispanic) <- tab_race5hispanic$'Race Group'
+tab_race5hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race5hispanic)
 tab_race5hispanic <-rbind(tab_race5hispanic, rowsum)
 
@@ -1301,13 +1532,13 @@ tab_race5hispanic <- cbind(tab_race5hispanic,colsum)
 colnames (tab_race5hispanic) [4] <- "Total"
 rownames(tab_race5hispanic) [7] <- "Total"
 
-tab_race5hispanic <- tab_race5hispanic %>%
-  rownames_to_column((var="Race5 Group"))
+category <- rownames(tab_race5hispanic)
+tab_race5hispanic <- cbind("Race Group" = category, tab_race5hispanic)
 ```
 
 ```{r tab7.5_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race5hispanic,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```
 
 ## Table 7.6. Race1 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1316,36 +1547,59 @@ knitr::kable(tab_race5hispanic,
 
 tab_race1lang <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACELANG TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACELANG values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race1Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race1) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race1) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race1) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACELANG;"))              
-              
-     
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race1)
+			AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race1)
+			AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race1)
+			AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
 
 #Row totals
-rownames(tab_race1lang) <- tab_race1lang$Race1Group
-tab_race1lang$Race1Group <- NULL
+rownames(tab_race1lang) <- tab_race1lang$'Race Group'
+tab_race1lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race1lang)
 tab_race1lang <-rbind(tab_race1lang, rowsum)
 
@@ -1358,13 +1612,13 @@ tab_race1lang <- cbind(tab_race1lang,colsum)
 colnames (tab_race1lang) [4] <- "Total"
 rownames(tab_race1lang) [7] <- "Total"
 
-tab_race1lang <- tab_race1lang %>%
-  rownames_to_column((var="Race1 Group"))
+category <- rownames(tab_race1lang)
+tab_race1lang <- cbind("Race Group" = category, tab_race1lang)
 ```
 
 ```{r tab7.6_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race1lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.7. Race2 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1372,36 +1626,61 @@ knitr::kable(tab_race1lang,
 ```{r race2xethnicityxlang , echo = F, include=T, error=T}
 tab_race2lang <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACELANG TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACELANG values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race2Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race2) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race2) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race2) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACELANG;"))              
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race2)
+			AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race2)
+			AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race2)
+			AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;;"))              
               
      
 
 #Row totals
-rownames(tab_race2lang) <- tab_race2lang$Race2Group
-tab_race2lang$Race2Group <- NULL
+rownames(tab_race2lang) <- tab_race2lang$'Race Group'
+tab_race2lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race2lang)
 tab_race2lang <-rbind(tab_race2lang, rowsum)
 
@@ -1414,13 +1693,13 @@ tab_race2lang <- cbind(tab_race2lang,colsum)
 colnames (tab_race2lang) [4] <- "Total"
 rownames(tab_race2lang) [7] <- "Total"
 
-tab_race2lang <- tab_race2lang %>%
-  rownames_to_column((var="Race2 Group"))
+category <- rownames(tab_race2lang)
+tab_race2lang <- cbind("Race Group" = category, tab_race2lang)
 ```
 
 ```{r tab7.7_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race2lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.8. Race3 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1428,36 +1707,59 @@ knitr::kable(tab_race2lang,
 ```{r race3xethnicityxlang , echo = F, include=T, error=T}
 tab_race3lang <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACELANG TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACELANG values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race3Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race3) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race3) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race3) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACELANG;"))              
-              
-     
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
 
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race3)
+			AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race3)
+			AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race3)
+			AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
+              
 #Row totals
-rownames(tab_race3lang) <- tab_race3lang$Race3Group
-tab_race3lang$Race3Group <- NULL
+rownames(tab_race3lang) <- tab_race3lang$'Race Group'
+tab_race3lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race3lang)
 tab_race3lang <-rbind(tab_race3lang, rowsum)
 
@@ -1470,13 +1772,13 @@ tab_race3lang <- cbind(tab_race3lang,colsum)
 colnames (tab_race3lang) [4] <- "Total"
 rownames(tab_race3lang) [7] <- "Total"
 
-tab_race3lang <- tab_race3lang %>%
-  rownames_to_column((var="Race3 Group"))
+category <- rownames(tab_race3lang)
+tab_race3lang <- cbind("Race Group" = category, tab_race3lang)
 ```
 
 ```{r tab7.8_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race3lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.9. Race4 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1484,36 +1786,59 @@ knitr::kable(tab_race3lang,
 ```{r race4xethnicityxlang , echo = F, include=T, error=T}
 tab_race4lang <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACELANG TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACELANG values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race4Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race4) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race4) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race4) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACELANG;"))              
-              
-     
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
 
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race4)
+			AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race4)
+			AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race4)
+			AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
+              
 #Row totals
-rownames(tab_race4lang) <- tab_race4lang$Race4Group
-tab_race4lang$Race4Group <- NULL
+rownames(tab_race4lang) <- tab_race4lang$'Race Group'
+tab_race4lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race4lang)
 tab_race4lang <-rbind(tab_race4lang, rowsum)
 
@@ -1526,13 +1851,13 @@ tab_race4lang <- cbind(tab_race4lang,colsum)
 colnames (tab_race4lang) [4] <- "Total"
 rownames(tab_race4lang) [7] <- "Total"
 
-tab_race4lang <- tab_race4lang %>%
-  rownames_to_column((var="Race4 Group"))
+category <- rownames(tab_race4lang)
+tab_race4lang <- cbind("Race Group" = category, tab_race4lang)
 ```
 
 ```{r tab7.9_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race4lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 ## Table 7.10. Race5 by Hispanic Ethnicity where Primary Language is Spanish
@@ -1540,34 +1865,59 @@ knitr::kable(tab_race4lang,
 ```{r race5xethnicityxlang , echo = F, include=T, error=T}
 tab_race5lang <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
-declare @RACELANG TABLE (RACE varchar(2),  RACEDESC varchar(50));
-insert into @RACELANG values 
-       ('AS', 'Asian')
-       ,('BA', 'Black or African American')
-       ,('HP', 'Native Hawaiian or Other Pacific Islander')
-       ,('IN', 'American Indian/Alaska Native')
-       ,('UN', 'Unknown or Not Reported')
-       ,('WH', 'White');
- 
-select RACEDESC as Race5Group,
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race5) and
-              'Y' in (Hispanic)) as 'Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race5) and
-              'N' in (Hispanic)) as 'Non-Hispanic',
-       (select count(*)
-        from %DEMOGRAPHICS%
-        where Primary_Language='spa' and RACE in (Race5) and
-              'U' in (Hispanic)) as 'Unknown Hispanic'
-               
-from @RACELANG;"))              
+DECLARE @RACES TABLE
+(RACE     VARCHAR(2), 
+ RACEDESC VARCHAR(50)
+);
+
+INSERT INTO @RACES
+VALUES      (
+       'AS', 'Asian'), (
+       'BA', 'Black or African American'), (
+       'HP', 'Native Hawaiian or Other Pacific Islander'), (
+       'IN', 'American Indian/Alaska Native'), (
+       'UN', 'Unknown or Not Reported'), (
+       'WH', 'White');
+
+WITH CTE_HISP_Y
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race5)
+			AND 'Y' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_N
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race5)
+			AND 'N' in (Hispanic)
+         GROUP BY RACEDESC),
+     CTE_HISP_U
+     AS (SELECT RACEDESC, 
+                COUNT(*) cnt
+         FROM %DEMOGRAPHICS%, @RACES
+         WHERE Primary_Language='spa' and RACE IN(Race5)
+			AND 'U' in (Hispanic)
+         GROUP BY RACEDESC)
+     SELECT 
+            a.RACEDESC AS [Race Group], 
+            IIF(b.cnt IS NULL, 0, b.cnt) 'Hispanic', 
+            IIF(c.cnt IS NULL, 0, c.cnt) 'Non-Hispanic', 
+            IIF(d.cnt IS NULL, 0, d.cnt) 'Unknown Hispanic'
+     FROM   
+          @RACES a
+          LEFT JOIN CTE_HISP_Y b
+               ON a.RACEDESC = b.RACEDESC
+          LEFT JOIN CTE_HISP_N c
+               ON a.RACEDESC = c.RACEDESC
+          LEFT JOIN CTE_HISP_U d
+               ON a.RACEDESC = d.RACEDESC
+			   ORDER BY a.RACEDESC;"))              
 
 #Row totals
-rownames(tab_race5lang) <- tab_race5lang$Race5Group
-tab_race5lang$Race5Group <- NULL
+rownames(tab_race5lang) <- tab_race5lang$'Race Group'
+tab_race5lang$'Race Group' <- NULL
 rowsum <-colSums(tab_race5lang)
 tab_race5lang <-rbind(tab_race5lang, rowsum)
 
@@ -1580,13 +1930,13 @@ tab_race5lang <- cbind(tab_race5lang,colsum)
 colnames (tab_race5lang) [4] <- "Total"
 rownames(tab_race5lang) [7] <- "Total"
 
-tab_race5lang <- tab_race5lang %>%
-  rownames_to_column((var="Race5 Group"))
+category <- rownames(tab_race5lang)
+tab_race5lang <- cbind("Race Group" = category, tab_race5lang)
 ```
 
 ```{r tab7.10_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race5lang,
-             format.args = list(big.mark = ","))
+             format.args = list(big.mark = ","), row.names = FALSE)
 ```   
 
 
@@ -2359,8 +2709,9 @@ Month and year of last record: `r format(as.Date(vitalSumm$lastDT),"%B %Y")`
 # be sure to include space breaks in any re-design
 #vitalCon <- DBI::dbConnect(odbc::odbc(),.connection_string = connectionString)
 vitalVarSumm <- function(var,label){
-  vitalCon <- DBI::dbConnect(odbc::odbc(),.connection_string = connectionString)
-  vitalResult <- odbc::dbGetQuery(vitalCon,
+  #vitalCon <- DBI::dbConnect(odbc::odbc(),.connection_string = connectionString)
+  vitalCon <- get_connection()
+  vitalResult <- sqlQuery(vitalCon,
                  paste0('WITH ranks
                   AS (SELECT NULL AS PERSON_ID,
                              min(',var,') AS ', var,',
@@ -2416,7 +2767,8 @@ vitalVarSumm <- function(var,label){
                  max=maxQryRows,
                  as.is=c(TRUE)
                  )
-  DBI::dbDisconnect(vitalCon)
+  odbcClose(vitalCon)
+  #DBI::dbDisconnect(vitalCon)
   return (vitalResult)
 }
 vlst <- do.call('rbind',
@@ -2560,7 +2912,7 @@ kable(tab17, col.names = c("Year", "Records", "Correctional Care", "Commercial/P
 
 ## Table 18. LINKAGE Table Information
 
-```{r, echo=FALSE, echo = F, include=T, error=T}
+```{r tab18.0, echo=FALSE, echo = F, include=T, error=T}
 tab18 <- run_query(
                           paste0("SELECT COUNT(DISTINCT PERSON_ID) as npats,
                           COUNT(DISTINCT LINK_ID) as nlink
