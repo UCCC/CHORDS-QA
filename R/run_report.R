@@ -114,11 +114,11 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 #' @export
 
 getConnectionString <- function(params){
-  if (length(params$DBUser) == 0) {
-    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(length(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
+  if (notNAorNullorEmpty(params$DBUser)) {
+    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(notNAorNullorEmpty(params$DBPort), paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
 
   }else{
-    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(length(params$DBPort) > 0, paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(notNAorNullorEmpty(params$DBPort), paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
 
   if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
@@ -336,4 +336,22 @@ ageCatCalc <- function(age){
   )
 
   return(ageCat)
+}
+
+#' Variable Not NA or Null or Empty
+#'
+#' @param variable A variable
+#' @examples
+#' \dontrun{
+#' notNAorNullorEmpty(variable)
+#' }
+#' @export
+#' @rdname run_report
+notNAorNullorEmpty <- function(variable){
+  if (!is.null(variable) && !is.na(variable) && length(variable) > 0 && variable != ""){
+    return (T)
+  }
+  else{
+    return (F)
+  }
 }
