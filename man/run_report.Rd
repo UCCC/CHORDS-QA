@@ -10,6 +10,7 @@
 \alias{charVars}
 \alias{trimChrVars}
 \alias{ageCatCalc}
+\alias{notNAorNullorEmpty}
 \title{Run code to generate priority tables.}
 \usage{
 run_report(
@@ -40,6 +41,8 @@ charVars(df)
 trimChrVars(df)
 
 ageCatCalc(age)
+
+notNAorNullorEmpty(variable)
 }
 \arguments{
 \item{priority}{A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".}
@@ -75,6 +78,8 @@ ageCatCalc(age)
 \item{df}{A dataframe}
 
 \item{age}{An integer value}
+
+\item{variable}{A variable}
 }
 \value{
 Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)
@@ -98,6 +103,8 @@ Returns a vector with the column numbers of character variables in the data fram
 trims all character variables in a dataframe, sets blank to NA
 
 age category calculator
+
+Variable Not NA or Null or Empty
 }
 \examples{
 \dontrun{
@@ -126,5 +133,8 @@ charVars(df)
 }
 \dontrun{
 ageCatCalc(age)
+}
+\dontrun{
+notNAorNullorEmpty(variable)
 }
 }
