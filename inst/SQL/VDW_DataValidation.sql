@@ -1827,15 +1827,6 @@ INSERT INTO #dataintegvalidation
 VALUES		(
 			'LINKAGE',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');			
 
-/*						
-INSERT INTO #dataintegvalidation
-VALUES		(
-			'DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
-
-INSERT INTO #dataintegvalidation
-VALUES		(
-			'CAUSE_OF_DEATH',	'PERSON_ID',	'DEMOGRAPHICS',	'PERSON_ID');
-*/			
 
 /*****************************************************************************
 END DataValueValidation table creation. 
@@ -1972,18 +1963,6 @@ INSERT INTO #datavaluevalidation
 VALUES		(
 			'CENSUS_LOCATION', 'ADDRESS_TYPE_CODE', 'ADDRESS_TYPE_CODE_LU', 'ABBREVIATION'	);	
 
-/*
-INSERT INTO #dataintegvalidation
-VALUES		(
-			'DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
-			'DEATH', 'DTIMPUTE', 'DTIMPUTE_LU', 'ABBREVIATION'	);
-			
-INSERT INTO #dataintegvalidation
-VALUES		(
-			'CAUSE_OF_DEATH', 'CAUSETYPE', 'CAUSETYPE_LU', 'ABBREVIATION'	), (
-			'CAUSE_OF_DEATH', 'CONFIDENCE', 'CONFIDENCE_LU', 'ABBREVIATION'	), (
-			'CAUSE_OF_DEATH', 'DX_CODETYPE', 'DX_CODETYPE_LU', 'ABBREVIATION'	);
-*/
 			
 INSERT INTO #dataintegvalidation
 VALUES		(			
@@ -2201,19 +2180,7 @@ WHILE @counter < @max
 	   END CATCH
 	   SET @counter = @counter + 1;
     END;
-/*
-SELECT
-       *
-FROM
-     #CHORDSReferentialIntegrityResults
-ORDER BY TargetTable;
 
-SELECT
-       *
-FROM
-     #CHORDSDataValueResults
-ORDER BY TargetTable;
-*/
 /*****************************************************************************
 END Table value validation.
 *****************************************************************************/

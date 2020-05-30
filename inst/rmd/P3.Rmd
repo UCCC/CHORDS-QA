@@ -89,11 +89,22 @@ Query Run Date:  `r Sys.Date()`
 
 ```{r 1.01, echo = F, include=T}
 # Table to check for quality
-tableCheckList <- c(lab_results,   encounters, prescribing,procedures  , social_history  , provider_specialty,diagnoses ,vital_signs  , census_location, demographics  , pro_surveys   ,  pro_questions ,pro_responses)
+tableCheckList <- c(lab_results, encounters, prescribing, procedures, social_history, provider_specialty, diagnoses, vital_signs, census_location, demographics, pro_surveys,  pro_questions, pro_responses, benefit, linkage, death, pharmacy)
 # table list in DB
-sqlConnection <- get_connection()
-dbTables <- sqlTables(get_connection(), catalog = params$DBName)  
-RODBC::odbcClose(sqlConnection)
+#sqlConnection <- get_connection()
+#dbTables <- sqlTables(get_connection(), catalog = params$DBName)
+dbTables <- run_query(query_text = 
+    "SELECT 
+        TABLE_NAME
+     FROM     
+        INFORMATION_SCHEMA.TABLES
+     UNION ALL
+     SELECT 
+        name AS TABLE_NAME
+     FROM   
+        sys.synonyms;")
+#dbTables <- merge(dbTables, dbSynonyms, by="TABLE_NAME")
+#RODBC::odbcClose(sqlConnection)
 tabledChecked <- vector(length=length(tableCheckList))
 for (i in 1:length(tableCheckList)){
   tabledChecked[i] <- sum(grepl(tableCheckList[i], dbTables$TABLE_NAME, ignore.case = T))>0
@@ -403,14 +414,30 @@ BEGIN
     CLOSE CUR;
     
     DEALLOCATE CUR; 
-END
-SELECT 
-       m.*, 
-       v.Violation_Count
-FROM   
-     #KeyMatchResult m
-     LEFT JOIN #PKVIOLATIONS v
-          ON v.Table_Name = m.TABLE_NAME;
+END;
+SELECT DISTINCT 
+       z.Table_Name, 
+       z.Expected_Primary_Key, 
+       z.Found_Primary_Key,
+       CASE
+           WHEN z.Key_Match_Result = 'TABLE/VIEW OR KEYS NOT FOUND'
+                AND y.name IS NOT NULL
+           THEN 'TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE'
+           ELSE z.Key_Match_Result
+       END AS Key_Match_Result, 
+       z.Violation_Count
+FROM       
+(
+    SELECT 
+           m.*, 
+           v.Violation_Count
+    FROM   
+         #KeyMatchResult m
+         LEFT JOIN #PKVIOLATIONS v
+              ON v.Table_Name = m.TABLE_NAME
+) z
+LEFT JOIN sys.synonyms y
+     ON y.name = z.TABLE_NAME;
 /*****************************************************************************
 END Analysis Section
 *****************************************************************************/")
@@ -419,8 +446,8 @@ END Analysis Section
 ```{r 1.05 Data PrimaryKeyChecks Result, echo = F, include=T}
 violated_primary_keys <- subset(primary_key_data, Key_Match_Result != "OK")
 if (params$QAAlert == TRUE & nrow(violated_primary_keys) > 0){
-  violated_primary_keys_table <- subset(violated_primary_keys, (Violation_Count > 0 & Key_Match_Result == "VIEW FOUND") | (Key_Match_Result != "VIEW FOUND")) 
-  violated_primary_keys_table$message <- paste0(violated_primary_keys_table$TABLE_NAME, sep="")
+  violated_primary_keys_table <- subset(violated_primary_keys, (Violation_Count > 0 & Key_Match_Result == "VIEW FOUND") | (Violation_Count > 0 & Key_Match_Result == "TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE") |  (Key_Match_Result != "VIEW FOUND" & Key_Match_Result != "TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE"))
+  violated_primary_keys_table$message <- paste0(violated_primary_keys_table$Table_Name, sep="")
   QA_Alert_Message_105_items <- paste0(violated_primary_keys_table$message, collapse = ', ')
   QA_Alert_Message_105 <- paste0("The following tables have primary key definition errors:  ",
                                   QA_Alert_Message_105_items)
@@ -460,7 +487,7 @@ if (params$QAAlert == TRUE & nrow(data_validation) > 0){
 
 
 ```{r 1.07, echo=F, include=T}
-nullableValues = subset(misconfig, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable != FoundIsNullable))
+nullableValues = subset(schema_validation, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable != FoundIsNullable))
 nullableValues_Table <- select(nullableValues, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
 if (params$QAAlert == TRUE & nrow(nullableValues_Table) > 0){
   nullableValues_Table$message <- paste0(nullableValues_Table$TableName, ".", nullableValues_Table$ColumnName, sep="")
@@ -1378,22 +1405,28 @@ knitr::kable(missing_columnsTables, row.names = FALSE, col.names = c("Table Name
 
 ## Data Check 1.04: Required fields do not conform to data model specifications for data type, length, or name
 ```{r echo=F}
+invalid_specs[invalid_specs==""] = "(empty string)"
+invalid_specs[is.na(invalid_specs)] = ""
 knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Number Precision", "Found Number Precision", "Expected Number Scale", "Found Number Scale", "Expected Char Length", "Found Char Length", "Expected Date Precision", "Found Date Precision"))
 ```
 
 ## Data Check 1.05: Tables have primary key definition errors
 ```{r echo=F}
+violated_primary_keys[violated_primary_keys==""] = "(empty string)"
+violated_primary_keys[is.na(violated_primary_keys)] = ""
 knitr::kable(violated_primary_keys, row.names = FALSE)
 ```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
 ```{r echo=F}
+data_validation[data_validation==""] = "(empty string)"
+data_validation[is.na(data_validation)] = ""
 knitr::kable(data_validation)
 ```
 
 ## Data Check 1.07: Required fields have non-permissible missing values
 ```{r echo=F}
-knitr::kable(nullableValues_Table, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows-Null Value", "Found Field Allows -Null Value"))
+knitr::kable(nullableValues_Table, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows Null Value", "Found Field Allows Null Value"))
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 

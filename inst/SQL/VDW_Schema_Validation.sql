@@ -839,11 +839,74 @@ BEGIN
     ) A;
       END;  
     --Mis-Matches
-    SELECT
-           *
-    FROM
-         #CHORDSTEMPRESULT Z
-    WHERE  Z.Result != 'OK'; 
+
+SELECT DISTINCT 
+       z.TableName,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN '[ALL]'
+           ELSE z.ColumnName
+       END AS ColumnName,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN 'TABLE SYNONYM FOUND; CANNOT AUTOMATICALLY VALIDATE COLUMNS'
+           ELSE z.Result
+       END AS Result,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedNumberPrecision
+       END AS ExpectedNumberPrecision,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundNumberPrecision
+       END AS FoundNumberPrecision,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedNumberScale
+       END AS ExpectedNumberScale,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundNumberScale
+       END AS FoundNumberScale,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedCharLength
+       END AS ExpectedCharLength,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundCharLength
+       END AS FoundCharLength,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedIsNullable
+       END AS ExpectedIsNullable,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundIsNullable
+       END AS FoundIsNullable,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedDatePrecision
+       END AS ExpectedDatePrecision,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundDatePrecision
+       END AS FoundDatePrecision
+FROM   
+     #CHORDSTEMPRESULT Z
+     LEFT JOIN sys.synonyms y
+          ON y.name = z.TableName
+WHERE  Z.Result != 'OK';
 /*****************************************************************************
 END Analysis Section
 *****************************************************************************/
