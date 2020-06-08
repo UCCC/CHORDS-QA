@@ -2003,13 +2003,6 @@ BEGIN
       FROM   #dataintegvalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.RefTable;
-	UPDATE a
-      SET
-          a.TargetTable = b.NEW_NAME
-      FROM   #dataintegvalidation a
-           JOIN CHORDS_TABLENAMES b
-                ON b.ORG_NAME = a.TargetTable;
-
     UPDATE a
       SET
           a.TargetTable = b.NEW_NAME
@@ -2022,12 +2015,6 @@ BEGIN
       FROM   #datavaluevalidation a
            JOIN CHORDS_TABLENAMES b
                 ON b.ORG_NAME = a.RefTable;
-	UPDATE a
-      SET
-          a.TargetTable = b.NEW_NAME
-      FROM   #datavaluevalidation a
-           JOIN CHORDS_TABLENAMES b
-                ON b.ORG_NAME = a.TargetTable;
 END;
 
 /*****************************************************************************

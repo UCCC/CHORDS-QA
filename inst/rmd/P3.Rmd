@@ -190,34 +190,6 @@ if (params$QAAlert == TRUE & nrow(invalid_specs) > 0){
 
 ```{r 1.05 Data PrimaryKeyChecks Data, echo = F, include=T}
 primary_key_data <- run_query("
-/*TABLEREPLACEMENTINFILE*/
-/*****************************************************************************
-Script for validating the VDW Primary Keys.  It will create two lists.  One of
-the Expected Tables and their primary keys and another of all the tables currently in
-the partner VDW.  It will validate:
-    - Compare the expected primary key to the primary key of each
-	table in a partner's VDW
-	- The number of records that currently violate the exepcted primary key
-FOR DEVELOPERS:
-To Update the script for partner use:
-1) Edit the #PKVALIDATION table insertion if the primary keys of the VDW have
-changed or add new entires for new tables.  One row per primary key column.
-Examples below:
-Output:
-    One output table
-    1) 	Shows the Table name, the expected primary key, the found primary key,
-	and the result of the comparision between the expected and found primary keys.
-	KeyMatchResultValues:
-		- OK: Expected primary key matches the found primary key
-		- KEY MISMATCH: Expected Primary Key does not matc the found primary key
-		- TABLE OR KEYS NOT FOUND: No table in the VDW matches the expected table
-		- UNKNOWN: An unknow error occured
-	ViolationCount:
-		- The number of records that that appear to violate the expected primary key.
-*****************************************************************************/
-/*****************************************************************************
-BEGIN TempTable Clearing and Creation
-*****************************************************************************/
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET NOCOUNT ON;
@@ -243,7 +215,8 @@ BEGIN
     
 	CREATE TABLE #PKVIOLATIONS (
 		Table_Name      VARCHAR(250) ,
-        Violation_Count BIGINT
+    Violation_Count BIGINT,
+		ErrorMessage varchar(500) DEFAULT NULL
     );
 END;
 /*****************************************************************************
@@ -378,7 +351,7 @@ BEGIN
     
     DECLARE @SQL NVARCHAR(3000);
     DECLARE @Table_Name VARCHAR(100);
-	DECLARE @Key_Columns VARCHAR(100);
+	  DECLARE @Key_Columns VARCHAR(100);
     
     DECLARE CUR CURSOR
     FOR SELECT
@@ -404,15 +377,21 @@ BEGIN
 				AS (SELECT COUNT(*) TABTOT
 					FROM ' + @Table_Name + ')
 			INSERT INTO #PKVIOLATIONS
-			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT
+			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT, NULL
 			FROM CTETOT, CTEKEY;'
-            EXEC Sp_executesql
-                 @SQL;
-            FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
+			BEGIN TRY
+				EXEC Sp_executesql
+				     @SQL;
+			END TRY
+			BEGIN CATCH
+				Declare @ErrorMessageRef as varchar(max);
+				SELECT @ErrorMessageRef = ERROR_MESSAGE();
+				INSERT INTO #PKVIOLATIONS
+			    	VALUES(@Table_Name, NULL, @ErrorMessageRef)
+		    END CATCH
+        FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
         END;
-    
     CLOSE CUR;
-    
     DEALLOCATE CUR; 
 END;
 SELECT DISTINCT 
@@ -420,8 +399,11 @@ SELECT DISTINCT
        z.Expected_Primary_Key, 
        z.Found_Primary_Key,
        CASE
+		   WHEN z.ErrorMessage IS NOT NULL THEN	
+				z.ErrorMessage
            WHEN z.Key_Match_Result = 'TABLE/VIEW OR KEYS NOT FOUND'
                 AND y.name IS NOT NULL
+				AND z.ErrorMessage IS NULL
            THEN 'TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE'
            ELSE z.Key_Match_Result
        END AS Key_Match_Result, 
@@ -430,17 +412,15 @@ FROM
 (
     SELECT 
            m.*, 
-           v.Violation_Count
+           v.Violation_Count,
+		   v.ErrorMessage
     FROM   
          #KeyMatchResult m
          LEFT JOIN #PKVIOLATIONS v
               ON v.Table_Name = m.TABLE_NAME
 ) z
 LEFT JOIN sys.synonyms y
-     ON y.name = z.TABLE_NAME;
-/*****************************************************************************
-END Analysis Section
-*****************************************************************************/")
+     ON y.name = z.TABLE_NAME;")
 ```
 
 ```{r 1.05 Data PrimaryKeyChecks Result, echo = F, include=T}
@@ -462,7 +442,13 @@ connection106 <- get_connection()
 results <- sqlQuery(connection106, data_validation_query, as.is=TRUE)
 data_validation <- sqlQuery(connection106, "
   SELECT
-       *
+       TargetTable,
+       TargetColumn,
+       CASE 
+          WHEN UnexpectedValue = '' THEN '(blank)'
+          ELSE UnexpectedValue
+        END AS UnexpectedValue,
+       Message
   FROM
      #CHORDSDataValueResults
   ORDER BY TargetTable;
@@ -488,8 +474,9 @@ if (params$QAAlert == TRUE & nrow(data_validation) > 0){
 
 ```{r 1.07, echo=F, include=T}
 nullableValues = subset(schema_validation, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable != FoundIsNullable))
-nullableValues_Table <- select(nullableValues, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
-if (params$QAAlert == TRUE & nrow(nullableValues_Table) > 0){
+nullableValues <- select(nullableValues, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
+if (params$QAAlert == TRUE & nrow(nullableValues) > 0){
+  nullableValues_Table <- data.frame(nullableValues, stringsAsFactors = FALSE)
   nullableValues_Table$message <- paste0(nullableValues_Table$TableName, ".", nullableValues_Table$ColumnName, sep="")
   QA_Alert_Message_107_items <- paste0(nullableValues_Table$message, collapse = ', ')
   QA_Alert_Message_107 <- paste0("The following required fields have non-permissible missing values: ",
@@ -598,7 +585,7 @@ orphan_provider_ids <- subset(ref_integrity, ((TargetColumn %in% c("RXMD", "PROV
 orphan_provider_ids_table <- select(orphan_provider_ids, c("TargetTable", "TargetColumn", "ReferenceTable", "ReferenceColumn", "ValuesNotFound", "TargetTableDistinctCount", "PercentOfDistinctTargetColumnMissing"))
 if (params$QAAlert == TRUE & nrow(orphan_provider_ids_table) > 0){
   orphan_provider_ids_sub_table <- data.frame(orphan_provider_ids_table, stringsAsFactors = FALSE)
-  orphan_provider_ids_sub_table$message <- paste0(orphan_provider_ids_sub_table$TargetTable, sep="")
+  orphan_provider_ids_sub_table$message <- paste0(orphan_provider_ids_sub_table$TargetTable, ".", orphan_provider_ids_sub_table$TargetColumn, sep="")
   QA_Alert_Message_112_items <- paste0(orphan_provider_ids_sub_table$message, collapse = ', ')
   QA_Alert_Message_112 <- paste0("The following tables contain orphan PROVIDER_IDs: ",
                                   QA_Alert_Message_112_items)
@@ -851,7 +838,10 @@ top_50_invalid <- sqlQuery(connection113, "
 SELECT 
 		TableName, 
     CodeType, 
-    Code, 
+    CASE 
+      WHEN Code = '' THEN '(blank)'
+      ELSE Code
+    END AS Code, 
     ValidResult, 
 		CountInvalid
 FROM       
@@ -889,7 +879,7 @@ odbcClose(connection113)
 if (params$QAAlert == TRUE){
   code_conform_table_counts_table <- subset(code_conform_table_counts, PercentInvalid > 5.0)
   if (!(length(code_conform_table_counts_table)==0)){
-    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, sep="")
+    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, ".", code_conform_table_counts_table$CodeType, sep="")
     QA_Alert_Message_113_items <- paste0(code_conform_table_counts_table$message, collapse = ', ')
     QA_Alert_Message_113 <- paste0("More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content: ",
                                   QA_Alert_Message_113_items)
@@ -933,7 +923,7 @@ fdatesdone <- do.call('rbind', fdatelst) %>%
 ### add message if no table is a problem 
 futureDataMsg <- NULL
 futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0  ){
-paste("The follosing tables exceeded the 5% limit on future dates:", subset(fdatesdone, pctFuture>=5)$tableName, sep = ' ')
+paste("The following tables exceeded the 5% limit on future dates:", subset(fdatesdone, pctFuture>=5)$tableName, sep = ' ')
 } else if(nrow(subset(fdatesdone, pctFuture>=5))==0  ) {
                    "No table exceeds the 5% limit on future dates."
 }  
@@ -1398,6 +1388,8 @@ data_result_75_complete$PercentofBenchMark <- as.numeric(as.character(data_resul
 knitr::kable(QA_Alert_Messages, row.names = FALSE)
 ```
 
+\pagebreak
+
 ## Data Check 1.03: Required fields are not present
 ```{r echo=F}
 knitr::kable(missing_columnsTables, row.names = FALSE, col.names = c("Table Name", "Column Name"))
@@ -1405,28 +1397,25 @@ knitr::kable(missing_columnsTables, row.names = FALSE, col.names = c("Table Name
 
 ## Data Check 1.04: Required fields do not conform to data model specifications for data type, length, or name
 ```{r echo=F}
-invalid_specs[invalid_specs==""] = "(empty string)"
 invalid_specs[is.na(invalid_specs)] = ""
 knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Number Precision", "Found Number Precision", "Expected Number Scale", "Found Number Scale", "Expected Char Length", "Found Char Length", "Expected Date Precision", "Found Date Precision"))
 ```
 
 ## Data Check 1.05: Tables have primary key definition errors
 ```{r echo=F}
-violated_primary_keys[violated_primary_keys==""] = "(empty string)"
 violated_primary_keys[is.na(violated_primary_keys)] = ""
 knitr::kable(violated_primary_keys, row.names = FALSE)
 ```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
 ```{r echo=F}
-data_validation[data_validation==""] = "(empty string)"
 data_validation[is.na(data_validation)] = ""
 knitr::kable(data_validation)
 ```
 
 ## Data Check 1.07: Required fields have non-permissible missing values
 ```{r echo=F}
-knitr::kable(nullableValues_Table, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows Null Value", "Found Field Allows Null Value"))
+knitr::kable(nullableValues, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows Null Value", "Found Field Allows Null Value"))
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
@@ -1455,6 +1444,7 @@ knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target
 
 ```{r echo=F }
 cat("Top 50 Invalid Codes")
+top_50_invalid$Code[top_50_invalid$Code==""] <- "\'blank\'"
 knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"))
 ```
 
@@ -1471,8 +1461,7 @@ knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Cod
 futureDataMsg
 ```
 
-## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic
-## blood pressure, systolic blood pressure, or dispensed days supply
+## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic blood pressure, systolic blood pressure, or dispensed days supply
 ```{r echo=F}
 outOfRangeMsg <- NULL
 outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & params$QAAlert==F){
@@ -1508,10 +1497,10 @@ illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0 & params$QAAlert==F
 ## Data Check 3.03: More than 10% of records have missing or unknown values for the following fields:
 ```{r echo=F}
   check3.03Msg <- NULL
-check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0 & params$QAAlert==F){
-        knitr::kable(subset(result3.03, pctBad>=10)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
+check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10.0))>0 & params$QAAlert==F){
+        knitr::kable(subset(result3.03, pctBad>=10.0)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
                     col.names = c('Table','Variable','N Rows','N with bad values','%'))
-} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
+} else if(nrow(subset(fdatesdone, pctFuture>=5.0))==0 & params$QAAlert==F) {
                    "No check exceeds the 10% limit on bad values."
 } else if ( params$QAAlert==T) {
         knitr::kable(result3.03[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
