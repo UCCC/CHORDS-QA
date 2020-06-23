@@ -45,13 +45,35 @@ library(chordsTables)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-#library(knitr)
-#library(tidyverse)
+
+##Add time_it = TRUE to opts_chunk to time all chunks.
+
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE,
-                error = TRUE)
+                error = TRUE,
+                time_it = TRUE)
+
 startTime <- Sys.time()
+
+all_times <- list()
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      now <<- Sys.time()
+    } else {
+      res <- difftime(Sys.time(), now)
+  
+      all_times[[options$label]] <<- c(options$label, format(round(res, 3)))
+      
+      #Only prints times greater than 5 minutes.  
+      if(res > as.difftime("00:05", format="%H:%M")){
+        paste("Time for the chunk", options$label, "to run:", format(round(res, 3)))
+      }
+    }
+  }
+}))
 
 # supporting look up tables
 stateCnty <- chordsTables::stateCnty
@@ -93,12 +115,12 @@ tbresult <-runTableReplacements(connectionString)
 
 ## CHORDS QA Report: VDW P1 Tables
 
-The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS `r params$DBName`.
+The purpose of the data quality program is to characterize the data in CHORDS VDW 3.1 priority level 1 (P1) tables. The P1 tables include the following: DEMOGRAPHICS, ENCOUNTERS, CENSUS_LOCATION, DIAGNOSES, VITAL_SIGNS, and BENEFITS. The program uses a series of SQL queries operationalized using RStudio to produce this report. These tables provide descriptive information about data stored in a data partner's VDW and can be used to assess data model conformance, data plausibility, and data completeness. This data quality report was generated from CHORDS **`r params$DBName`**.
 
 ## Information about the QA Program 
-Data Partner: 
-Analyst: 
-Query Run Date:  `r Sys.Date()`
+Data Partner:\
+Analyst:\
+Query Run Date: **`r Sys.Date()`**
 
 ## Data Quality Report Results
 
@@ -121,44 +143,67 @@ tab1_enc <- run_query(paste0("select count(*) as nrows,
 	count(distinct person_id) as npats,
   count(distinct enc_id) as nencts,
   'ADATE' as fieldname,
-	min(ADATE) as mindt,
-	max(ADATE) as maxdt
+	min(cast(ADATE as date)) as mindt,
+	max(cast(ADATE as date)) as maxdt
 	from ", encounters))
-
-tab1_loc <- run_query(paste0("select count(*) as nrows, 
-	count(distinct person_id) as npats
-	from ", census_location))
-tab1_loc <- data.frame(nrows = tab1_loc$nrows, 
-                       npats = tab1_loc$npats, 
-                       nencts = NA, 
-                       fieldname = NA, 
-                       mindt = NA, 
-                       maxdt = NA)
 
 tab1_dx <- run_query(paste0("select count(*) as nrows, 
 	count(distinct person_id) as npats,
   'ADATE' as fieldname,
   count(distinct enc_id) as nencts,
-	min(ADATE) as mindt,
-	max(ADATE) as maxdt
+	min(cast(ADATE as date)) as mindt,
+	max(cast(ADATE as date))as maxdt
 	from ", diagnoses))
 tab1_vs <- run_query(paste0("select count(*) as nrows,
   count(distinct person_id) as npats,
   'MEASURE_DATE' as fieldname,
   count(distinct enc_id) as nencts,
-	min(measure_date) as mindt,
-	max(measure_date) as maxdt
+	min(cast(measure_date as date)) as mindt,
+	max(cast(measure_date as date)) as maxdt
 	from ", vital_signs))
 
 tab1_ben <- run_query(paste0("select count(*) as nrows,
   count(distinct person_id) as npats,
   'BENEFIT_DATE' as fieldname,
   count(distinct enc_id) as nencts,
-	cast(min(benefit_date) as varchar) as mindt,
-	cast(max(benefit_date) as varchar) as maxdt
+	min(cast(benefit_date as date)) as mindt,
+	max(cast(benefit_date as date)) as maxdt
 	from ", benefit))
 
-tab1_all <- bind_rows(tab1_dem, tab1_enc, tab1_loc, tab1_dx, tab1_vs, tab1_ben) %>% 
+tab1_cen <- run_query(paste0("
+	select count(*) as nrows,
+	count(distinct person_id) as npats,
+	'LOC_START' as fieldname,
+	count(distinct concat(PERSON_ID,cast(cast(LOC_START as date) as varchar))) as nencts,
+	min(cast(LOC_START as date)) as mindt,
+	max(cast(LOC_START as date)) as maxdt
+	from ", census_location))
+
+emptyDataframe <- data.frame(matrix(ncol = 6, nrow = 0))
+cols <- c("nrows", "npats", "fieldname", "nencts", "mindt", "maxdt")
+colnames(emptyDataframe) <- cols
+
+if(is.na(tab1_dem)){
+  tab1_dem <- data.frame(emptyDataframe)
+}
+if(is.na(tab1_enc)){
+  tab1_enc <- data.frame(emptyDataframe)
+}
+if(is.na(tab1_dx)){
+  tab1_dx <- data.frame(emptyDataframe)
+}
+if(is.na(tab1_vs)){
+  tab1_vs <- data.frame(emptyDataframe)
+}
+if(is.na(tab1_ben)){
+  tab1_ben <- data.frame(emptyDataframe)
+}
+if(is.na(tab1_cen)){
+  tab1_cen <- data.frame(emptyDataframe)
+}
+
+
+tab1_all <- bind_rows(tab1_dem, tab1_enc, tab1_cen, tab1_dx, tab1_vs, tab1_ben) %>% 
   bind_cols(Table = c("DEMOGRAPHICS", "ENCOUNTERS", "CENSUS_LOCATION", "DIAGNOSES", "VITAL_SIGNS", "BENEFIT"), .)
 
 ```
@@ -238,7 +283,7 @@ tab2_null <- bind_rows(tab2_demo_null2, tab2_enc_null2, tab2_cl_null2, tab2_dx_n
   mutate(
     pct_rec = ifelse(table == "DEMOGRAPHICS", (records_null / tab1_dem$nrows * 100), 
                      ifelse(table == "ENCOUNTERS", (records_null / tab1_enc$nrows * 100), 
-                             ifelse(table == "CENSUS_LOCATION", (records_null / tab1_loc$nrows * 100), 
+                             ifelse(table == "CENSUS_LOCATION", (records_null / tab1_cen$nrows * 100), 
                                      ifelse(table == "DIAGNOSES", (records_null / tab1_dx$nrows * 100), 
                                              ifelse(table == "VITAL_SIGNS", (records_null / tab1_vs$nrows * 100), NA)))))
   )
@@ -252,8 +297,8 @@ tab2_demo_uk <- run_query(
    SUM(CASE WHEN RACE4 = 'UN' THEN 1 ELSE 0 END) as RACE4,
    SUM(CASE WHEN RACE5 = 'UN' THEN 1 ELSE 0 END) as RACE5,
    SUM(CASE WHEN HISPANIC = 'U' THEN 1 ELSE 0 END) as HISPANIC,
-   SUM(CASE WHEN SEXUAL_ORIENTATION = 'UN' THEN 1 ELSE 0 END) as SEXUAL_ORIENTATION,
-   SUM(CASE WHEN GENDER_IDENTITY = 'UN' THEN 1 ELSE 0 END) as GENDER_IDENTITY
+   SUM(CASE WHEN SEXUAL_ORIENTATION = 'UN' OR SEXUAL_ORIENTATION = 'NI' THEN 1 ELSE 0 END) as SEXUAL_ORIENTATION,
+   SUM(CASE WHEN GENDER_IDENTITY = 'UN' OR GENDER_IDENTITY = 'NI' THEN 1 ELSE 0 END) as GENDER_IDENTITY
       FROM ", demographics))
 tab2_demo_uk2 <- data.frame(table = rep("DEMOGRAPHICS", ncol(tab2_demo_uk)), var = names(tab2_demo_uk), records_uk = t(tab2_demo_uk)[,1])
 row.names(tab2_demo_uk2) <- NULL
@@ -271,7 +316,7 @@ tab2_all <- left_join(tab2_null, tab2_uk, by = c("table", "var"))
 ```
 
 ```{r tab2_disp, echo = F, include=T, error=T}
-kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of Records Null", "Unknown Records", "Percent of Records Unknown"), digits = 2, format.args = list(big.mark = ","))
+kable(tab2_all, col.names = c("Table", "Variable", "Null Records", "Percent of Records Null", "'Unknown' or 'No Information' Records", "Percent of Records 'Unknown' or 'No Information'"), digits = 2, format.args = list(big.mark = ","))
 ```
 
 
@@ -334,7 +379,6 @@ demogSummary <- run_query(
                  ),
                  max=maxQryRows
                   )
-gc()
 demogSummary <- cbind(demogSummary,nDemogRows)
 demogTable <-
   with(demogSummary,
@@ -352,7 +396,7 @@ demogTable <-
 knitr::kable(demogTable, col.names=c("Characteristic","Frequency","Percent of unique patients"), row.names=FALSE, format.args = list(big.mark = ","))
 ```
 
-`r if(exists("demogSummary")){ifelse(demogSummary$nDemogRows==demogSummary$nPatsDemog," ","The demographics table has duplicate rows, by person_id")}`
+**`r if(exists("demogSummary")){ifelse(demogSummary$nDemogRows==demogSummary$nPatsDemog," ","The demographics table has duplicate rows, by person_id")}`**
 
  
 ```{r demographic counts, echo = F, include=T, error=T}
@@ -382,6 +426,7 @@ primLang <- demogCounts %>%
 primLang <- within(merge(primLang,isoLang[c('code3B','InEnglish')],by.x='primary_language', by.y='code3B', all.x=T) %>% arrange(desc(langPct)) ,{
     InEnglish <- ifelse(!is.na(InEnglish),InEnglish, ifelse(is.na(primary_language) , 'Missing', 'Invalid'))
 })
+
 ```
 
 ```{r tab4_disp, echo = F, include=T, error=T}
@@ -394,20 +439,25 @@ knitr::kable(primLang[1:5, c('primary_language', 'InEnglish','langCnt','langPct'
 ## Table 4.1. Other and Unknown Language Count 
 
 ```{r other/missing primary language, echo = F, include=T, error=T}
-
-unkLang <- primLang[ which(primLang$primary_language=="unk" | primLang$primary_language=="oth"),]
+unkLang <- subset(primLang, primary_language %in% c("unk","oth", "und"))
 
 #Total other/unknown
 
 #total row
-unkLang<- as.data.frame(unkLang)
 rownames(unkLang) <- unkLang$primary_language
+unkLang$InEnglish <- NULL
+unkLang$InEnglish[unkLang$primary_language == "unk"] = "Unknown"
+unkLang$InEnglish[unkLang$primary_language == "oth"] = "Other"
+unkLang$InEnglish[unkLang$primary_language == "und"] = "Undetermined"
+
+unkLangRowsNames <- as.vector(unkLang$InEnglish)
+
 unkLang$primary_language <- unkLang$InEnglish <-NULL
 rowsum <-colSums(unkLang)
 unkLang <-rbind(unkLang, rowsum)
 
 #row names
-rownames(unkLang) <- c("Other Language", "Unknown Language","Total Unknown or Other Language")
+rownames(unkLang) <- c(unkLangRowsNames, "Total Other, Unknown, or Undetermined Language")
 ```
 
 ```{r tab4.1_disp, echo = F, include=T, error=T}
@@ -464,7 +514,7 @@ knitr::kable(gender_identity[c('gender_identity','count','countPct')],
 
 ## Table 5.2. Gender Identity by Gender Distribution 
 
-```{r gender_by_gender_identity , echo = F, include=T, error=F} 
+```{r gender_by_gender_identity , echo = F, include=T, error=T} 
 tab_gender_identity<- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
 declare @GENDER TABLE (GI varchar(2), GENDER_IDENTITYDESC varchar(50));
@@ -520,7 +570,7 @@ tab_gender_identity <- cbind("Gender Identity" = category, tab_gender_identity)
 
 ```
 
-```{r tab5.2_disp, echo = F, include=T, error=F}
+```{r tab5.2_disp, echo = F, include=T, error=T}
 
 knitr::kable(tab_gender_identity[c('Gender Identity','Male','Percent_Male', 'Female', 'Percent_Female', 'Unknown Gender', 'Total Frequency')], 
             col.names = c('Gender Identity','Male','Percent Male', 'Female', 'Percent Female', 'Unknown Gender', 'Total Frequency'), 
@@ -1105,7 +1155,7 @@ knitr::kable(tab_race1race5,
 
 ## Table 7. Hispanic Ethnicity Distribution
 
-```{r ethnicity , echo = F, include=T, error=T}
+```{r ethnicity, echo = F, include=T, error=T}
 
 ethn <- run_query( 
   paste0("SELECT SUM(CASE WHEN HISPANIC = 'Y' THEN 1 ELSE 0 END) as Yes,
@@ -2127,9 +2177,6 @@ knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','col
 
 
 ```{r encounter table, echo = F, include=T, error=T}
-rm(diag)
-gc()
-
 tempCon3 <- get_connection()
 # create a temp table in the SQL DB temp drive, this will not be pulled into the R workspace.
 nada_ <- sqlQuery(tempCon3,
@@ -2171,17 +2218,12 @@ nEncPats <- encSumm$personCnt
 
 ## Examination of the ENCOUNTERS Table
 
-Total rows in the dataset: `r encRows`
-
-Total unique combinations of the primary key: `r encPrimKeyRows `
-
-Total patients in the encounter table: `r nEncPats`
-
-Month and year of first encounter: `r format(as.Date(encSumm$firstEnc),"%B %Y")`
-
-Month and year of last encounter: `r format(as.Date(encSumm$lastEnc),"%B %Y")`
-
-`r ifelse(encRows== encPrimKeyRows," ","The encounter table has duplicate rows, by enc_id")`
+Total rows in the dataset: **`r format(encRows, big.mark=",")`**\
+Total unique combinations of the primary key: **`r format(encPrimKeyRows, big.mark=",")`**\
+Total patients in the encounter table: **`r format(nEncPats, big.mark=",")`**\
+Month and year of first encounter: **`r format(as.Date(encSumm$firstEnc),"%B %Y")`**\
+Month and year of last encounter: **`r format(as.Date(encSumm$lastEnc),"%B %Y")`**\
+ **`r ifelse(encRows== encPrimKeyRows," ","*The encounter table has duplicate rows, by enc_id")`**
 
 
 ## Table 8. Count of Distinct Patients by Age Group and Year of Utilization
@@ -2337,7 +2379,7 @@ knitr::kable(encEncType, col.names=c("Encounter Type",'Number of Encounters','Pe
 ```
 
 
-```{r echo = F, include=T, error=T}
+```{r encByYear, echo = F, include=T, error=T}
 encByYear <- encEncType_YM %>% group_by(aYear ) %>% summarize(Freq = sum(rowCnt))
 encByYear <- within(encByYear,{
                     pct <- round(100*Freq/sum(Freq),1)
@@ -2351,7 +2393,7 @@ encByYear$aYear <- as.character(encByYear$aYear)
 ```
 
 
-```{r  echo = F, include=T, error=T}
+```{r uniqPatByYear, echo = F, include=T, error=T}
 uniqPatByYear <- sqlQuery(tempCon3,
                  paste('SELECT aYear, count(distinct person_id) as Freq',
                        'FROM #encTmp',
@@ -2397,7 +2439,7 @@ ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=deco
 ```
 
  
-```{r echo = F, include=T, error=T}
+```{r encTypeByYr, echo = F, include=T, error=T}
 #
 # Encounter types by year
 #
@@ -2452,25 +2494,18 @@ lastLocation <- trimChrVars(lastLocation)
 odbcClose(tempCon4)
 ```
 
-Total rows in the dataset: `r locSumm$rowCnt`
+Total rows in the dataset: **`r format(locSumm$rowCnt, big.mark=",")`**\
+Total unique combinations of the primary key: **`r format(locSumm$primKeyCnt, big.mark=",")`**\
+Total patients in the location table: **`r format(locSumm$personCnt, big.mark=",")`**\
+Month and year of first location: **`r format( as.Date(locSumm$firstDT),"%B %Y")`**\
+Month and year of last location: **`r format(as.Date(locSumm$lastDT),"%B %Y")`**\
+**`r ifelse(locSumm$rowCnt==locSumm$primKeyCnt," ","*The Census Location table has duplicate rows, by person_id and loc_start")`**\
+**`r format(multLastLocs$patsMultLoc, big.mark=",")`** patients have more than one most recent location record\
 
 
-Total unique combinations of the primary key: `r locSumm$primKeyCnt `
+## Table 11. Count of Unique Patients by Colorado County, Based on Most Recent Location
 
-Total patients in the location table: `r locSumm$personCnt`
-
-Month and year of first location: `r format( as.Date(locSumm$firstDT),"%B %Y")`
-
-Month and year of last location: `r format(as.Date(locSumm$lastDT),"%B %Y")`
-
-`r ifelse(locSumm$rowCnt==locSumm$primKeyCnt," ","The Census Location table has duplicate rows, by person_id and loc_start")`
-
-`r multLastLocs$patsMultLoc` patients have more than one most recent location record
-
-
-## Table 11. Count of Unique Patients by State and County, Based on Most Recent Location
-
-```{r echo = F, include=T, echo = F, include=T, error=T}
+```{r lastLocation, echo = F, include=T, echo = F, include=T, error=T}
 lastLocation <- merge(lastLocation, stateCnty[c('stateCnty','stCntyNm')], by = 'stateCnty', all.x=T) %>% arrange(desc(Freq)) %>% 
                 mutate(pct = round(100*Freq/sum(Freq),1),
                        stCntyNm = ifelse(!is.na(stCntyNm), stCntyNm, ifelse( is.na(stateCnty),'Missing','Invalid'))
@@ -2478,15 +2513,25 @@ lastLocation <- merge(lastLocation, stateCnty[c('stateCnty','stCntyNm')], by = '
 ```
 
 ```{r tab11_disp, echo = F, include=T, error=T}
-knitr::kable(lastLocation[c('stateCnty','stCntyNm','Freq','pct')], 
+coloradoLoc <- subset(lastLocation, stCntyNm != "Invalid" & stCntyNm != "Missing")
+
+nonColoradoLoc <- subset(lastLocation, stCntyNm == "Invalid")
+missingLoc <- subset(lastLocation, stCntyNm == "Missing")
+
+knitr::kable(coloradoLoc[c('stateCnty','stCntyNm','Freq','pct')], 
              col.names=c('State/county code','State: county','Frequency','Percent'), 
              row.names=FALSE, 
              format.args = list(big.mark = ","))
 ```
 
+Count of Non-Colorado Locations: **`r format(sum(nonColoradoLoc$Freq), big.mark=",")`**\
+Percentage of Non-Colorado Locations: **`r sum(nonColoradoLoc$pct)`**\
+Count of Locations Missing: **`r format(sum(missingLoc$Freq), big.mark=",")`**\
+Percentage of Locations Missing: **`r format(sum(missingLoc$pct), big.mark=",")`**\
+
 ## Examination of the DIAGNOSES Table
 
-```{r echo = F, include=T, error=T}
+```{r diagSumm, echo = F, include=T, error=T}
 diagSumm  <- run_query(
                  paste('SELECT count(*) as rowCnt, COUNT(DISTINCT enc_id+dx+CAST(adate AS varchar(10))+diagprovider ) as primKeyCnt, count(distinct person_id) as personCnt, min(adate) as firstDT, max(adate) as lastDT',
                        'FROM  ',diagnoses,
@@ -2497,17 +2542,12 @@ diagSumm  <- run_query(
                  )
 ```
 
-Total rows in the dataset: `r diagSumm$rowCnt`
-
-Total unique combinations of the primary key: `r diagSumm$primKeyCnt `
-
-Total patients in the table: `r diagSumm$personCnt`
-
-Month and year of first diagnosis: `r format( as.Date(diagSumm$firstDT),"%B %Y")`
-
-Month and year of last diagnosis: `r format( as.Date(diagSumm$lastDT),"%B %Y")`
-
-`r ifelse( diagSumm$rowCnt==diagSumm$primKeyCnt," ","The table has duplicate rows, by enc_id dx adate diagprovider")`
+Total rows in the dataset: **`r format(diagSumm$rowCnt, big.mark=",")`**\
+Total unique combinations of the primary key: **`r format(diagSumm$primKeyCnt, big.mark=",")`**\
+Total patients in the table: **`r format(diagSumm$personCnt, big.mark=",")`**\
+Month and year of first diagnosis: **`r format( as.Date(diagSumm$firstDT),"%B %Y")`**\
+Month and year of last diagnosis: **`r format( as.Date(diagSumm$lastDT),"%B %Y")`**\
+**`r ifelse( diagSumm$rowCnt==diagSumm$primKeyCnt," ","*The table has duplicate rows, by enc_id dx adate diagprovider")`**\
 
 The following tables explore the contents of the DIAGNOSES table with a focus on trends over time and most common types of diagnoses.
 
@@ -2604,7 +2644,7 @@ tab13_all <- bind_cols(tab13_dxall, tab13_dxav)
 ```{r tab13a_disp, echo = F, include=T, error=T}
 kable(tab13_dxall, col.names = c("Diagnosis Code", "Code Type", "Diagnosis Description", "Number of Recorded Diagnoses", "Number of Patients"), format.args = list(big.mark = ","))
 ```
-
+ \
 ```{r tab13b_disp, echo = F, include=T, error=T}
 kable(tab13_dxav, col.names = c("Diagnosis Code for AV", "Diagnosis Type for AV", "Diagnosis Description", "Number of Recorded Diagnosis for AV", "Number of Patients for AV"), format.args = list(big.mark = ","))
 ```
@@ -2690,17 +2730,12 @@ vitalSumm  <- run_query(
                  )
 ```
 
-Total rows in the dataset: `r vitalSumm$rowCnt`
-
-Total unique combinations of the primary key: `r vitalSumm$primKeyCnt `
-
-Total patients in the table: `r vitalSumm$personCnt`
-
-Month and year of first record: `r format(as.Date(vitalSumm$firstDT),"%B %Y")`
-
-Month and year of last record: `r format(as.Date(vitalSumm$lastDT),"%B %Y")`
-
-`r ifelse(vitalSumm$rowCnt==vitalSumm$primKeyCnt," ","The table has duplicate rows, by person_id, measure_date, measure_time")`
+Total rows in the dataset: **`r format(vitalSumm$rowCnt, big.mark=",")`**\
+Total unique combinations of the primary key: **`r format(vitalSumm$primKeyCnt, big.mark=",")`**\
+Total patients in the table: **`r format(vitalSumm$personCnt, big.mark=",")`**\
+Month and year of first record: **`r format(as.Date(vitalSumm$firstDT),"%B %Y")`**\
+Month and year of last record: **`r format(as.Date(vitalSumm$lastDT),"%B %Y")`**\
+**`r ifelse(vitalSumm$rowCnt==vitalSumm$primKeyCnt," ","*The table has duplicate rows, by person_id, measure_date, measure_time")`**\
 
 
 ## Table 15. Vital Signs Summary
@@ -2921,15 +2956,18 @@ tab18 <- run_query(
 knitr::kable(tab18, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
 ```
 
-####Total program run time:
+
 ```{r Calculate program run time, echo=FALSE}
 # close odbc
 odbcCloseAll()
-endTime <- Sys.time()
-endTime - startTime 
+endTime <- (Sys.time() - startTime)
 ```
-title: "P1 QA with new REL questions"
-author: "Emily Bacon"
-date: "10/23/2019"
-output: word_document
+
+### Total program run time: **`r format(round(endTime, 3))`**
+
+title: "P1 QA with new REL questions"\
+author: "Emily Bacon"\
+date: "10/23/2019"\
+output: word_document\
+
 ---
