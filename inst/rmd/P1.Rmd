@@ -2304,8 +2304,6 @@ encPersonAgeYear <- within(encPersonYear,{
 
 encPersonAgeYear$toDisplay = paste0(encPersonAgeYear$Freq,' (',encPersonAgeYear$pct,')')
                            
-
-
 # transpose to square table
 encPersonAgeYear_tx <- format(encPersonAgeYear$Freq, big.mark = ",") %>% spread(encPersonAgeYear[c('ageCat','aYear','toDisplay')],aYear,toDisplay)
 ```
@@ -2444,14 +2442,14 @@ encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode,
 
 
 
-## Figure 3a. Ambulatory Encounters by Admission Year and Month
+## Figure 3a. Ambulatory Encounters by Year and Month
 
 ```{r fig3a, echo = F, include=T, echo = F, include=T, error=T}
 ggplot(subset(encTypeBymonYr,encType == 'AV'), aes(adate_YM, rowCnt)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-## Figure 3b. Other Encounter Types by Admission Year and Month
+## Figure 3b. Other Encounter Types by Year and Month
 
 ```{r fig3b, echo = F, include=T, echo = F, include=T, error=T}
 ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=decode)) + geom_line() +
@@ -2583,12 +2581,14 @@ tab12 <- run_query(
     count(distinct enc_id) as nencts,
 	  count(distinct person_id) as npats
 	  from ", diagnoses, "
+	  where year(adate) >= 2005
 	    group by year(adate)
       order by year(adate)"))
 tab12_avg_encts <- run_query( 
   paste0("select year(adate) as year,
     count(*) as nrows
 	  from ", diagnoses, "
+	  where year(adate) >= 2005
 	    group by year(adate), enc_id
       order by year(adate)")) %>% 
   arrange(year) %>% 
@@ -2602,6 +2602,7 @@ tab12_avg_pats <- run_query(
   paste0("select year(adate) as year,
     count(*) as nrows
 	  from ", diagnoses, "
+	  where year(adate) >= 2005
 	    group by year(adate), person_id
       order by year(adate)")) %>% 
   arrange(year) %>% 
