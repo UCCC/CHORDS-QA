@@ -38,13 +38,14 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-
-
 library(RODBC)
 library(chordsTables)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(flextable)
+library(officer)
+
 
 ##Add time_it = TRUE to opts_chunk to time all chunks.
 
@@ -183,7 +184,7 @@ emptyDataframe <- data.frame(matrix(ncol = 6, nrow = 0))
 cols <- c("nrows", "npats", "fieldname", "nencts", "mindt", "maxdt")
 colnames(emptyDataframe) <- cols
 
-if(is.na(tab1_dem)){
+if (is.na(tab1_dem)){
   tab1_dem <- data.frame(emptyDataframe)
 }
 if(is.na(tab1_enc)){
@@ -209,7 +210,7 @@ tab1_all <- bind_rows(tab1_dem, tab1_enc, tab1_cen, tab1_dx, tab1_vs, tab1_ben) 
 ```
 
 ```{r tab1_disp, echo = F, include=T, error=T}
-kable(tab1_all, col.names = c("Table", "Records", "Patients", "Encounters", "Date Field", "Min Date", "Max Date"), align = 'c', format.args = list(big.mark = ",")) 
+kable(tab1_all, col.names = c("Table", "Records", "Patients", "Encounters", "Date Field", "Min Date", "Max Date"), align = 'c', format.args = list(big.mark = ","))
   
 ```
 
@@ -467,7 +468,6 @@ knitr::kable(unkLang[1:3, c('langCnt','langPct')],
             row.names= T, 
             format.args = list(big.mark = ","))
 
-
 ```
 
 ## Table 5. Gender Distribution 
@@ -506,7 +506,7 @@ gender_identity <-   demogCounts %>%
 ```{r tab5.1_disp, echo = F, include=T, error=T}
  
 knitr::kable(gender_identity[c('gender_identity','count','countPct')], 
-            col.names = c('Gender Identity',"Frequency", "Percent"), 
+            col.names = c('Gender_Identity',"Frequency", "Percent"), 
             row.names=F, 
             format.args = list(big.mark = ","))
 ```
@@ -589,6 +589,10 @@ sexual_orientation <-   demogCounts %>%
                   countPct = round(100*count/totCount,1)
                   )
 
+sexual_orientation <- within(merge(sexual_orientation,subset(valSets,tableName=='DEMOGRAPHICS' & columnName=='SEXUAL_ORIENTATION')[c('code','decode')], by.x='sexual_orientation', by.y='code', all.x=TRUE) %>% arrange(desc(countPct)) ,{
+    decode <- ifelse(!is.na(decode),decode, ifelse(is.na(sexual_orientation) , 'Missing', 'Invalid'))
+})
+
 ```
 
 ```{r tab5.3_disp, echo = F, include=T, error=T}
@@ -618,7 +622,6 @@ knitr::kable(race[    c('race1', 'decode','count','countPct')],
             col.names = c("Value","Label","Frequency","Percent"), 
             row.names=FALSE, 
             format.args = list(big.mark = ","))
-```
 
 ## Table 6.2. Race Distribution: Race2
 
@@ -814,9 +817,17 @@ category <- rownames(tab_race1race2)
 tab_race1race2 <- cbind("Race Group" = category, tab_race1race2)
 ```
 
-```{r tab6.6_disp, echo = F, include=T, error=T}
-knitr::kable(tab_race1race2,
-             format.args = list(big.mark = ","), row.names = FALSE)
+```{r tab6.6_disp, echo = F, include=T, error=F}
+#knitr::kable(tab_race1race2, format.args = list(big.mark = ","), row.names = FALSE) 
+
+tab_race1race2 <- flextable(format(tab_race1race2, big.mark=",")) %>% set_table_properties(layout = "autofit")
+
+tab_race1race2 <- align(add_header_row(tab_race1race2, values = c("Race 1", "Race 2", " "), colwidths = c(1,6, 1), top = FALSE), 
+                           align = "center", part = "header")
+
+tab_race1race2 <- flextable::vline(x = tab_race1race2, part = "all", border = fp_border(color = "black", style = "solid"))  %>% hline_bottom(border = fp_border(color = "black", style = "solid"), part = "header")
+
+knitr::knit_print(tab_race1race2)
 
 ```
 
@@ -926,8 +937,16 @@ tab_race1race3 <- cbind("Race Group" = category, tab_race1race3)
 ```
 
 ```{r tab6.7_disp, echo = F, include=T, error=T}
-knitr::kable(tab_race1race3,
-             format.args = list(big.mark = ","), row.names = FALSE)
+#knitr::kable(tab_race1race3, format.args = list(big.mark = ","), row.names = FALSE) %>%     
+
+tab_race1race3 <- flextable(format(tab_race1race3, big.mark=",")) %>% set_table_properties(layout = "autofit")
+
+tab_race1race3 <- align(add_header_row(tab_race1race3, values = c("Race 1", "Race 3", " "), colwidths = c(1,6,1), top = FALSE), 
+                           align = "center", part = "header")
+
+tab_race1race3 <- flextable::vline(x = tab_race1race3, part = "all", border = fp_border(color = "black", style = "solid")) %>% hline_bottom(border = fp_border(color = "black", style = "solid"), part = "header")
+
+knitr::knit_print(tab_race1race3)
 ```
 
 
@@ -1037,9 +1056,16 @@ tab_race1race4 <- cbind("Race Group" = category, tab_race1race4)
 ```
 
 ```{r tab6.8_disp, echo = F, include=T, error=T}
-knitr::kable(tab_race1race4,
-             format.args = list(big.mark = ","), row.names = FALSE)
+#knitr::kable(tab_race1race4, format.args = list(big.mark = ","), row.names = FALSE) %>%     
 
+tab_race1race4 <- flextable(format(tab_race1race4, big.mark=",")) %>% set_table_properties(layout = "autofit")
+
+tab_race1race4 <- align(add_header_row(tab_race1race4, values = c("Race 1", "Race 4", " "), colwidths = c(1,6,1), top = FALSE), 
+                           align = "center", part = "header")
+
+tab_race1race4 <- flextable::vline(x = tab_race1race4, part = "all", border = fp_border(color = "black", style = "solid")) %>% hline_bottom(border = fp_border(color = "black", style = "solid"), part = "header")
+
+knitr::knit_print(tab_race1race4)
 ```
 
 
@@ -1149,8 +1175,16 @@ tab_race1race5 <- cbind("Race Group" = category, tab_race1race5)
 ```
 
 ```{r tab6.9_disp, echo = F, include=T, error=T}
-knitr::kable(tab_race1race5,
-             format.args = list(big.mark = ","), row.names = FALSE)
+#knitr::kable(tab_race1race5, format.args = list(big.mark = ","), row.names = FALSE) %>%     
+
+tab_race1race5 <- flextable(format(tab_race1race5, big.mark=",")) %>% set_table_properties(layout = "autofit")
+
+tab_race1race5 <- align(add_header_row(tab_race1race5, values = c("Race 1", "Race 5", " "), colwidths = c(1,6,1), top = FALSE), 
+                           align = "center", part = "header")
+
+tab_race1race5 <- flextable::vline(x = tab_race1race5, part = "all", border = fp_border(color = "black", style = "solid")) %>% hline_bottom(border = fp_border(color = "black", style = "solid"), part = "header")
+
+knitr::knit_print(tab_race1race5)
 ```
 
 ## Table 7. Hispanic Ethnicity Distribution
@@ -1335,7 +1369,6 @@ tab_race2hispanic <- cbind("Race Group" = category, tab_race2hispanic)
 ```{r tab7.2_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race2hispanic,
              format.args = list(big.mark = ","), row.names = FALSE)
-```        
 
 ## Table 7.3. Race3 by Hispanic Ethnicity where Race1 is Unknown
 
@@ -1829,7 +1862,6 @@ tab_race3lang <- cbind("Race Group" = category, tab_race3lang)
 ```{r tab7.8_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race3lang,
              format.args = list(big.mark = ","), row.names = FALSE)
-```   
 
 ## Table 7.9. Race4 by Hispanic Ethnicity where Primary Language is Spanish
 
@@ -2740,7 +2772,7 @@ Month and year of last record: **`r format(as.Date(vitalSumm$lastDT),"%B %Y")`**
 
 ## Table 15. Vital Signs Summary
 
-```{r vital signs summary, echo = F, include=T}
+```{r vital signs summary, echo = F, include=T, eval = F}
 # be sure to include space breaks in any re-design
 #vitalCon <- DBI::dbConnect(odbc::odbc(),.connection_string = connectionString)
 vitalVarSumm <- function(var,label){

@@ -23,6 +23,8 @@
 #' @importFrom utils read.csv2
 #' @import knitr
 #' @import shiny
+#' @import flextable
+#' @import officer
 #' @rdname run_report
 #' @export
 
