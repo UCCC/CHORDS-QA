@@ -1264,7 +1264,7 @@ WITH CTE_HISP_Y
 
 #Row totals
 rownames(tab_race1hispanic) <- tab_race1hispanic$'Race Group'
-tab_race1hispanic$'Race Group' <- NULL
+tab_race1hispanic$'Race1 Group' <- NULL
 rowsum <-colSums(tab_race1hispanic)
 tab_race1hispanic <-rbind(tab_race1hispanic, rowsum)
 
@@ -1278,7 +1278,7 @@ colnames (tab_race1hispanic) [4] <- "Total"
 rownames(tab_race1hispanic) [7] <- "Total"
 
 category <- rownames(tab_race1hispanic)
-tab_race1hispanic <- cbind("Race Group" = category, tab_race1hispanic)
+tab_race1hispanic <- cbind("Race1 Group" = category, tab_race1hispanic)
 ```
 
 ```{r tab7.1_disp, echo = F, include=T, error=T}
@@ -2262,17 +2262,6 @@ Month and year of last encounter: **`r format(as.Date(encSumm$lastEnc),"%B %Y")`
 
 ```{r tab8, echo = F, include=T, error=T}
  
-# encPersonYear  <- sqlQuery(sqldb,
-#                  paste('SELECT aMon, aYear, dobMon, dobYear, count(*) as personCnt',
-#                        'FROM (SELECT distinct person_id, aYear, dobMon, dobYear, min(aMon) as aMon ',
-#                        '      FROM #encTmp',
-#                        '      GROUP BY person_id, aYear, dobMon, dobYear) as qry',
-#                        'GROUP BY  aMon, aYear, dobMon, dobYear',
-#                        sep=" "
-#                        ),
-#                  as.is=c(TRUE,TRUE,TRUE,TRUE,TRUE),
-#                  max=maxQryRows
-#                  )
 encPersonYear  <- sqlQuery(tempCon3,
                  paste('SELECT aMon, aYear, age, count(*) as personCnt',
                        'FROM (SELECT distinct person_id, aYear, min(age) as age, min(aMon) as aMon ',
@@ -2313,13 +2302,12 @@ encPersonAgeYear <- within(encPersonYear,{
                     mutate(yearTot = sum(Freq),
                            pct = round(100*Freq/yearTot,1))
 
-encPersonAgeYear$Freq <- format(encPersonAgeYear$Freq, big.mark = ",")
 encPersonAgeYear$toDisplay = paste0(encPersonAgeYear$Freq,' (',encPersonAgeYear$pct,')')
                            
 
 
 # transpose to square table
-encPersonAgeYear_tx <- spread(encPersonAgeYear[c('ageCat','aYear','toDisplay')],aYear,toDisplay)
+encPersonAgeYear_tx <- format(encPersonAgeYear$Freq, big.mark = ",") %>% spread(encPersonAgeYear[c('ageCat','aYear','toDisplay')],aYear,toDisplay)
 ```
 
 ```{r tab8_disp, echo = F, include=T, error=T}
@@ -2336,7 +2324,8 @@ Percentages are calculated with all patients within the calendar year as the den
 
 ```{r fig2, echo = F, include=T, error=T}
 ggplot(data = encPersonAgeYear, aes(x =aYear, y = Freq, fill = ageCat)) + 
-    geom_bar(stat = "identity") + labs(y='Count', x='Year', fill='Age at encounter')+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  geom_bar(stat = "identity") + labs(y='Count', x='Year', fill='Age at encounter')+theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE))
 ```
 
 ## Table 9. Annual Trends in the Total Number of Recorded Encounters, the Mean Number of Encounters, the Mean Number of Patients and the Percent Change from the Previous Year, by Calendar Year
