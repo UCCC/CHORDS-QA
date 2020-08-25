@@ -12,17 +12,24 @@
 \alias{valSets}
 \title{ccsMDxI10}
 \format{
-a \code{data.frame} with 9 variables
+a \code{data.frame} with 17 variables
 \describe{
-  \item{dxCode}{(chr) Diagnosis code}
-  \item{ccss}{(int) Identifies the sequence of line level data pertaining to a claim.}
-  \item{ccssName}{(chr) Code value to lookup the patient's ICD code and description.}
-  \item{dxDesc}{(chr) Indicates diagnosis was present at time of admission.}
-  \item{ccsm1}{(num) Indicates diagnosis was present at time of admission.}
-  \item{ccsm1Name}{(chr) Indicates diagnosis was present at time of admission.}
-  \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-  \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-  \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
+  \item{X.ICD.10.CM.CODE.}{(chr) }
+  \item{X.ICD.10.CM.CODE.DESCRIPTION.}{(chr) }
+  \item{X.Default.CCSR.CATEGORY}{(chr) }
+  \item{X.CCSR.CATEGORY.1.}{(chr) }
+  \item{X.CCSR.CATEGORY.1.DESCRIPTION.}{(chr))}
+  \item{X.CCSR.CATEGORY.2.}{(chr) }
+  \item{X.CCSR.CATEGORY.2.DESCRIPTION.}{(num) }
+  \item{X.CCSR.CATEGORY.3.}{(chr) }
+  \item{X.CCSR.CATEGORY.3.DESCRIPTION.}{(chr) }
+  \item{X.CCSR.CATEGORY.4.}{(chr) }
+  \item{X.CCSR.CATEGORY.4.DESCRIPTION.}{(chr) }
+  \item{X.CCSR.CATEGORY.5.}{(chr) }
+  \item{X.CCSR.CATEGORY.5.DESCRIPTION.}{(chr) }
+  \item{dxCdTp}{(chr) CHORDS version of diagnosis code }
+  \item{dxDesc}{(chr) CHORDS version of diagnosis description }
+  \item{dxCatDesc}{(chr) CHORDS version of categroy description }
 }
 
 a \code{data.frame} with 10 variables
@@ -125,7 +132,8 @@ stateCnty
 valSets
 }
 \description{
-This table contains the CCS Medical Diagnosis for ICD 10 from 19jun17.
+This table contains the CCS Medical Diagnosis for ICD 10 from 5/29/2020.
+Modified from CCSR for ICD-10-CM Diagnoses, v2020.3 - https://www.hcup-us.ahrq.gov/toolssoftware/ccsr/ccs_refined.jsp
 
 This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
 

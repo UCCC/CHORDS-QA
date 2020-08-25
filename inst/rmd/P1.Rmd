@@ -817,7 +817,7 @@ category <- rownames(tab_race1race2)
 tab_race1race2 <- cbind("Race Group" = category, tab_race1race2)
 ```
 
-```{r tab6.6_disp, echo = F, include=T, error=F}
+```{r tab6.6_disp, echo = F, include=T, error=T}
 #knitr::kable(tab_race1race2, format.args = list(big.mark = ","), row.names = FALSE) 
 
 tab_race1race2 <- flextable(format(tab_race1race2, big.mark=",")) %>% set_table_properties(layout = "autofit")
@@ -1208,7 +1208,7 @@ knitr::kable(ethn2, digits = 2,
 ```
 
 
-## Table 7.1. Race by Hispanic Ethnicity Distribution
+## Table 7.1. Race1 by Hispanic Ethnicity Distribution
 ```{r race1xethnicity , echo = F, include=T, error=T}
 tab_race1hispanic <- run_query(gsub("%DEMOGRAPHICS%", demographics, "
 SET NOCOUNT ON;
@@ -1264,7 +1264,7 @@ WITH CTE_HISP_Y
 
 #Row totals
 rownames(tab_race1hispanic) <- tab_race1hispanic$'Race Group'
-tab_race1hispanic$'Race1 Group' <- NULL
+tab_race1hispanic$'Race Group' <- NULL
 rowsum <-colSums(tab_race1hispanic)
 tab_race1hispanic <-rbind(tab_race1hispanic, rowsum)
 
@@ -1278,7 +1278,7 @@ colnames (tab_race1hispanic) [4] <- "Total"
 rownames(tab_race1hispanic) [7] <- "Total"
 
 category <- rownames(tab_race1hispanic)
-tab_race1hispanic <- cbind("Race1 Group" = category, tab_race1hispanic)
+tab_race1hispanic <- cbind("Race Group" = category, tab_race1hispanic)
 ```
 
 ```{r tab7.1_disp, echo = F, include=T, error=T}
@@ -1369,6 +1369,8 @@ tab_race2hispanic <- cbind("Race Group" = category, tab_race2hispanic)
 ```{r tab7.2_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race2hispanic,
              format.args = list(big.mark = ","), row.names = FALSE)
+
+```
 
 ## Table 7.3. Race3 by Hispanic Ethnicity where Race1 is Unknown
 
@@ -2302,10 +2304,12 @@ encPersonAgeYear <- within(encPersonYear,{
                     mutate(yearTot = sum(Freq),
                            pct = round(100*Freq/yearTot,1))
 
-encPersonAgeYear$toDisplay = paste0(encPersonAgeYear$Freq,' (',encPersonAgeYear$pct,')')
+
+
+encPersonAgeYear$toDisplay = paste0(format(encPersonAgeYear$Freq, big.mark = ","),' (',encPersonAgeYear$pct,')')
                            
 # transpose to square table
-encPersonAgeYear_tx <- format(encPersonAgeYear$Freq, big.mark = ",") %>% spread(encPersonAgeYear[c('ageCat','aYear','toDisplay')],aYear,toDisplay)
+encPersonAgeYear_tx <- spread(encPersonAgeYear[c('ageCat','aYear','toDisplay')],aYear,toDisplay)
 ```
 
 ```{r tab8_disp, echo = F, include=T, error=T}
@@ -2762,7 +2766,7 @@ Month and year of last record: **`r format(as.Date(vitalSumm$lastDT),"%B %Y")`**
 
 ## Table 15. Vital Signs Summary
 
-```{r vital signs summary, echo = F, include=T, eval = F}
+```{r vital signs summary, echo = F, include=T, error=T}
 # be sure to include space breaks in any re-design
 #vitalCon <- DBI::dbConnect(odbc::odbc(),.connection_string = connectionString)
 vitalVarSumm <- function(var,label){
