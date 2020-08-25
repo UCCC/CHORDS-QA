@@ -85,11 +85,9 @@ isoLang <- chordsTables::isoLang
 # VDW value sets
 valSets <- chordsTables::valSets
 
-ccsMDxI9 <- chordsTables::ccsMDxI9
 ccsMDxI10 <- chordsTables::ccsMDxI10
 ccsSDxI9 <- chordsTables::ccsSDxI9
 icdLU <- rbind(ccsMDxI10[c('dxCdTp','dxDesc')],ccsSDxI9[c('dxCdTp','dxDesc')]) 
-
 maxQryRows = 0
 
 ```
@@ -1864,6 +1862,7 @@ tab_race3lang <- cbind("Race Group" = category, tab_race3lang)
 ```{r tab7.8_disp, echo = F, include=T, error=T}
 knitr::kable(tab_race3lang,
              format.args = list(big.mark = ","), row.names = FALSE)
+```
 
 ## Table 7.9. Race4 by Hispanic Ethnicity where Primary Language is Spanish
 
@@ -2097,7 +2096,7 @@ knitr::kable(tab7.11_combined[    c('year', 'rowCnt','tab7.11_totalCnt.rowCnt','
   
 ## Figure 1. Percent of Patients with Unknown Race1 and Hispanic Values by Year
 
-```{r tab7.11_fig, echo = F, include=T, error=T}
+```{r tab7.11_fig, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 
 ggplot(data = tab7.11_combined, aes(x = year, y = rowPct, group=1)) + geom_line() + geom_point() + ylab("Percent") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -2324,7 +2323,7 @@ Percentages are calculated with all patients within the calendar year as the den
 
 ## Figure 2. Count of Distinct Patients by Age Group and Year of Utilization
 
-```{r fig2, echo = F, include=T, error=T}
+```{r fig2, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 ggplot(data = encPersonAgeYear, aes(x =aYear, y = Freq, fill = ageCat)) + 
   geom_bar(stat = "identity") + labs(y='Count', x='Year', fill='Age at encounter')+theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE))
@@ -2448,14 +2447,14 @@ encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode,
 
 ## Figure 3a. Ambulatory Encounters by Year and Month
 
-```{r fig3a, echo = F, include=T, echo = F, include=T, error=T}
+```{r fig3a, echo = F, include=T, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 ggplot(subset(encTypeBymonYr,encType == 'AV'), aes(adate_YM, rowCnt)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ## Figure 3b. Other Encounter Types by Year and Month
 
-```{r fig3b, echo = F, include=T, echo = F, include=T, error=T}
+```{r fig3b, echo = F, include=T, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=decode)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')
 #,legend.position="bottom" "
@@ -2681,19 +2680,21 @@ This table includes information on the ten most common diagnoses recorded in you
 ```{r tab14_res, echo = F, include=T, error=T}
 tab14_09 <- run_query( 
   paste0("select top 10 dx,
+    dx_codetype as dx_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", diagnoses, "
 	    where dx_codetype = '09'
-      group by dx
+      group by dx, dx_codetype
       order by nrows_all DESC"))
 tab14_10 <- run_query( 
   paste0("select top 10 dx,
+    dx_codetype as dx_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", diagnoses, "
 	    where dx_codetype = '10'
-      group by dx
+      group by dx, dx_codetype
       order by nrows_all DESC")) 
 ```
 
@@ -2701,12 +2702,24 @@ tab14_10 <- run_query(
 #if and else statements are used to determine if the respecitvie table has any
 #rows. If not, then an error message is written indicating so.
 if (nrow(tab14_09) != 0){
-  kable(tab14_09, col.names = c("Diagnosis", "Records", "Patients"), caption = "Diagnosis Code Type = 09", format.args = list(big.mark = ","))
+  tab14_09 <- tab14_09 %>% 
+    mutate(
+      dxCdTp  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
+      ) %>% 
+    left_join(., icdLU, by = "dxCdTp") %>% 
+  select(dx, dxDesc, nrows_all, npats)
+  kable(tab14_09, col.names = c("Diagnosis","Diagnosis Description", "Records", "Patients"), caption = "Diagnosis Code Type = 09", format.args = list(big.mark = ","))
 } else {
    cat(noquote("Table had zero rows.  DX_CODETYPE = '09' likely isn't a category for this variable.\n"))
 } 
 if (nrow(tab14_10) != 0){
-  kable(tab14_10, col.names = c("Diagnosis", "Records", "Patients"), caption = "Diagnosis Code Type = 10", format.args = list(big.mark = ","))
+  tab14_10 <- tab14_10 %>% 
+    mutate(
+      dxCdTp  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
+      ) %>% 
+    left_join(., icdLU, by = "dxCdTp") %>% 
+  select(dx, dxDesc, nrows_all, npats)
+  kable(tab14_10, col.names = c("Diagnosis", "Diagnosis Description", "Records", "Patients"), caption = "Diagnosis Code Type = 10", format.args = list(big.mark = ","))
 } else {
    cat(noquote("Table had zero rows.  DX_CODETYPE = '10' likely isn't a category for this variable.\n"))
 } 
@@ -2717,6 +2730,7 @@ if (nrow(tab14_10) != 0){
 dxByMonEncTp <- run_query(
                       paste("SELECT YEAR(adate) as year, MONTH(adate) as month, enctype, count(*) as Freq",
                             "FROM " ,diagnoses,
+                            "WHERE YEAR(adate) >= 2005",
                             "GROUP BY YEAR(adate), MONTH(adate), enctype",
                             sep=" "),
                  max=maxQryRows
@@ -2730,14 +2744,14 @@ dxByMonEncTp <- within(dxByMonEncTp,{decode <- ifelse(!is.na(decode),decode, ife
 
 ## Figure 4a. Count of Diagnoses by Year and Month in Ambulatory Encounters 
 
-```{r Count of diagnoses by year and month in ambulatory encounters, echo = F, include=T, error=T}
+```{r Count of diagnoses by year and month in ambulatory encounters, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ## Figure 4b. Count of Diagnoses by Year and Month, other Encounter Types
 
-```{r Count of diagnoses by year and month other encounter types, echo = F, include=T, error=T}
+```{r Count of diagnoses by year and month other encounter types, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + geom_line() +
   scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')
 #,legend.position="bottom" "
@@ -2861,12 +2875,14 @@ tab16 <- run_query(
     count(distinct enc_id) as nencts,
 	  count(distinct person_id) as npats
 	  from ", vital_signs, "
+	  where year(measure_date) > 2005
 	    group by year(measure_date)
       order by year(measure_date)"))
 tab16_avg_encts <- run_query( 
   paste0("select year(measure_date) as year,
     count(*) as nrows
 	  from ", vital_signs, "
+	  where year(measure_date) > 2005
 	    group by year(measure_date), enc_id
       order by year(measure_date)")) %>% 
   arrange(year) %>% 
@@ -2880,6 +2896,7 @@ tab16_avg_pats <- run_query(
  paste0( "select year(measure_date) as year,
     count(*) as nrows
 	  from ", vital_signs, "
+	  where year(measure_date) > 2005
 	    group by year(measure_date), person_id
       order by year(measure_date)")) %>% 
   arrange(year) %>% 
@@ -2905,7 +2922,7 @@ kable(tab16_add, col.names = c("Year", "Total Number of Recorded Vitals", "Perce
 
 ## Figure 5. Count of Vital Signs by Year and Month
 
-```{r Count of vital signs by year and month, echo = F, include=T, error=T}
+```{r Count of vital signs by year and month, echo = F, include=T, error=T, fig.height=5, fig.width=6.25}
 vitalsByMonYr <- run_query(
                  paste('SELECT year(measure_date) as year, month(measure_date) as month',
                        ', sum(case when ht>0 then 1 else 0 end) as height',
