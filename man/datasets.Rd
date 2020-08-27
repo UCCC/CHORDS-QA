@@ -68,8 +68,8 @@ a \code{data.frame} with 5 variables
 
 a \code{data.frame} with 2 variables
 \describe{
-  \item{V1}{(int) Provider category (from CHORDS_VDW_V3.1_DataModelManual)}
-  \item{V2}{(chr) Provider type description.}
+  \item{Provider_Type}{(int) Provider category (from CHORDS_VDW_V3.4_DataModelManual)}
+  \item{Description}{(chr) Provider type description.}
 }
 
 a \code{data.frame} with 2 variables

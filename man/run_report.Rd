@@ -28,7 +28,7 @@ run_report(
 
 getConnectionString(params)
 
-run_db_query(Connection_String, query_text)
+run_db_query(Connection_String, query_text, as.is = FALSE)
 
 get_new_connection(Connection_String)
 

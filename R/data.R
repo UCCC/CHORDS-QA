@@ -83,8 +83,8 @@
 #'
 #' @format a \code{data.frame} with 2 variables
 #' \describe{
-#'   \item{V1}{(int) Provider category (from CHORDS_VDW_V3.1_DataModelManual)}
-#'   \item{V2}{(chr) Provider type description.}
+#'   \item{Provider_Type}{(int) Provider category (from CHORDS_VDW_V3.4_DataModelManual)}
+#'   \item{Description}{(chr) Provider type description.}
 #'}
 #' @rdname datasets
 #' @source prov_type.rda

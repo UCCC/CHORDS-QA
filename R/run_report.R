@@ -29,7 +29,7 @@
 #' @export
 
 run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
-
+  time_id <- as.numeric(Sys.time())
   if(is.null(dbuser)){
     dbuser <- ""
   }
@@ -60,7 +60,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                           DBPort = dbport,
                           DBEncrypt = dbencrypt
                         ),
-                        output_dir = outputdir)
+                        output_dir = outputdir, output_file = paste0(priority,"_",time_id,".docx", sep=""))
     } else{
       rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
     }
@@ -76,7 +76,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                           DBPort = dbport,
                           DBEncrypt = dbencrypt
                         ),
-                        output_dir = outputdir)
+                        output_dir = outputdir, output_file = paste(priority,"_",time_id,".docx", sep=""))
     } else {
       rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
     }
@@ -92,7 +92,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                           DBPort = dbport,
                           DBEncrypt = dbencrypt
                         ),
-                        output_dir = outputdir)
+                        output_dir = outputdir, output_file = paste0(priority,"_",time_id,".docx", sep=""))
     } else {
       rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
     }
@@ -142,11 +142,11 @@ getConnectionString <- function(params){
 #' @rdname run_report
 #' @export
 
-run_db_query <- function(Connection_String, query_text) {
+run_db_query <- function(Connection_String, query_text, as.is = FALSE) {
   tryCatch(
     {
       db_conn <- get_new_connection(Connection_String)
-      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, as.is = TRUE), timeout = 2100)
+      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, as.is=as.is), timeout = 2100)
       return(result)
     },
     error = function(cond){

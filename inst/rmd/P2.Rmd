@@ -39,17 +39,37 @@ params:
 
 ```{r setup, include=FALSE}
 library(RODBC)
-#library(knitr)
-#library(tidyverse)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(flextable)
+library(officer)
 
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE,
-                error = TRUE)
+                error = TRUE,
+                time_it = TRUE)
 startTime <- Sys.time()
+
+all_times <- list()
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      now <<- Sys.time()
+    } else {
+      res <- difftime(Sys.time(), now)
+  
+      all_times[[options$label]] <<- c(options$label, format(round(res, 3)))
+      
+      #Only prints times greater than 5 minutes.  
+      if(res > as.difftime("00:05", format="%H:%M")){
+        paste("Time for the chunk", options$label, "to run:", format(round(res, 3)))
+      }
+    }
+  }
+}))
 
 # supporting look up tables
 specialties <- chordsTables::specialties
@@ -303,25 +323,30 @@ kable(tab3_ord, col.names = c("Year", "Number of Recorded Lab Tests", "Percent C
 
 This table illustrates the number (and percent) of priority lab test records including the percent of all lab test records , as well as the number (and percent)  of unique patients tested for select TEST_TYPE values. 
 
-```{r tab4_res, echo = F, include=T, error=T}
+```{r tab4_res, echo = F, include=T, error=F}
 tab4 <- run_query( 
   paste0("select test_type,
     count(*) as nrows, 
 	  count(distinct person_id) as npats,
-    avg(result_num) as avg_resval,
-    min(result_num) as min_resval,
-    max(result_num) as max_resval
+    round(avg(result_num), 2) as avg_resval,
+    round(min(result_num), 2) as min_resval,
+    round(max(result_num), 2) as max_resval
 	  from ", lab_results, "
 	    group by test_type
       order by test_type"))
-tab4_tot <- data.frame(test_type = "Total", nrows = tab1_lab$nrows, npats = tab1_lab$npats, avg_resval = NA, min_resval = NA, max_resval = NA)
+
+tab4 <- transform(tab4, nrows = as.numeric(nrows), npats = as.numeric(npats), avg_resval = as.numeric(avg_resval), min_resval = as.numeric(min_resval), max_resval = as.numeric(max_resval))
+
+tab4_tot <- data.frame(test_type = "Total", nrows = tab1_lab$nrows, npats = tab1_lab$npats, avg_resval = NA, min_resval = NA, max_resval = NA) 
+
 tab4 <- tab4 %>% 
   mutate(
     pct_rec = round(nrows / tab1_lab$nrows * 100, 1) ,
     pct_pat = round(npats / tab1_lab$npats * 100, 1)
   ) %>% 
   bind_rows(., tab4_tot)
-  
+
+tab4 <- format(tab4, digits = 2, scientific = FALSE)
 ```
 
 ```{r tab4_disp, echo = F, include=T, error=T}
@@ -334,7 +359,7 @@ kable(tab4 [c("test_type", "nrows", "pct_rec", "npats", "pct_pat", "avg_resval",
 These figures shows temporal trends in the number of records for CHORDS priority lab tests.
 
 
-```{r fig1_res, fig.height=4, fig.width=7, echo = F, include=T, error=T}
+```{r fig1_res, fig.height=3.5, fig.width=7, echo = F, include=T, error=F, dpi=500}
 fig1 <- run_query(
   paste0("select test_type, 
     month(result_dt) as month,
@@ -357,21 +382,22 @@ fig1_sub <- fig1 %>%
   ) %>% 
   select(-month, -year)
 fig1_wide <- spread(fig1_sub, key = test_type, value = nrows)
-lapply(2:ncol(fig1_wide), function(x) 
+fig1Figures <-lapply(2:ncol(fig1_wide), function(x) 
   ggplot(data = fig1_wide, aes(x = date, y = fig1_wide[[x]])) +
          geom_line() +
     ggtitle(names(fig1_wide)[x]) +
-    theme(axis.text.x = element_text(angle=45, margin(b = .5), vjust = .5)) +
     scale_x_date(date_labels = "%b %y",date_breaks='1 year') +
     xlab("Date") + ylab("Number of Records") +
     theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),  
         axis.line = element_line(colour = "black"),
-        axis.title = element_text(size = 16, face = "bold"),
-        axis.text = element_text(size = 14, face = "bold"),
-        plot.title = element_text(hjust = 0.5, size = 20))
-    ) 
+        axis.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 12, face = "bold"),
+        plot.title = element_text(hjust = 0.3, size = 16))
+    )
+
+invisible(lapply(fig1Figures, print))
 
 ```
 
@@ -426,7 +452,7 @@ tab6_avg_pats <- run_query(
       order by year(rx_order_date)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max))%>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.))) %>% 
   mutate(
     pats_val = paste0(median, "(", min, ", ", max, ")")
   )
@@ -451,8 +477,8 @@ tab7<- run_query(
                         paste0("select top 10 GENERIC_MED_NAME,
     count(*) as nrows,
 	  count(distinct person_id) as npats,
-    round(avg(RX_DAYS_SUPPLY),1) as avg_days_sup,
-    round(avg(RX_QUANTITY_NUM),1) as avg_rx_quant
+    cast(round(avg(RX_DAYS_SUPPLY),1) as float) as avg_days_sup,
+    cast(round(avg(RX_QUANTITY_NUM),1) as float) as avg_rx_quant
 	  from ", prescribing, "
 	    group by GENERIC_MED_NAME
       order by nrows DESC"))
@@ -490,7 +516,7 @@ tab8_avg_encts <- run_query(
       order by year(procdate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max)) %>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.))) %>% 
   mutate(
     enct_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
@@ -503,7 +529,7 @@ tab8_avg_pats <- run_query(
       order by year(procdate)")) %>% 
   arrange(year) %>% 
   group_by(year) %>% 
-  summarise_all(funs(mean, median, min, max))%>% 
+  summarise_all(list(~mean(.), ~median(.), ~min(.), ~max(.))) %>% 
   mutate(
     pats_val = paste0(median, "(", min, ", ", max, ")")
   ) %>% 
@@ -656,7 +682,7 @@ The following tables explore the contents of the PROVIDER_SPECIALTY table with a
 
 ## Table 12: Number and Percent of Providers represented in ENCOUNTERS, DIAGNOSIS, LAB_RESULTS, PRESCRIBING, AND PROCEDURES Tables 
 
-This table includes information on the number and percent of providers represented in various CHORDS VDW 3.1 tables.
+This table includes information on the number and percent of providers represented in various CHORDS VDW tables.
 
 ```{r tab12_res, echo = F, include=T, error=T}
 tab12_ps <- run_query(
@@ -712,6 +738,7 @@ tab13 <- run_query(
 tab13$spec_full <- specialties$Description[match(as.character(tab13$spec), as.character(specialties$SPECIALTY))]
 tab13 <- tab13[, c(1,4,2,3)]
 ```
+
 ```{r tab13_disp, echo = F, include=T, error=T}
 kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Providers", "Percent of All Providers"), digits = 2, format.args = list(big.mark = ","))
 ```
@@ -720,24 +747,42 @@ kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Pro
 
 This table includes information on the distribution of providers by type.
 
-```{r tab14_res, echo = F, include=T, error=T}
+```{r tab14_res, echo = F, include=T, error=F}
+##debug code
+
+tab12_ps <- run_query(
+    paste0("select 'PROVIDER_SPECIALTY' as from_tab,
+    count(distinct provider) as num_prov
+     from ", provider_specialty))
+
+tab2_ps_null <- run_query(
+  paste0("SELECT SUM(CASE WHEN SPECIALTY IS NULL THEN 1 ELSE 0 END) as SPECIALTY,
+   SUM(CASE WHEN PROVIDER_TYPE IS NULL THEN 1 ELSE 0 END) as PROVIDER_TYPE,
+   SUM(CASE WHEN PROVIDER_BIRTH_YEAR IS NULL THEN 1 ELSE 0 END) as PROVIDER_BIRTH_YEAR,
+   SUM(CASE WHEN PROVIDER_GENDER IS NULL THEN 1 ELSE 0 END) as PROVIDER_GENDER,
+   SUM(CASE WHEN PROVIDER_RACE IS NULL THEN 1 ELSE 0 END) as PROVIDER_RACE,
+   SUM(CASE WHEN PROVIDER_HISPANIC = '' THEN 1 ELSE 0 END) as PROVIDER_HISPANIC
+    FROM ", provider_specialty))
+##
+
 tab14 <- run_query(
-    paste0("select provider_type as prov_type,
+    paste0("select cast(provider_type as varchar) as prov_type,
     count(distinct provider) as num_prov
      from ", provider_specialty, "
        group by provider_type
        order by provider_type")) %>% 
-  bind_rows(data.frame(prov_type = "NULL", num_prov = tab2_ps_null$PROVIDER_TYPE)) %>% 
+  rbind(data.frame(prov_type = "NULL", num_prov = tab2_ps_null$PROVIDER_TYPE)) %>% 
   mutate(
     pct_prov = num_prov / tab12_ps$num_prov * 100
   ) 
 tab14$prov_type <- as.numeric(tab14$prov_type)
-tab14$spec_full <- prov_type$V2[match(tab14$prov_type, prov_type$V1)]
+tab14$spec_full <- prov_type$Description[match(tab14$prov_type, prov_type$Provider_Type)]
 tab14$spec_full[is.na(tab14$spec_full)] <- "Unknown"
 tab14 <- tab14[, c(1,4,2,3)]
+tab14 <- tab14[order(-tab14[, 4]), ]
 ```
 ```{r tab14_disp, echo = F, include=T, error=T}
-kable(tab14, col.names = c("Provider Abbreviation", "Provider Type", "Number of Providers", "Percent of All Providers"), digits = 2, align = 'l', format.args = list(big.mark = ","))
+kable(tab14, col.names = c("Provider Type Code", "Provider Type Description", "Number of Providers", "Percent of All Providers"), digits = 2, align = 'l', row.names = F, format.args = list(big.mark = ","))
 ```
 
 ## Table 15: Annual Trends in Self-Reported Tobacco Use
