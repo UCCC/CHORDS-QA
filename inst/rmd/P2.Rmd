@@ -900,6 +900,7 @@ tab19 <- run_query("select * from pro_questions")
 ```{r tab19_disp, echo = F, include=T, error=T}
 kable(tab19)
 ```
+
 ## Table 20: PRO_Responses: Surveys and Questions included
 
 This table summarizes responses to the behavioral and social survey questions based on which screening surveys each data partner has included.
