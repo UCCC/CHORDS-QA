@@ -1434,6 +1434,11 @@ knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
              col.names = c('Table','N','Field','Errors N(%)'))
 ```
 
+## Data Check 1.11: Encounters assigned to more than one person_id in ENCOUNTERS table
+```{r echo=F}
+knitr::kable(GR1Person,col.names = c('Table','Number of Encounters','Encounters Assinged to More Than One Person'), row.names = FALSE)
+```
+
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
 ```{r echo=F}
 knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
