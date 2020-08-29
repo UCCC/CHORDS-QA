@@ -1436,7 +1436,7 @@ knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
 
 ## Data Check 1.11: Encounters assigned to more than one person_id in ENCOUNTERS table
 ```{r echo=F}
-knitr::kable(GR1Person,col.names = c('Table','Number of Encounters','Encounters Assinged to More Than One Person'), row.names = FALSE)
+knitr::kable(GR1Person, col.names = c('Table','Number of Encounters','Encounters Assinged to More Than One Person', "Percentage"), row.names = FALSE)
 ```
 
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
@@ -1456,11 +1456,11 @@ knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Cod
 ## Data Check 2.01: More than 5% of records have future dates
 ```{r echo=F}
   futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0 & params$QAAlert==F){
-                 knitr::kable(subset(fdatesdone, pctFuture>=5), col.names = c('Table','Date name','Total rows','N future dates','%'))
+    knitr::kable(subset(fdatesdone, pctFuture>=5), col.names = c('Table','Date name','Total rows','N future dates','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 } else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
-                   "No table exceeds the 5% limit on future dates."
+  "No table exceeds the 5% limit on future dates."
 } else if ( params$QAAlert==T) {
-                   knitr::kable(fdatesdone, col.names = c('Table','Date name','Total rows','N future dates','%'))
+  knitr::kable(fdatesdone, col.names = c('Table','Date name','Total rows','N future dates','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 }
 
 futureDataMsg
@@ -1470,17 +1470,14 @@ futureDataMsg
 ```{r echo=F}
 outOfRangeMsg <- NULL
 outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & params$QAAlert==F){
-   knitr::kable(
-   subset(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1), select=c(table,item, low, high, nrows, NP_low, NP_high)),
-   col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
-)
+  allOutOfRange <-  subset(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1), select=c(table,item, low, high, nrows, NP_low, NP_high))
+  knitr::kable(allOutOfRange, col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
+, digits = 2, format.args = list(big.mark = ",", scientific = FALSE)) 
 } else if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))==0 & params$QAAlert==F) {
                    "No table exceeds the 5% limit."
 } else if ( params$QAAlert==T) {
-  knitr::kable(
-  subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high)),
-  col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
-)
+  allOutOfRange <- subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high))
+  knitr::kable(allOutOfRange, col.names = c('Table','Field','Check Low','High','N','Low values N(%)','High values N (%)'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 }
 outOfRangeMsg
 ```
@@ -1489,27 +1486,30 @@ outOfRangeMsg
 ```{r echo=F}
 illogicalDatesMsg <- NULL
 illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0 & params$QAAlert==F){
-        knitr::kable(subset(table2.03_tx, pct>=5)[,c('ord','comp','n','pct', 'srctab')], 
-                    col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
-} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
-                   "No table exceeds the 5% limit on illogical dates."
+  knitr::kable(subset(table2.03_tx, pct>=5)[,c('ord','comp','n','pct', 'srctab')], 
+               col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+} else if(nrow(subset(table2.03_tx, pct>=5))==0 & params$QAAlert==F) {
+  "No table exceeds the 5% limit on illogical dates."
 } else if ( params$QAAlert==T) {
-        knitr::kable(table2.03_tx[,c('ord','comp','n','pct', 'srctab')], 
-                    col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
-                 }
+  knitr::kable(table2.03_tx[,c('ord','comp','n','pct', 'srctab')], 
+               col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+}
+illogicalDatesMsg
 ```
 
 ## Data Check 3.03: More than 10% of records have missing or unknown values for the following fields:
 ```{r echo=F}
   check3.03Msg <- NULL
 check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10.0))>0 & params$QAAlert==F){
-        knitr::kable(subset(result3.03, pctBad>=10.0)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
-                    col.names = c('Table','Variable','N Rows','N with bad values','%'))
-} else if(nrow(subset(fdatesdone, pctFuture>=5.0))==0 & params$QAAlert==F) {
-                   "No check exceeds the 10% limit on bad values."
+  knitr::kable(subset(result3.03, pctBad>=10.0)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')],
+               col.names = c('Table','Variable','N Rows','N with bad values','%'))
+} else if(nrow(subset(result3.03, pctBad>=10.0))==0 & params$QAAlert==F) {
+  "No check exceeds the 10% limit on bad values."
 } else if ( params$QAAlert==T) {
-        knitr::kable(result3.03[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
-                    col.names = c('Table','Variable','N Rows','N with bad values','%'))}
+  knitr::kable(result3.03[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
+               col.names = c('Table','Variable','N Rows','N with bad values','%'))
+}
+check3.03Msg
 ```
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal diagnosis
