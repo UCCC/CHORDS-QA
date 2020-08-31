@@ -1275,25 +1275,43 @@ check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0){
 
 
 ```{r 3.05, echo = F, include=T}
-patsWithEncs <- run_query(paste0("select count(*) as nrows, sum(patsWEncDiag) as patsWEncDiag, sum(patsWEncProc) as patsWEncProc from ( select  case when person_id in (select person_id from ", diagnoses, ") then 1 else 0 end as patsWEncDiag",
- ",case when person_id in (select person_id from ", procedures, ") then 1 else 0 end as patsWEncProc",
- "       from ", demographics, " where person_id in (select person_id from ", encounters, ") ) as q") )
+patsWithEncs <- run_query(paste0("WITH cte_patWEncDiag AS (
+	SELECT count(DISTINCT di.person_id) patsWEncDiag
+	FROM ", demographics, " de
+	JOIN ", encounters ," e on e.person_id = de.person_id
+	JOIN ", diagnoses ," di ON de.person_id = di.person_id
+	),
+cte_patWEncProc AS (
+	SELECT count(DISTINCT p.person_id) AS patsWEncProc
+	FROM ", demographics, " de
+	JOIN ", encounters, " e on e.person_id = de.person_id
+	JOIN ", procedures, " p ON de.person_id = p.person_id
+	),
+cte_pats AS (
+	SELECT count(DISTINCT de.person_id) nrows
+	FROM ", demographics, " de
+	JOIN ", encounters, " e on e.person_id = de.person_id
+	)
+SELECT nrows, patsWEncDiag, patsWEncProc
+FROM cte_patWEncDiag
+	,cte_patWEncProc
+	,cte_pats") )
 patsWithEncs <- within(patsWithEncs, {
-  pctWEncDiag <- 100* patsWEncDiag/nrows
-  pctWEncproc <- 100* patsWEncProc/nrows
+  pctWEncDiag <- 100.0* patsWEncDiag/nrows
+  pctWEncProc <- 100.0* patsWEncProc/nrows
 })
 patDiagMsg <- with (patsWithEncs,{
-  if(pctWEncDiag<50 ){
+  if(pctWEncDiag<50.0 ){
   paste0('WARNING: Only ',round(pctWEncDiag,1),'% of patients with encounters have diagnoses') 
 } else { 
   paste0('NOTE: ',round(pctWEncDiag,1),'% of patients with encounters have diagnoses') 
 }
 })
 patProcMsg <- with (patsWithEncs,{
-  if(pctWEncproc<50 ){
-  paste0('WARNING: Only ',round(pctWEncproc,1),'% of patients with encounters have procedures') 
+  if(pctWEncProc<50.0 ){
+  paste0('WARNING: Only ',round(pctWEncProc,1),'% of patients with encounters have procedures') 
 } else { 
-  paste0('NOTE: ',round(pctWEncproc,1),'% of patients with encounters have procedures') 
+  paste0('NOTE: ',round(pctWEncProc,1),'% of patients with encounters have procedures') 
 }
 })
 
@@ -1512,6 +1530,22 @@ check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10.0))>0 & params$QAAlert==F)
                col.names = c('Table','Variable','N Rows','N with bad values','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 }
 check3.03Msg
+```
+
+## Data Check 3.04 Patients with Encounters and Diagnoses
+```{r echo=F}
+check3.04 <- data.frame(patsWithEncs[,c('nrows','patsWEncDiag','pctWEncDiag')]) %>% format(digits = 2, big.mark = "," )
+check3.04$patsWEncDiag <- paste(check3.04$patsWEncDiag," (",check3.04$pctWEncDiag, "%)", sep="")
+
+knitr::kable(check3.04[,c('nrows','patsWEncDiag')], row.names = FALSE, col.names = c("Patients w/ Encounters", "Patients with Encounters and Diagnosis Records"))
+```
+
+## Data Check 3.05 Patients with Encounters and Procedures
+```{r echo=F}
+check3.05 <- data.frame(patsWithEncs[,c('nrows','patsWEncProc','pctWEncProc')]) %>% format(digits = 2, big.mark = "," )
+check3.05$patsWEncProc <- paste(check3.05$patsWEncDiag," (",check3.05$pctWEncProc, "%)")
+
+knitr::kable(check3.05[,c('nrows','patsWEncProc')], row.names = FALSE, col.names = c("Patients w/ Encounters", "Patients with Encounters and Procedure Records"))
 ```
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal diagnosis
