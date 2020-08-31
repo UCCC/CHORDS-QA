@@ -1226,18 +1226,18 @@ illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0){
 # where = a valid where clause to subset the table, be sure to start with "WHERE", see example for ddate
 check3.03 <-
 rbind( 
-  data.frame(table='demographics',   var='birth_date',            condition='is null', where=' '),
-  data.frame(table='demographics',   var='gender',                condition="not in ('M','F','O')", where=' '),
-  data.frame(table='encounters',     var='discharge_disposition', condition="not in ('A','E')", where=' '),
-  data.frame(table='encounters',     var='ddate',                 condition="is null", where="where enctype = 'IP'"),
-  data.frame(table='procedures',     var='procdate',              condition='is null', where=' '),
-  data.frame(table='prescribing',    var='rx_order_date',         condition='is null', where=' '),
-  data.frame(table='pharmacy',       var='not(rxsup>1 or rxamt>1)',       condition=' ', where=' '), # compicated by it depending on two variables
+  data.frame(table='demographics', disp='birth_date',   var='birth_date',            condition='is null', where=' '),
+  data.frame(table='demographics', disp='gender',   var='gender',                condition="not in ('M','F','O')", where=' '),
+  data.frame(table='encounters', disp='discharge_disposition',     var='discharge_disposition', condition="not in ('A','E')", where=' '),
+  data.frame(table='encounters', disp='ddate',    var='ddate',                 condition="is null", where="where enctype = 'IP'"),
+  data.frame(table='procedures', disp='procdate',    var='procdate',              condition='is null', where=' '),
+  data.frame(table='prescribing',disp='rx_order_date',   var='rx_order_date',         condition='is null', where=' '),
+  data.frame(table='pharmacy', disp='rxsup and/or rxamt', var='not(rxsup>1 or rxamt>1)',       condition=' ', where=' '), # compicated by it depending on two variables
   #data.frame(table='cause_of_death', var='source',                condition="not in ('S', 'N', 'T', 'B', 'L', 'U', 'O')"),
-  data.frame(table='diagnoses',      var='dx_origin',             condition="not in ('OD', 'BI', 'CL', 'PR', 'NI', 'OT')", where=' '),
-  data.frame(table='diagnoses',      var='enc_id',                condition="is null", where=' '),
-  data.frame(table='procedures',     var='enc_id',                condition="is null", where=' '),
-  data.frame(table='vital_signs',    var='enc_id',                condition="is null", where=' ')
+  data.frame(table='diagnoses',disp='dx_origin',      var='dx_origin',             condition="not in ('OD', 'BI', 'CL', 'PR', 'NI', 'OT')", where=' '),
+  data.frame(table='diagnoses', disp='enc_id',      var='enc_id',                condition="is null", where=' '),
+  data.frame(table='procedures', disp='enc_id',     var='enc_id',                condition="is null", where=' '),
+  data.frame(table='vital_signs', disp='enc_id',    var='enc_id',                condition="is null", where=' ')
   
 )
 res3.03 <- list()
@@ -1245,7 +1245,7 @@ for(i in 1:nrow(check3.03)){
   
   
   res3.03[[i]] <- with(check3.03, {run_query( 
-                                            paste("select '",table[i],"' as dataTable,'",var[i],"' as variable, count(*) as N_rows, sum(case when ",var[i],condition[i],"then 1 else 0 end) as N_bad",
+                                            paste("select '",table[i],"' as dataTable,'",var[i],"' as variable, '",disp[i],"' as display, count(*) as N_rows, sum(case when ",var[i],condition[i],"then 1 else 0 end) as N_bad",
                                                   "from",eval(as.name(tolower(table[i]))), where[i]
                                                   ,
                                                   sep=' '
@@ -1259,8 +1259,10 @@ result3.03 <- do.call('rbind', res3.03) %>%
   })
 check3.03Msg <- NULL
 check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0){
-  paste("More than 10% of records have missing or unknown values for the following fields Alert:",subset(result3.03, pctBad>=10)$variable , sep = ' ' )
-} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 ) {
+  result3.03gt10 <- subset(result3.03, pctBad>=10)
+  paste("More than 10% of records have missing or unknown values for the following table fields:  ",
+        paste(paste(trimws(result3.03gt10$dataTable), ": ", trimws(result3.03gt10$display), sep=''), sep = ", "), sep="")
+} else if(nrow(subset(result3.03, pctFuture>=10))==0 ) {
                    "No check exceeds the 10% limit on bad values."
 }
 
@@ -1404,44 +1406,44 @@ knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Colu
 ## Data Check 1.05: Tables have primary key definition errors
 ```{r echo=F}
 violated_primary_keys[is.na(violated_primary_keys)] = ""
-knitr::kable(violated_primary_keys, row.names = FALSE)
+knitr::kable(violated_primary_keys, row.names = FALSE, digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
 ```{r echo=F}
 data_validation[is.na(data_validation)] = ""
-knitr::kable(data_validation)
+knitr::kable(data_validation, digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.07: Required fields have non-permissible missing values
 ```{r echo=F}
-knitr::kable(nullableValues, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows Null Value", "Found Field Allows Null Value"))
+knitr::kable(nullableValues, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows Null Value", "Found Field Allows Null Value"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
 ```{r echo=F}
-knitr::kable(orphan_person_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
+knitr::kable(orphan_person_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
 ```{r echo=F}
-knitr::kable(orphan_enc_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
+knitr::kable(orphan_enc_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
 ```{r echo=F}
 knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
-             col.names = c('Table','N','Field','Errors N(%)'))
+             col.names = c('Table','N','Field','Errors N(%)'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.11: Encounters assigned to more than one person_id in ENCOUNTERS table
 ```{r echo=F}
-knitr::kable(GR1Person, col.names = c('Table','Number of Encounters','Encounters Assinged to More Than One Person', "Percentage"), row.names = FALSE)
+knitr::kable(GR1Person, col.names = c('Table','Number of Encounters','Encounters Assinged to More Than One Person', "Percentage"), row.names = FALSE, digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
 ```{r echo=F}
-knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
+knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 
@@ -1450,7 +1452,7 @@ knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target
 ```{r echo=F }
 cat("Top 50 Invalid Codes")
 top_50_invalid$Code[top_50_invalid$Code==""] <- "\'blank\'"
-knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"))
+knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 2.01: More than 5% of records have future dates
@@ -1501,20 +1503,20 @@ illogicalDatesMsg
 ```{r echo=F}
   check3.03Msg <- NULL
 check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10.0))>0 & params$QAAlert==F){
-  knitr::kable(subset(result3.03, pctBad>=10.0)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')],
+  knitr::kable(subset(result3.03, pctBad>=10.0)[,c('dataTable','display','N_rows','N_bad', 'pctBad')],
                col.names = c('Table','Variable','N Rows','N with bad values','%'))
 } else if(nrow(subset(result3.03, pctBad>=10.0))==0 & params$QAAlert==F) {
   "No check exceeds the 10% limit on bad values."
 } else if ( params$QAAlert==T) {
-  knitr::kable(result3.03[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
-               col.names = c('Table','Variable','N Rows','N with bad values','%'))
+  knitr::kable(result3.03[,c('dataTable','display','N_rows','N_bad', 'pctBad')], 
+               col.names = c('Table','Variable','N Rows','N with bad values','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 }
 check3.03Msg
 ```
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal diagnosis
 ```{r echo=F}
-knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Patient Type Encounters", "In-Patient Encounters W/O Principal Diagnoses", "% of In-Patient Type Encounters W/O Principal Diagnoses"))
+knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Patient Type Encounters", "In-Patient Encounters W/O Principal Diagnoses", "% of In-Patient Type Encounters W/O Principal Diagnoses"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 
@@ -1529,7 +1531,7 @@ if (params$QAAlert == TRUE){
     QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.07",QA_Alert_Message_307)
   }
 }
-knitr::kable(data_result_75_complete,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "% of Benchmark"))
+knitr::kable(data_result_75_complete,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "% of Benchmark"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ####Total program run time:
