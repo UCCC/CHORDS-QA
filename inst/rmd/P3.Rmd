@@ -1502,7 +1502,7 @@ knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Cod
 futureDataMsg
 ```
 
-## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic blood pressure, systolic blood pressure, or dispensed days supply
+## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic bp, systolic bp, or dispensed days supply
 ```{r echo=F}
 outOfRangeMsg <- NULL
 outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & params$QAAlert==F){
@@ -1510,7 +1510,7 @@ outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & p
   knitr::kable(allOutOfRange, col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
 , digits = 2, format.args = list(big.mark = ",", scientific = FALSE)) 
 } else if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))==0 & params$QAAlert==F) {
-                   "No table exceeds the 5% limit."
+                   "No table exceeds the 10% limit."
 } else if ( params$QAAlert==T) {
   allOutOfRange <- subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high))
   knitr::kable(allOutOfRange, col.names = c('Table','Field','Check Low','High','N','Low values N(%)','High values N (%)'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
