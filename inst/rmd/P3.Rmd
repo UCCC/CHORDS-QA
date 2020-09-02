@@ -37,16 +37,33 @@ params:
         value: TRUE
 ---
 ```{r setup, include=FALSE}
-#library(RODBC)
-#library(knitr)
-#library(chordsTables)
 library(tidyr)
 library(dplyr)
 knitr::opts_chunk$set(echo = FALSE,
                 message = FALSE,
                 warning = FALSE,
-                error= TRUE)
+                error= TRUE,
+                time_it = TRUE)
 startTime <- Sys.time()
+
+all_times <- list()
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      now <<- Sys.time()
+    } else {
+      res <- difftime(Sys.time(), now)
+  
+      all_times[[options$label]] <<- c(options$label, format(round(res, 3)))
+      
+      #Only prints times greater than 5 minutes.  
+      if(res > as.difftime("00:05", format="%H:%M")){
+        paste("Time for the chunk", options$label, "to run:", format(round(res, 3)))
+      }
+    }
+  }
+}))
 ```
 
 ```{r connection strings, include=FALSE, error=FALSE}
@@ -813,7 +830,7 @@ WITH CTE_CodeCounts
             b.CodeType, 
             cc.CountAll, 
             b.CountInvalid AS CountInvalid, 
-            ROUND(CAST(b.CountInvalid AS DECIMAL) / CAST(cc.CountAll AS DECIMAL) * CAST(100.0 AS DECIMAL), 2)
+            ROUND(CAST(b.CountInvalid AS FLOAT) / CAST(cc.CountAll AS FLOAT) * CAST(100.0 AS FLOAT), 3)
             AS PercentInvalid
      FROM       
      (
@@ -879,7 +896,7 @@ odbcClose(connection113)
 if (params$QAAlert == TRUE){
   code_conform_table_counts_table <- subset(code_conform_table_counts, PercentInvalid > 5.0)
   if (!(length(code_conform_table_counts_table)==0)){
-    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, ".", code_conform_table_counts_table$CodeType, sep="")
+    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, "-", code_conform_table_counts_table$CodeType, " (",code_conform_table_counts_table$PercentInvalid , "%)", sep="")
     QA_Alert_Message_113_items <- paste0(code_conform_table_counts_table$message, collapse = ', ')
     QA_Alert_Message_113 <- paste0("More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content: ",
                                   QA_Alert_Message_113_items)
@@ -1017,9 +1034,6 @@ outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 ){
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("2.02",futureDataMsg)
 
 ```
-
-
-
 
  
 ```{r 2.03, echo = F, include=T}
@@ -1468,6 +1482,8 @@ knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target
 ## Data Check 1.13: More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content
 
 ```{r echo=F }
+knitr::kable(code_conform_table_counts, row.names = FALSE, col.names = c("Table Name", "Code Type", "Total Codes in Table", "Total Invalid Codes", "Percent Invalid"), digits = 3, format.args = list(big.mark = ",", scientific = FALSE))
+cat(" \n")  
 cat("Top 50 Invalid Codes")
 top_50_invalid$Code[top_50_invalid$Code==""] <- "\'blank\'"
 knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
@@ -1556,7 +1572,7 @@ knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Pati
 
 ## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
 
-```{r 3.07 Output, error=FALSE, include=TRUE}
+```{r 3.07 Output, include=TRUE}
 cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
 if (params$QAAlert == TRUE){
   data_result_75_complete_table <- subset(data_result_75_complete, PercentofBenchMark < 75 )
