@@ -253,7 +253,7 @@ VALUES      (
        'CAUSE_OF_DEATH', 'PERSON_ID'), (
        'CAUSE_OF_DEATH', 'COD'), (
        'DEMOGRAPHICS', 'PERSON_ID'), (
-       'LINKAGE', 'LINK_ID'), (
+       'LINKAGE', 'CID'), (
        'LINKAGE', 'LINE'), (
        'BENEFIT', 'BENEFIT_ID'), (
        'ENCOUNTERS', 'ENC_ID'), (
@@ -905,29 +905,55 @@ if (params$QAAlert == TRUE){
 }
 ```
  
-```{r 2.01, echo = F, include=T}
+```{r 2.01, echo = F, include=T, error=T}
 # DC 2.01
+
 tabDates <- run_query("
 SELECT DISTINCT 
-       a.name AS tabname, 
+       case 
+			when s.name is not null then s.name else a.name end AS tabname, 
        b.name AS colname
 FROM   
      sys.objects a
      INNER JOIN sys.columns b
           ON a.object_id = b.object_id
-WHERE  type IN('U', 'V')
+     left join sys.synonyms s on 
+		replace(replace( s.base_object_name, '[', ''), ']', '') = a.name
+WHERE a.type IN('U', 'V')
+and b.name like '%date%'
 ORDER BY 
-         a.name;") %>% 
-  subset(grepl('date',colname, ignore.case = T))
-  
-modDates <- run_query("select name, modify_date from sys.objects WHERE  type IN('U', 'V')")
+        tabname;")
+
+modDates <- run_query("
+SELECT  DISTINCT
+       case 
+			when s.name is not null then s.name else a.name end AS name, 
+      a.modify_date
+FROM   
+     sys.objects a
+     INNER JOIN sys.columns b
+          ON a.object_id = b.object_id
+     left join sys.synonyms s on 
+		replace(replace( s.base_object_name, '[', ''), ']', '') = a.name
+WHERE a.type IN('U', 'V')")
+
 futureDateCode <- merge(tabDates, modDates, by.x='tabname', by.y='name') %>%
   within({
-    sqlcode <- paste0("select '",tabname, "' as tableName, '", colname,"' as dateName ,count(*) as nrows, sum(case when a.",colname,">b.modify_date then 1 else 0 end) as futureDate from ",
-tabname, " as a , (select modify_date from sys.objects where type IN('U', 'V') AND name ='",tabname,"') as b"
+    sqlcode <- paste0("
+                      select '",tabname, "' as tableName, '", colname,"' as dateName ,count(*) as nrows, sum(case when a.",colname,">b.modify_date then 1 else 0 end) as futureDate from ",
+tabname, " as a , (select modify_date from (SELECT  
+       case 
+			when s.name is not null then s.name else a.name end AS name, 
+       a.modify_date
+FROM   
+     sys.objects a
+     INNER JOIN sys.columns b
+          ON a.object_id = b.object_id
+     left join sys.synonyms s on 
+		replace(replace( s.base_object_name, '[', ''), ']', '') = a.name
+WHERE a.type IN('U', 'V')) a  WHERE a.name ='",tabname,"') as b"
 )
   })
-#test <- run_query(futureDateCode[1, "sqlcode"])
 fdatelst <- list()
 for (i in 1:nrow(futureDateCode)){
   fdatelst[[i]] <- run_query(futureDateCode[i, "sqlcode"])
@@ -936,11 +962,13 @@ fdatesdone <- do.call('rbind', fdatelst) %>%
   within(.,{
     pctFuture <- round(100*futureDate/nrows, 4)
   })
-#params$QAAlert<-F
+
 ### add message if no table is a problem 
 futureDataMsg <- NULL
 futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0  ){
-paste("The following tables exceeded the 5% limit on future dates:", subset(fdatesdone, pctFuture>=5)$tableName, sep = ' ')
+  futureDataMsgTable <- subset(fdatesdone, pctFuture>=5)
+  paste("The following tables exceeded the 5% limit on future dates:",
+        paste0(futureDataMsgTable$tableName, futureDataMsgTable$dateName, sep="."), sep = ', ')
 } else if(nrow(subset(fdatesdone, pctFuture>=5))==0  ) {
                    "No table exceeds the 5% limit on future dates."
 }  
@@ -1402,7 +1430,7 @@ data_result_75_complete <- run_query(gsub( "@BenchmarkStartDate", paste0('\'', b
          FORMAT(ADATE, 'MM-MMM') Month, 
          @BenchmarkPriorYearAvg AS BenchmarkCount, 
          COUNT(1) PriorMonthCount, 
-         CAST(ROUND((CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0), 2) as DECIMAL(5,2))  AS PercentofBenchMark
+         IIF(@BenchmarkPriorYearAvg <> 0, CAST(ROUND((CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0), 2) as DECIMAL(5,2)), 0)  AS PercentofBenchMark
   FROM ",  
        encounters, " e
   WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')

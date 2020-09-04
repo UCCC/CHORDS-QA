@@ -271,7 +271,7 @@ CREATE TABLE #CENSUS_DEMOG (
 
 	CREATE TABLE #LINKAGE
 	(
-					  LINK_ID       nvarchar(50) NOT NULL,
+					  CID       nvarchar(50) NOT NULL,
 					  PERSON_ID		nvarchar(36) NOT NULL,
 					  LINE			smallint NOT NULL,
 					  LINK_SRC_ID   nvarchar(12) NOT NULL
