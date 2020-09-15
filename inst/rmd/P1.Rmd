@@ -238,7 +238,9 @@ tab2_enc_null <- run_query(
   paste0("SELECT SUM(CASE WHEN ADATE IS NULL THEN 1 ELSE 0 END) as ADATE,
    SUM(CASE WHEN DDATE IS NULL THEN 1 ELSE 0 END) as DDATE,
    SUM(CASE WHEN PROVIDER IS NULL THEN 1 ELSE 0 END) as PROVIDER,
-   SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCOUNTER_SUBTYPE
+   SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCOUNTER_SUBTYPE,
+   SUM(CASE WHEN FACILITY IS NULL THEN 1 ELSE 0 END) as FACILITY,
+   SUM(CASE WHEN DEPARTMENT IS NULL THEN 1 ELSE 0 END) as DEPARTMENT
       FROM ", encounters))
 tab2_enc_null2 <- data.frame(table = rep("ENCOUNTERS", ncol(tab2_enc_null)), var = names(tab2_enc_null), records_null = t(tab2_enc_null)[,1])
 row.names(tab2_enc_null2) <- NULL
@@ -278,13 +280,29 @@ tab2_vs_null <- run_query(
       FROM ", vital_signs))
 tab2_vs_null2 <- data.frame(table = rep("VITAL_SIGNS", ncol(tab2_vs_null)), var = names(tab2_vs_null), records_null = t(tab2_vs_null)[,1])
 row.names(tab2_vs_null2) <- NULL
-tab2_null <- bind_rows(tab2_demo_null2, tab2_enc_null2, tab2_cl_null2, tab2_dx_null2, tab2_vs_null2) %>% 
+
+tab2_benefit_null <- run_query(
+  paste0("SELECT SUM(IIF(LOAD_DATE IS NULL, 1, 0)) LOAD_DATE
+	,SUM(IIF(REFRESH_DATE IS NULL, 1, 0)) REFRESH_DATE
+	,SUM(IIF(BENEFIT_TYPE IS NULL, 1, 0)) BENEFIT_TYPE
+	,SUM(IIF(BENEFIT_CAT IS NULL, 1, 0)) BENEFIT_CAT
+	,SUM(IIF(BENEFIT_DATE IS NULL, 1, 0)) BENEFIT_DATE
+	,SUM(IIF(ENC_ID IS NULL, 1, 0)) ENC_ID
+	,SUM(IIF(START_DATE IS NULL, 1, 0)) START_DATE
+	,SUM(IIF(END_DATE IS NULL, 1, 0)) END_DATE
+FROM ", benefit))
+tab2_benefit_null2 <- data.frame(table = rep("BENEFITS", ncol(tab2_benefit_null)), var = names(tab2_benefit_null), records_null = t(tab2_benefit_null)[,1])
+row.names(tab2_benefit_null2) <- NULL
+
+tab2_null <- bind_rows(tab2_demo_null2, tab2_enc_null2, tab2_cl_null2, tab2_dx_null2, tab2_vs_null2, tab2_benefit_null2) %>% 
   mutate(
     pct_rec = ifelse(table == "DEMOGRAPHICS", (records_null / tab1_dem$nrows * 100), 
                      ifelse(table == "ENCOUNTERS", (records_null / tab1_enc$nrows * 100), 
                              ifelse(table == "CENSUS_LOCATION", (records_null / tab1_cen$nrows * 100), 
                                      ifelse(table == "DIAGNOSES", (records_null / tab1_dx$nrows * 100), 
-                                             ifelse(table == "VITAL_SIGNS", (records_null / tab1_vs$nrows * 100), NA)))))
+                                             ifelse(table == "VITAL_SIGNS", (records_null / tab1_vs$nrows * 100),
+                                                    ifelse(table == "BENEFITS", (records_null / tab1_ben$nrows * 100),
+                                                           NA))))))
   )
 tab2_demo_uk <- run_query( 
   paste0("SELECT SUM(CASE WHEN GENDER = 'U' THEN 1 ELSE 0 END) as GENDER,
@@ -302,15 +320,25 @@ tab2_demo_uk <- run_query(
 tab2_demo_uk2 <- data.frame(table = rep("DEMOGRAPHICS", ncol(tab2_demo_uk)), var = names(tab2_demo_uk), records_uk = t(tab2_demo_uk)[,1])
 row.names(tab2_demo_uk2) <- NULL
 tab2_enc_uk <- run_query(
-  paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNKNOWN' THEN 1 ELSE 0 END) as PROVIDER
+  paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNKNOWN' THEN 1 ELSE 0 END) as PROVIDER,
+  SUM(CASE WHEN FACILITY = 'UNK' THEN 1 ELSE 0 END) as FACILITY,
+  SUM(CASE WHEN DEPARTMENT = 'UNK' THEN 1 ELSE 0 END) as DEPARTMENT
       FROM ", encounters))
 tab2_enc_uk2 <- data.frame(table = rep("ENCOUNTERS", ncol(tab2_enc_uk)), var = names(tab2_enc_uk), records_uk = t(tab2_enc_uk)[,1])
 row.names(tab2_enc_uk2) <- NULL
-tab2_uk <- bind_rows(tab2_demo_uk2, tab2_enc_uk2) %>% 
+tab2_benefit_uk <- run_query(
+  paste0("SELECT SUM(IIF(BENEFIT_TYPE = 'NI', 1, 0)) BENEFIT_TYPE
+	,SUM(IIF((BENEFIT_CAT = 'NI' OR BENEFIT_CAT = 'UN'), 1, 0)) BENEFIT_CAT
+FROM ", benefit))
+tab2_benefit_uk2 <- data.frame(table = rep("BENEFIT", ncol(tab2_benefit_uk)), var = names(tab2_benefit_uk), records_uk = t(tab2_benefit_uk)[,1])
+row.names(tab2_benefit_uk2) <- NULL
+tab2_uk <- bind_rows(tab2_demo_uk2, tab2_enc_uk2, tab2_benefit_uk2) %>% 
   mutate(
     pct_rec_uk = ifelse(table == "DEMOGRAPHICS", (records_uk / tab1_dem$nrows * 100), 
-                                     ifelse(table == "ENCOUNTERS", (records_uk / tab1_enc$nrows * 100), NA))
+                        ifelse(table == "ENCOUNTERS", (records_uk / tab1_enc$nrows * 100), NA),
+                            ifelse(table == "BENEFIT", (records_uk / tab1_ben$nrows * 100), NA))
   )
+
 tab2_all <- left_join(tab2_null, tab2_uk, by = c("table", "var"))
 ```
 
@@ -382,8 +410,9 @@ demogSummary <- cbind(demogSummary,nDemogRows)
 demogTable <-
   with(demogSummary,
   rbind(
-    c('Total rows in the demographic table'         ,nDemogRows    ,round(100*nDemogRows/nPatsDemog,1)),
-    c('Unique patients in the demographic table'    ,nPatsDemog    ,round(100*nPatsDemog/nPatsDemog,1)),
+    c('Total rows in the DEMOGRAPHICS table'         ,nDemogRows    ,round(100*nDemogRows/nPatsDemog,1)),
+    c('Unique patients in the DEMOGRAPHICS table'    ,nPatsDemog    ,round(100*nPatsDemog/nPatsDemog,1)),
+    c('Unique patients in the ENCOUNTERS table'    ,nPatsWithEncs    ,round(100*nPatsWithEncs/nPatsDemog,1)),
     c('Unique patients found in CENSUS_LOCATION'    ,nPatsWithLoc  ,round(100*nPatsWithLoc/nPatsDemog,1)),
     c('Unique patients found in DIAGNOSES'          ,nPatsWithDiag ,round(100*nPatsWithDiag/nPatsDemog,1)),
     c('Unique patients found in VITAL_SIGNS'        ,nPatsWithVital,round(100*nPatsWithVital/nPatsDemog,1))
@@ -3015,7 +3044,7 @@ knitr::knit_print(tab17)
 ```{r tab18.0, echo=FALSE, echo = F, include=T, error=T}
 tab18 <- run_query(
                           paste0("SELECT COUNT(DISTINCT PERSON_ID) as npats,
-                          COUNT(DISTINCT LINK_ID) as nlink
+                          COUNT(DISTINCT CID) as nlink
                           FROM ", linkage))
 
 knitr::kable(tab18, col.names = c("Number of unique patient IDs", "Number of unique linkage IDs"), format.args = list(big.mark = ","))
