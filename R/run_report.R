@@ -29,7 +29,7 @@
 #' @export
 
 run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
-  time_id <- as.numeric(Sys.time())
+  time_id <- format(Sys.time(), "%Y_%m_%d_%S")
   if(is.null(dbuser)){
     dbuser <- ""
   }
