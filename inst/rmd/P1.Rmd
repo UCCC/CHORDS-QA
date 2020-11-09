@@ -238,8 +238,9 @@ tab2_enc_null <- run_query(
   paste0("SELECT SUM(CASE WHEN ADATE IS NULL THEN 1 ELSE 0 END) as ADATE,
    SUM(CASE WHEN DDATE IS NULL THEN 1 ELSE 0 END) as DDATE,
    SUM(CASE WHEN PROVIDER IS NULL THEN 1 ELSE 0 END) as PROVIDER,
-   SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCOUNTER_SUBTYPE,
-   SUM(CASE WHEN FACILITY IS NULL THEN 1 ELSE 0 END) as FACILITY,
+   SUM(CASE WHEN ENCTYPE IS NULL THEN 1 ELSE 0 END) as ENCOUNTER_TYPE,
+   SUM(CASE WHEN ENCOUNTER_SUBTYPE IS NULL THEN 1 ELSE 0 END) as ENCOUNTER_SUBTYPE,
+   SUM(CASE WHEN FACILITY_CODE IS NULL THEN 1 ELSE 0 END) as FACILITY,
    SUM(CASE WHEN DEPARTMENT IS NULL THEN 1 ELSE 0 END) as DEPARTMENT
       FROM ", encounters))
 tab2_enc_null2 <- data.frame(table = rep("ENCOUNTERS", ncol(tab2_enc_null)), var = names(tab2_enc_null), records_null = t(tab2_enc_null)[,1])
@@ -321,7 +322,7 @@ tab2_demo_uk2 <- data.frame(table = rep("DEMOGRAPHICS", ncol(tab2_demo_uk)), var
 row.names(tab2_demo_uk2) <- NULL
 tab2_enc_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNKNOWN' THEN 1 ELSE 0 END) as PROVIDER,
-  SUM(CASE WHEN FACILITY = 'UNK' THEN 1 ELSE 0 END) as FACILITY,
+  SUM(CASE WHEN FACILITY_CODE = 'UNK' THEN 1 ELSE 0 END) as FACILITY,
   SUM(CASE WHEN DEPARTMENT = 'UNK' THEN 1 ELSE 0 END) as DEPARTMENT
       FROM ", encounters))
 tab2_enc_uk2 <- data.frame(table = rep("ENCOUNTERS", ncol(tab2_enc_uk)), var = names(tab2_enc_uk), records_uk = t(tab2_enc_uk)[,1])
@@ -2237,6 +2238,114 @@ knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','col
             format.args = list(big.mark = ","))
 ```
 
+```{r telehealth_tab7.14, echo = F, include=T, error=F}
+tab7.14a <- run_query(paste0("
+SELECT 
+       ENCTYPE_TE_EM_TV_TO,
+	   Y as POS2Y,
+	   N as POS2N
+FROM       
+(
+    SELECT CASE
+               WHEN e.ENCTYPE in ('TE', 'EM', 'TV', 'TO')
+               THEN 'Y'
+               ELSE 'N'
+           END AS ENCTYPE_TE_EM_TV_TO,
+           CASE
+               WHEN e.POS = '02'
+               THEN 'Y'
+               ELSE 'N'
+           END AS POS2
+    FROM ",  
+         encounters," e
+) ENCTYPEPOS PIVOT(COUNT(POS2) FOR POS2 IN( Y, 
+                                    N)) AS pvt;"))
+
+tab7.14a <- flextable(format(data = tab7.14a, big.mark=",")) %>% 
+  set_table_properties(layout = "autofit") %>% 
+  set_header_labels(ENCTYPE_TE_EM_TV_TO="ENCTYPE = 'TE', 'EM', 'TV', 'TO'", POS2Y = "Y", POS2N = "N") %>%
+  add_header_row(values = c("", "POS = 02", ""), colwidths=c(1,2) ,top = TRUE )%>%
+        flextable::fontsize(size = 9, part = "all") %>%
+        flextable::align(align = "center", part = "all") %>%
+        border_inner(part = "all", border = fp_border(color = "black", style = "solid"))
+
+
+tab7.14b <- run_query(paste0("
+SELECT 
+       CPTMOD, 
+       Y AS POS2Y, 
+       N AS POS2N
+FROM       
+(
+    SELECT 
+           CASE
+               WHEN p.CPTMOD1 IN('GT', '95')
+                    OR p.CPTMOD2 IN('GT', '95')
+                    OR p.CPTMOD3 IN('GT', '95')
+               THEN 'Y'
+               ELSE 'N'
+           END AS CPTMOD,
+           CASE
+               WHEN e.POS = '02'
+               THEN 'Y'
+               ELSE 'N'
+           END AS POS2
+    FROM ",  
+         procedures," p
+         JOIN ", encounters," e
+              ON p.ENC_ID = e.ENC_ID
+) CPTPOS PIVOT(COUNT(POS2) FOR POS2 IN(
+                                       Y, 
+                                       N)) AS pvt;"))
+
+tab7.14b <- flextable(format(data = tab7.14b, big.mark=",")) %>% 
+  set_table_properties(layout = "autofit") %>% 
+  set_header_labels(CPTMOD="CPTMOD = 'GT' or '95'", POS2Y = "Y", POS2N = "N") %>%
+  add_header_row(values = c("", "POS = 02", ""), colwidths=c(1,2) ,top = TRUE )%>%
+        flextable::fontsize(size = 9, part = "all") %>%
+        flextable::align(align = "center", part = "all") %>%
+        border_inner(part = "all", border = fp_border(color = "black", style = "solid"))
+
+tab7.14c <- run_query(paste0("
+SELECT 
+       CPTMOD, 
+       Y AS ENCTYPE_TE_EM_TV_TO_Y, 
+       N AS ENCTYPE_TE_EM_TV_TO_N
+FROM       
+(
+    SELECT 
+           CASE
+               WHEN p.CPTMOD1 IN('GT', '95')
+                    OR p.CPTMOD2 IN('GT', '95')
+                    OR p.CPTMOD3 IN('GT', '95')
+               THEN 'Y'
+               ELSE 'N'
+           END AS CPTMOD,
+           CASE
+               WHEN e.ENCTYPE in ('TE', 'EM', 'TV', 'TO')
+               THEN 'Y'
+               ELSE 'N'
+           END AS ENCTYPE_TE_EM_TV_TO
+    FROM   
+         ", procedures," p
+         JOIN ", encounters," e
+              ON p.ENC_ID = e.ENC_ID
+) CPTENCTYPE PIVOT(COUNT(ENCTYPE_TE_EM_TV_TO) FOR ENCTYPE_TE_EM_TV_TO IN(
+                                       Y, 
+                                       N)) AS pvt;"))
+
+tab7.14c <- flextable(data = tab7.14c) %>% 
+  set_table_properties(layout = "autofit") %>% 
+  set_header_labels(CPTMOD="CPTMOD = 'GT' or '95'", ENCTYPE_TE_EM_TV_TO_Y = "Y", ENCTYPE_TE_EM_TV_TO_N = "N") %>%
+  add_header_row(values = c("", "ENCTYPE = 'TE', 'EM', 'TV', 'TO'", ""), colwidths=c(1,2) ,top = TRUE )%>%
+        flextable::fontsize(size = 9, part = "all") %>%
+        flextable::align(align = "center", part = "all") %>%
+        border_inner(part = "all", border = fp_border(color = "black", style = "solid"))
+
+knitr::knit_print(tab7.14a)
+knitr::knit_print(tab7.14b)
+knitr::knit_print(tab7.14c)
+```
 
 
 ```{r encounter table, echo = F, include=T, error=T}
