@@ -948,7 +948,7 @@ tab20_years <- tab20_years_f()
 
 ## Table 20: PHQ-2 Number of Encounters and Percent of Encounters Screened by Year - All Encounter Types (`r tab20_years[1]` - Present)
 
-```{r tab20_res,echo = F, include=T, error=F }
+```{r tab20_res,echo = F, include=T, error=T }
 #All encounters
 tab20_enc <- run_query( 
         paste0("
