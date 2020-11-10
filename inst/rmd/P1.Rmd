@@ -2238,7 +2238,7 @@ knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','col
             format.args = list(big.mark = ","))
 ```
 
-```{r telehealth_tab7.14, echo = F, include=T, error=F}
+```{r telehealth_tab7.14, echo = F, include=T, error=T}
 tab7.14a <- run_query(paste0("
 SELECT 
        ENCTYPE_TE_EM_TV_TO,
