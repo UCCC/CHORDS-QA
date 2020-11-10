@@ -1,50 +1,29 @@
-#' @title ccsMDxI10
+#' @title ICD10CM
 #'
-#' @description This table contains the CCS Medical Diagnosis for ICD 10 from 5/29/2020.
-#' Modified from CCSR for ICD-10-CM Diagnoses, v2020.3 - https://www.hcup-us.ahrq.gov/toolssoftware/ccsr/ccs_refined.jsp
+#' @description This table contains the CCS Medical Diagnosis for ICD9 from https://www.cms.gov/medicare/icd-10/2021-icd-10-cm
 #'
-#' @format a \code{data.frame} with 17 variables
+#' @format a \code{data.frame} with 3 variables
 #' \describe{
-#'   \item{X.ICD.10.CM.CODE.}{(chr) }
-#'   \item{X.ICD.10.CM.CODE.DESCRIPTION.}{(chr) }
-#'   \item{X.Default.CCSR.CATEGORY}{(chr) }
-#'   \item{X.CCSR.CATEGORY.1.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.1.DESCRIPTION.}{(chr))}
-#'   \item{X.CCSR.CATEGORY.2.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.2.DESCRIPTION.}{(num) }
-#'   \item{X.CCSR.CATEGORY.3.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.3.DESCRIPTION.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.4.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.4.DESCRIPTION.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.5.}{(chr) }
-#'   \item{X.CCSR.CATEGORY.5.DESCRIPTION.}{(chr) }
-#'   \item{dxCdTp}{(chr) CHORDS version of diagnosis code }
-#'   \item{dxDesc}{(chr) CHORDS version of diagnosis description }
-#'   \item{dxCatDesc}{(chr) CHORDS version of categroy description }
+#'   \item{dxCode}{(chr) CHORDS version of code to combine ICD version with code }
+#'   \item{Code}{(chr) }
+#'   \item{Description}{(chr) }
 #'}
 #' @rdname datasets
-#' @source ccsMDxI10.Rda
-"ccsMDxI10"
-#' @title ccsMDxI9
+#' @source ICD10CM.rda
+"ICD10CM"
+#' @title ICD9CM
 #'
-#' @description This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
+#' @description This table contains the CCS Medical Diagnosis for ICD9 from https://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes
 #'
-#' @format a \code{data.frame} with 10 variables
+#' @format a \code{data.frame} with 3 variables
 #' \describe{
-#'   \item{dxCode}{(chr) Diagnosis code}
-#'   \item{ccsm1}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm1Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
+#'   \item{dxCode}{(chr) CHORDS version of code to combine ICD version with code }
+#'   \item{Code}{(chr) }
+#'   \item{Description}{(chr) }
 #'}
 #' @rdname datasets
-#' @source ccsMDxI9.Rda
-"ccsMDxI9"
+#' @source ICD9CM.rda
+"ICD9CM"
 #'   \item{X.CCSR.CATEGORY.3.DESCRIPTION.}{(chr) Indicates diagnosis was present at time of admission.}#' @title ccsSDxI9
 #'
 #' @description This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.

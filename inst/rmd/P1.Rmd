@@ -85,9 +85,9 @@ isoLang <- chordsTables::isoLang
 # VDW value sets
 valSets <- chordsTables::valSets
 
-ccsMDxI10 <- chordsTables::ccsMDxI10
-ccsSDxI9 <- chordsTables::ccsSDxI9
-icdLU <- rbind(ccsMDxI10[c('dxCdTp','dxDesc')],ccsSDxI9[c('dxCdTp','dxDesc')]) 
+ICD10CM <- chordsTables::ICD10CM
+ICD9CM <- chordsTables::ICD9CM
+icdLU <- rbind(ICD10CM[c('dxCode','Description')],ICD9CM[c('dxCode','Description')]) 
 maxQryRows = 0
 
 ```
@@ -336,8 +336,8 @@ row.names(tab2_benefit_uk2) <- NULL
 tab2_uk <- bind_rows(tab2_demo_uk2, tab2_enc_uk2, tab2_benefit_uk2) %>% 
   mutate(
     pct_rec_uk = ifelse(table == "DEMOGRAPHICS", (records_uk / tab1_dem$nrows * 100), 
-                        ifelse(table == "ENCOUNTERS", (records_uk / tab1_enc$nrows * 100), NA),
-                            ifelse(table == "BENEFIT", (records_uk / tab1_ben$nrows * 100), NA))
+                        ifelse(table == "ENCOUNTERS", (records_uk / tab1_enc$nrows * 100),
+                            ifelse(table == "BENEFIT", (records_uk / tab1_ben$nrows * 100), NA)))
   )
 
 tab2_all <- left_join(tab2_null, tab2_uk, by = c("table", "var"))
@@ -2238,6 +2238,8 @@ knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','col
             format.args = list(big.mark = ","))
 ```
 
+## Table 7.14. Telehealth by CPTMOD and POS with Encounter Type
+
 ```{r telehealth_tab7.14, echo = F, include=T, error=T}
 tab7.14a <- run_query(paste0("
 SELECT 
@@ -2261,13 +2263,14 @@ FROM
 ) ENCTYPEPOS PIVOT(COUNT(POS2) FOR POS2 IN( Y, 
                                     N)) AS pvt;"))
 
-tab7.14a <- flextable(format(data = tab7.14a, big.mark=",")) %>% 
+
+tab7.14a <- flextable(data = data.frame(format(tab7.14a, big.mark=",", scientific = F))) %>% 
   set_table_properties(layout = "autofit") %>% 
   set_header_labels(ENCTYPE_TE_EM_TV_TO="ENCTYPE = 'TE', 'EM', 'TV', 'TO'", POS2Y = "Y", POS2N = "N") %>%
-  add_header_row(values = c("", "POS = 02", ""), colwidths=c(1,2) ,top = TRUE )%>%
+  add_header_row(values = c("", "POS = 02"), colwidths=c(1,2) ,top = TRUE )%>%
         flextable::fontsize(size = 9, part = "all") %>%
         flextable::align(align = "center", part = "all") %>%
-        border_inner(part = "all", border = fp_border(color = "black", style = "solid"))
+        border(part = "all", border = fp_border(color = "black", style = "solid"))
 
 
 tab7.14b <- run_query(paste0("
@@ -2298,13 +2301,13 @@ FROM
                                        Y, 
                                        N)) AS pvt;"))
 
-tab7.14b <- flextable(format(data = tab7.14b, big.mark=",")) %>% 
+tab7.14b <- flextable(data = data.frame(format(tab7.14b, big.mark=",", scientific = F))) %>% 
   set_table_properties(layout = "autofit") %>% 
   set_header_labels(CPTMOD="CPTMOD = 'GT' or '95'", POS2Y = "Y", POS2N = "N") %>%
-  add_header_row(values = c("", "POS = 02", ""), colwidths=c(1,2) ,top = TRUE )%>%
+  add_header_row(values = c("", "POS = 02"), colwidths=c(1,2) ,top = TRUE )%>%
         flextable::fontsize(size = 9, part = "all") %>%
         flextable::align(align = "center", part = "all") %>%
-        border_inner(part = "all", border = fp_border(color = "black", style = "solid"))
+        border(part = "all", border = fp_border(color = "black", style = "solid"))
 
 tab7.14c <- run_query(paste0("
 SELECT 
@@ -2334,13 +2337,13 @@ FROM
                                        Y, 
                                        N)) AS pvt;"))
 
-tab7.14c <- flextable(data = tab7.14c) %>% 
+tab7.14c <- flextable(data = data.frame(format(tab7.14c, big.mark=",", scientific = F))) %>% 
   set_table_properties(layout = "autofit") %>% 
   set_header_labels(CPTMOD="CPTMOD = 'GT' or '95'", ENCTYPE_TE_EM_TV_TO_Y = "Y", ENCTYPE_TE_EM_TV_TO_N = "N") %>%
-  add_header_row(values = c("", "ENCTYPE = 'TE', 'EM', 'TV', 'TO'", ""), colwidths=c(1,2) ,top = TRUE )%>%
+  add_header_row(values = c("", "ENCTYPE = 'TE', 'EM', 'TV', 'TO'"), colwidths=c(1,2) ,top = TRUE )%>%
         flextable::fontsize(size = 9, part = "all") %>%
         flextable::align(align = "center", part = "all") %>%
-        border_inner(part = "all", border = fp_border(color = "black", style = "solid"))
+        border(part = "all", border = fp_border(color = "black", style = "solid"))
 
 knitr::knit_print(tab7.14a)
 knitr::knit_print(tab7.14b)
@@ -2782,10 +2785,10 @@ tab13_dxall <- run_query(
   arrange(desc(nrows_all)) %>% 
   head(., 10) %>% 
   mutate(
-    dxCdTp  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
+    dxCode  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
   ) %>% 
-  left_join(., icdLU, by = "dxCdTp") %>% 
-  select(dx, dx_codetype, dxDesc, nrows_all, npats)
+  left_join(., icdLU, by = "dxCode") %>% 
+  select(dx, dx_codetype, Description, nrows_all, npats)
 tab13_dxav <- run_query( 
   paste0("select dx as dx_av,
     dx_codetype as dx_codetype_av,
@@ -2797,10 +2800,10 @@ tab13_dxav <- run_query(
   arrange(desc(nrows_av)) %>% 
   head(., 10) %>% 
   mutate(
-    dxCdTp  = paste(dx_codetype_av,'-',gsub('.','',dx_av, fixed=T), sep='')
+    dxCode  = paste(dx_codetype_av,'-',gsub('.','',dx_av, fixed=T), sep='')
   ) %>% 
-  left_join(., icdLU, by = "dxCdTp") %>% 
-  select(dx_av, dx_codetype_av, dxDesc, nrows_av, npats_av)
+  left_join(., icdLU, by = "dxCode") %>% 
+  select(dx_av, dx_codetype_av, Description, nrows_av, npats_av)
 tab13_all <- bind_cols(tab13_dxall, tab13_dxav)
 ```
 
@@ -2843,9 +2846,9 @@ tab14_10 <- run_query(
 if (nrow(tab14_09) != 0){
   tab14_09 <- tab14_09 %>% 
     mutate(
-      dxCdTp  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
+      dxCode  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
       ) %>% 
-    left_join(., icdLU, by = "dxCdTp") %>% 
+    left_join(., icdLU, by = "dxCode") %>% 
   select(dx, dxDesc, nrows_all, npats)
   kable(tab14_09, col.names = c("Diagnosis","Diagnosis Description", "Records", "Patients"), caption = "Diagnosis Code Type = 09", format.args = list(big.mark = ","))
 } else {
@@ -2854,9 +2857,9 @@ if (nrow(tab14_09) != 0){
 if (nrow(tab14_10) != 0){
   tab14_10 <- tab14_10 %>% 
     mutate(
-      dxCdTp  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
+      dxCode  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
       ) %>% 
-    left_join(., icdLU, by = "dxCdTp") %>% 
+    left_join(., icdLU, by = "dxCode") %>% 
   select(dx, dxDesc, nrows_all, npats)
   kable(tab14_10, col.names = c("Diagnosis", "Diagnosis Description", "Records", "Patients"), caption = "Diagnosis Code Type = 10", format.args = list(big.mark = ","))
 } else {
