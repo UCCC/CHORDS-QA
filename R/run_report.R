@@ -142,11 +142,12 @@ getConnectionString <- function(params){
 #' @rdname run_report
 #' @export
 
-run_db_query <- function(Connection_String, query_text, as.is = FALSE) {
+run_db_query <- function(Connection_String, query_text, ...) {
   tryCatch(
     {
+      #ifelse(exists("as.is"),as.is <- as.is, as.is <- FALSE)
       db_conn <- get_new_connection(Connection_String)
-      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, as.is=as.is), timeout = 2100)
+      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, ...), timeout = 2100)
       return(result)
     },
     error = function(cond){

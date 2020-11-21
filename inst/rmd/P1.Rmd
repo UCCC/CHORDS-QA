@@ -98,7 +98,7 @@ connectionString <- getConnectionString(params)
 
 ```{r run queries, include=FALSE, error=TRUE}
 run_query <- function(query_text, ...){
-  result <- run_db_query(connectionString, query_text )
+  result <- run_db_query(connectionString, query_text, ... )
   return(result)
 }
 
@@ -292,7 +292,7 @@ tab2_benefit_null <- run_query(
 	,SUM(IIF(START_DATE IS NULL, 1, 0)) START_DATE
 	,SUM(IIF(END_DATE IS NULL, 1, 0)) END_DATE
 FROM ", benefit))
-tab2_benefit_null2 <- data.frame(table = rep("BENEFITS", ncol(tab2_benefit_null)), var = names(tab2_benefit_null), records_null = t(tab2_benefit_null)[,1])
+tab2_benefit_null2 <- data.frame(table = rep("BENEFIT", ncol(tab2_benefit_null)), var = names(tab2_benefit_null), records_null = t(tab2_benefit_null)[,1])
 row.names(tab2_benefit_null2) <- NULL
 
 tab2_null <- bind_rows(tab2_demo_null2, tab2_enc_null2, tab2_cl_null2, tab2_dx_null2, tab2_vs_null2, tab2_benefit_null2) %>% 
@@ -302,7 +302,7 @@ tab2_null <- bind_rows(tab2_demo_null2, tab2_enc_null2, tab2_cl_null2, tab2_dx_n
                              ifelse(table == "CENSUS_LOCATION", (records_null / tab1_cen$nrows * 100), 
                                      ifelse(table == "DIAGNOSES", (records_null / tab1_dx$nrows * 100), 
                                              ifelse(table == "VITAL_SIGNS", (records_null / tab1_vs$nrows * 100),
-                                                    ifelse(table == "BENEFITS", (records_null / tab1_ben$nrows * 100),
+                                                    ifelse(table == "BENEFIT", (records_null / tab1_ben$nrows * 100),
                                                            NA))))))
   )
 tab2_demo_uk <- run_query( 
@@ -2056,7 +2056,7 @@ knitr::kable(tab_race5lang,
 
 ## Table 7.11. Unknown or Missing Race1 and Hispanic Ethnicity Over Time
 
-```{r missing race/ethnicity over time, echo = F, include=T, error=T}
+```{r missing race/ethnicity over time, echo = F, include=T, error=T, eval=T}
 
 # create a temp table in the SQL DB temp drive, this will not be pulled into the R workspace.This pulls in the most recent encounter date and combines it with race and hispanic data from demographics
 tempCon1 <- get_connection()
@@ -2238,9 +2238,10 @@ knitr::kable(tab7.13_combined[    c('ageCat', 'count','tab7.13_total.count','col
             format.args = list(big.mark = ","))
 ```
 
-## Table 7.14. Telehealth by CPTMOD and POS with Encounter Type
+## Table 7.14 Telehealth by CPTMOD and POS with Encounter Type
 
-```{r telehealth_tab7.14, echo = F, include=T, error=T}
+### Table 7.14a ENCTYPE in 'TE', 'EM', 'TV', or 'TO' and POS = '02'
+```{r telehealth_tab7.14a, echo = F, include=T, error=T}
 tab7.14a <- run_query(paste0("
 SELECT 
        ENCTYPE_TE_EM_TV_TO,
@@ -2272,7 +2273,12 @@ tab7.14a <- flextable(data = data.frame(format(tab7.14a, big.mark=",", scientifi
         flextable::align(align = "center", part = "all") %>%
         border(part = "all", border = fp_border(color = "black", style = "solid"))
 
+knitr::knit_print(tab7.14a)
 
+```
+
+### Table 7.14b CPTMOD1, CPTMOD2, or CPTMOD3 IN 'GT' or '95' and POS = '02'
+```{r telehealth_tab7.14b, echo = F, include=T, error=T}
 tab7.14b <- run_query(paste0("
 SELECT 
        CPTMOD, 
@@ -2309,6 +2315,11 @@ tab7.14b <- flextable(data = data.frame(format(tab7.14b, big.mark=",", scientifi
         flextable::align(align = "center", part = "all") %>%
         border(part = "all", border = fp_border(color = "black", style = "solid"))
 
+knitr::knit_print(tab7.14b)
+```
+
+### Table 7.14c CPTMOD1, CPTMOD2, or CPTMOD3 IN 'GT' or '95' and ENCTYPE in 'TE', 'EM', 'TV', or 'TO'
+```{r telehealth_tab7.14c, echo = F, include=T, error=T}
 tab7.14c <- run_query(paste0("
 SELECT 
        CPTMOD, 
@@ -2345,8 +2356,7 @@ tab7.14c <- flextable(data = data.frame(format(tab7.14c, big.mark=",", scientifi
         flextable::align(align = "center", part = "all") %>%
         border(part = "all", border = fp_border(color = "black", style = "solid"))
 
-knitr::knit_print(tab7.14a)
-knitr::knit_print(tab7.14b)
+
 knitr::knit_print(tab7.14c)
 ```
 
@@ -2355,9 +2365,18 @@ knitr::knit_print(tab7.14c)
 tempCon3 <- get_connection()
 # create a temp table in the SQL DB temp drive, this will not be pulled into the R workspace.
 nada_ <- sqlQuery(tempCon3,
-                  paste('SET NOCOUNT ON; SELECT a.*, floor(DATEDIFF(day, b.birth_date, a.ADATE)/365.25) as age, b.birth_date, month(a.adate) as aMon, year(a.adate) as aYear, month(b.birth_date) as dobMon, year(b.birth_date) as dobYear',
-                        'INTO #encTmp',
-                        'FROM ',encounters, ' as a left join (select distinct person_id, birth_date from  ',demographics,') as b on a.person_id = b.person_id',
+                  paste0("SET NOCOUNT ON;
+                        SELECT a.*, 
+                        floor(DATEDIFF(day, b.birth_date, a.ADATE)/365.25) as age, 
+                        b.birth_date, 
+                        month(a.adate) as aMon, 
+                        year(a.adate) as aYear, 
+                        month(b.birth_date) as dobMon, 
+                        year(b.birth_date) as dobYear
+                        INTO #encTmp
+                        FROM ", encounters," as a 
+                        left join (select distinct person_id, birth_date from ", demographics, ") as b 
+                        on a.person_id = b.person_id",
                         sep=" "
                         )
                   )
@@ -2366,21 +2385,26 @@ nada_ <- sqlQuery(tempCon3,
 
 # short labels for encounter type 
 
-encLabels <- data.frame(c('AV','ED','EM','IP','IS','LO','OE','RO', 'TE'),
-                        c('Ambulatory Visit','Emergency Department', 'E-mail', 'Acute Inpatient','Institutional Stay','Lab only','Other','Radiology only', 'Telephone' ) ,
+encLabels <- data.frame(c('AV','ED','EM','IP','IS','LO','OE','RO', 'TE', 'TV', 'TO'),
+                        c('Ambulatory Visit','Emergency Department', 'E-mail', 'Acute Inpatient','Institutional Stay','Lab only','Other','Radiology only', 'Telephone', 'Telehealth', 'Other Synchronous Telehealth' ) ,
                         stringsAsFactors = F
 )
 names(encLabels)<-c('code','decode')
 # overall enc summary
 # read encounter table
 encSumm  <- sqlQuery(tempCon3,
-                 paste('SELECT count(*) as rowCnt, count(distinct enc_id) as encCnt, count(distinct person_id) as personCnt, min(adate) as firstEnc, max(adate) as lastEnc',
-                       'FROM #encTmp',
+                 paste0('SELECT count(*) as rowCnt, 
+                        count(distinct enc_id) as encCnt,
+                        count(distinct person_id) as personCnt, 
+                        min(adate) as firstEnc, 
+                        max(adate) as lastEnc
+                        FROM #encTmp',
                        sep=" "
                        ),
-                 as.is=c(TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE),
+                 as.is=c(TRUE,TRUE,TRUE,TRUE,TRUE),
                  max=maxQryRows
                  )
+
 encRows <- encSumm$rowCnt
 encPrimKeyRows <- encSumm$encCnt
 nEncPats <- encSumm$personCnt
@@ -2403,7 +2427,7 @@ Month and year of last encounter: **`r format(as.Date(encSumm$lastEnc),"%B %Y")`
 
 ## Table 8. Count of Distinct Patients by Age Group and Year of Utilization
 
-```{r tab8, echo = F, include=T, error=T}
+```{r tab8, echo = F, include=T, error=T, eval=T}
  
 encPersonYear  <- sqlQuery(tempCon3,
                  paste('SELECT aMon, aYear, age, count(*) as personCnt',
@@ -2524,7 +2548,7 @@ encEncType_YM <- within(encEncType_YM,{
 
 ## Table 10. Count of Encounters by Encounter Type 
 
-```{r tab10, echo = F, include=T, error=T}
+```{r tab10, echo = F, include=T, error=T, eval=T}
 encEncType <- encEncType_YM %>% group_by(encType) %>% summarize(Freq = sum(rowCnt))
 encEncType <- merge(encEncType,subset(valSets,tableName=='ENCOUNTERS' & columnName=='ENCTYPE')[c('code','decode')], by.x='encType', by.y='code', all.x=TRUE) 
 encEncType <- within(encEncType, {
@@ -2580,7 +2604,7 @@ odbcClose(tempCon3)
 ```
 
 
-```{r add labels to encEncType_YM , echo = F, include=T, error=T}
+```{r add labels to encEncType_YM , echo = F, include=T, error=T, eval=T}
 encTypeBymonYr <- merge(encEncType_YM,encLabels, by.x='encType', by.y='code', all.x=TRUE) 
 encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(encType), 'Missing', 'Invalid'))})
 ```
@@ -2617,12 +2641,13 @@ encTypeByYr <- within(encTypeByYr,{decode <- ifelse(!is.na(decode),decode, ifels
 
 ```{r census location, echo = F, include=T}
 locSumm  <- run_query(
-                 paste('SELECT count(*) as rowCnt, COUNT(DISTINCT person_id+CAST(loc_start AS varchar(10)) ) as primKeyCnt, count(distinct person_id) as personCnt, min(loc_start) as firstDT, max(loc_start) as lastDT',
-                       'FROM  ',census_location,
-                       sep=" "
-                       ),
-                 as.is=c(TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE),
-                 max=maxQryRows
+                 paste0('SELECT count(*) as rowCnt, 
+                          COUNT(DISTINCT person_id+CAST(loc_start AS varchar(10)) ) as primKeyCnt,
+                          count(distinct person_id) as personCnt, cast(min(loc_start) as date) as firstDT,
+                          cast(max(loc_start) as date) as lastDT
+                       FROM ',census_location,
+                       sep=""
+                       )
                  )
 
 locSumm$rowCnt <- format(locSumm$rowCnt, big.mark = ",")
@@ -2632,27 +2657,23 @@ locSumm$personCnt <- format(locSumm$personCnt, big.mark = ",")
 tempCon4 <- get_connection()
 
 tmpLastLoc_ <- sqlQuery(tempCon4,
-                        paste('SELECT distinct a.*',
-                              "INTO #tmpLastLoc",
-                              "FROM ",census_location," AS a INNER JOIN ",
-                              "(SELECT person_id, max(loc_start) as loc_start FROM ",census_location,"group by person_id) AS b",
-                              "ON a.person_id = b.person_id and a.loc_start=b.loc_start",
-                              sep=' '
-                              ),
-                        max=maxQryRows
+                        paste0("SELECT distinct a.*
+                              INTO #tmpLastLoc
+                              FROM ",census_location," AS a INNER JOIN
+                              (SELECT person_id, max(loc_start) as loc_start FROM ", census_location, " group by person_id) AS b
+                              ON a.person_id = b.person_id and a.loc_start=b.loc_start"
+                              )
 )
 lastLocation <- sqlQuery(tempCon4,
-                         paste("SELECT stateCnty, count(*) as Freq",
-                               "FROM (select distinct substring(geocode,1,5) as stateCnty, person_id FROM #tmpLastLoc) as q",
-                               "GROUP BY stateCnty",
-                               sep=" "),
-                       as.is=c(TRUE,TRUE),
-                        max=maxQryRows
+                         paste0("SELECT stateCnty, count(*) as Freq
+                                FROM (select distinct substring(geocode,1,5) as stateCnty, person_id FROM #tmpLastLoc) as q
+                               GROUP BY stateCnty",
+                               sep=" ")
                          )
 lastLocation <- trimChrVars(lastLocation)
- multLastLocs <- sqlQuery(tempCon4,
-                          paste("SELECT count(distinct person_id) as patsMultLoc",
-                                "FROM (select person_id FROM #tmpLastLoc GROUP BY person_id HAVING count(*)>1) as q",
+multLastLocs <- sqlQuery(tempCon4,
+                          paste0("SELECT count(distinct person_id) as patsMultLoc
+                                 FROM (select person_id FROM #tmpLastLoc GROUP BY person_id HAVING count(*)>1) as q",
                                 sep=" "))
  
 odbcClose(tempCon4)
@@ -2669,7 +2690,7 @@ Month and year of last location: **`r format(as.Date(locSumm$lastDT),"%B %Y")`**
 
 ## Table 11. Count of Unique Patients by Colorado County, Based on Most Recent Location
 
-```{r lastLocation, echo = F, include=T, echo = F, include=T, error=T}
+```{r lastLocation, echo = F, include=T, echo = F, include=T, error=T, eval=T}
 lastLocation <- merge(lastLocation, stateCnty[c('stateCnty','stCntyNm')], by = 'stateCnty', all.x=T) %>% arrange(desc(Freq)) %>% 
                 mutate(pct = round(100*Freq/sum(Freq),1),
                        stCntyNm = ifelse(!is.na(stCntyNm), stCntyNm, ifelse( is.na(stateCnty),'Missing','Invalid'))
@@ -2810,8 +2831,9 @@ tab13_all <- bind_cols(tab13_dxall, tab13_dxav)
 
 ```{r tab13a_disp, echo = F, include=T, error=T}
 kable(tab13_dxall, col.names = c("Diagnosis Code", "Code Type", "Diagnosis Description", "Number of Recorded Diagnoses", "Number of Patients"), format.args = list(big.mark = ","))
+
 ```
- \
+\newline
 ```{r tab13b_disp, echo = F, include=T, error=T}
 kable(tab13_dxav, col.names = c("Diagnosis Code for AV", "Diagnosis Type for AV", "Diagnosis Description", "Number of Recorded Diagnosis for AV", "Number of Patients for AV"), format.args = list(big.mark = ","))
 ```
@@ -2822,48 +2844,49 @@ This table includes information on the ten most common diagnoses recorded in you
 ```{r tab14_res, echo = F, include=T, error=T}
 tab14_09 <- run_query( 
   paste0("select top 10 dx,
-    dx_codetype as dx_codetype,
+    cast(dx_codetype as varchar) as dx_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", diagnoses, "
 	    where dx_codetype = '09'
       group by dx, dx_codetype
-      order by nrows_all DESC"))
+      order by nrows_all DESC"), as.is = c(TRUE, TRUE, FALSE, FALSE))
 tab14_10 <- run_query( 
   paste0("select top 10 dx,
-    dx_codetype as dx_codetype,
+    cast(dx_codetype as varchar) as dx_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", diagnoses, "
 	    where dx_codetype = '10'
       group by dx, dx_codetype
-      order by nrows_all DESC")) 
+      order by nrows_all DESC"),  as.is = c(TRUE, TRUE, FALSE, FALSE)) 
+
 ```
 
 ```{r tab14_disp, echo = F, include=T, error=T}
-#if and else statements are used to determine if the respecitvie table has any
+#if and else statements are used to determine if the respective table has any
 #rows. If not, then an error message is written indicating so.
 if (nrow(tab14_09) != 0){
-  tab14_09 <- tab14_09 %>% 
-    mutate(
+  tab14_09 <-  
+    mutate(.data=tab14_09,
       dxCode  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
-      ) %>% 
-    left_join(., icdLU, by = "dxCode") %>% 
-  select(dx, dxDesc, nrows_all, npats)
+      )
+  tab14_09 <- left_join(x = tab14_09, y=icdLU, by = "dxCode")
+  tab14_09 <-select(.data = tab14_09, dx, Description, nrows_all, npats)
   kable(tab14_09, col.names = c("Diagnosis","Diagnosis Description", "Records", "Patients"), caption = "Diagnosis Code Type = 09", format.args = list(big.mark = ","))
 } else {
-   cat(noquote("Table had zero rows.  DX_CODETYPE = '09' likely isn't a category for this variable.\n"))
+  knitr::knit_print("Table had zero rows.  DX_CODETYPE = '09' likely isn't a category for this variable.")
 } 
 if (nrow(tab14_10) != 0){
-  tab14_10 <- tab14_10 %>% 
-    mutate(
+  tab14_10 <- 
+    mutate(.data = tab14_10,
       dxCode  = paste(dx_codetype,'-',gsub('.','',dx, fixed=T), sep='')
-      ) %>% 
-    left_join(., icdLU, by = "dxCode") %>% 
-  select(dx, dxDesc, nrows_all, npats)
+      )
+  tab14_10 <- left_join(x=tab14_10, y=icdLU, by = "dxCode")
+  tab14_10 <- select(.data = tab14_10, dx, Description, nrows_all, npats)
   kable(tab14_10, col.names = c("Diagnosis", "Diagnosis Description", "Records", "Patients"), caption = "Diagnosis Code Type = 10", format.args = list(big.mark = ","))
 } else {
-   cat(noquote("Table had zero rows.  DX_CODETYPE = '10' likely isn't a category for this variable.\n"))
+   knitr::knit_print("Table had zero rows.  DX_CODETYPE = '10' likely isn't a category for this variable.")
 } 
 ```
 
@@ -2887,16 +2910,16 @@ dxByMonEncTp <- within(dxByMonEncTp,{decode <- ifelse(!is.na(decode),decode, ife
 ## Figure 4a. Count of Diagnoses by Year and Month in Ambulatory Encounters 
 
 ```{r Count of diagnoses by year and month in ambulatory encounters, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
-ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line() +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line(size=.75) +
+  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  scale_color_brewer(palette ="Paired")
 ```
 
 ## Figure 4b. Count of Diagnoses by Year and Month, other Encounter Types
 
 ```{r Count of diagnoses by year and month other encounter types, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
-ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + geom_line() +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')
-#,legend.position="bottom" "
+ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + geom_line(size=.75) +
+  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="bottom")+labs(color='Encounter type') + scale_color_brewer(palette ="Paired")
+
 ```
 
 
