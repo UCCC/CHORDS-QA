@@ -382,7 +382,7 @@ fig1_sub <- fig1 %>%
   ) %>% 
   select(-month, -year)
 fig1_wide <- spread(fig1_sub, key = test_type, value = nrows)
-fig1Figures <-lapply(2:ncol(fig1_wide), function(x) 
+fig1Figures <-lapply(2:ncol(fig1_wide), function(x) {
   ggplot(data = fig1_wide, aes(x = date, y = fig1_wide[[x]])) +
          geom_line() +
     ggtitle(names(fig1_wide)[x]) +
@@ -390,14 +390,15 @@ fig1Figures <-lapply(2:ncol(fig1_wide), function(x)
     xlab("Date") + ylab("Number of Records") +
     theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        panel.background = element_blank(),  
+        panel.background = element_blank(),
+        axis.text.x = element_text(angle =45, hjust=1),
         axis.line = element_line(colour = "black"),
         axis.title = element_text(size = 14, face = "bold"),
-        axis.text = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 11, face = "bold"),
         plot.title = element_text(hjust = 0.3, size = 16))
-    )
+   })
 
-invisible(lapply(fig1Figures, print))
+suppressWarnings(invisible(lapply(fig1Figures, print)))
 
 ```
 
@@ -636,7 +637,7 @@ tab11_pxc4 <- run_query(
 	  from ", procedures, "
 	    where px_codetype = 'C4'
       group by px
-      order by nrows_all DESC"))
+      order by nrows_all DESC"), as.is=c(TRUE, FALSE, FALSE))
 tab11_pxh4 <- run_query(
     paste0("select top 10 px,
     count(*) as nrows_all,
@@ -781,6 +782,7 @@ tab14$spec_full[is.na(tab14$spec_full)] <- "Unknown"
 tab14 <- tab14[, c(1,4,2,3)]
 tab14 <- tab14[order(-tab14[, 4]), ]
 ```
+
 ```{r tab14_disp, echo = F, include=T, error=T}
 kable(tab14, col.names = c("Provider Type Code", "Provider Type Description", "Number of Providers", "Percent of All Providers"), digits = 2, align = 'l', row.names = F, format.args = list(big.mark = ","))
 ```
@@ -876,10 +878,36 @@ tab17$year <- as.character(tab17$year)
 kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
 
-## Table 18: PHQ-2 Response Detail
+## Table 18: PRO_Responses: Surveys and Questions included
 
-```{r tab18_res, echo = F, include=T, error=T}
+This table summarizes responses to the behavioral and social survey questions based on which screening surveys each data partner has included.
+
+```{r tab18_res,echo = F, include=T, error=T}
 tab18 <- run_query(
+    paste0("select pro_id, question_id,
+	  count(distinct response_id) as nresponse,
+	  min(response_num) as min_resval,
+	  max(response_num) as max_resval,
+	  SUM(CASE WHEN RESPONSE_NUM IS NULL THEN 1 ELSE 0 END) as resp_num_null,
+	  SUM(CASE WHEN RESPONSE_TEXT = '' THEN 1 ELSE 0 END) as resp_text_na,
+    SUM(CASE WHEN (TRY_CAST(RESPONSE_TEXT AS NUMERIC(8)) = RESPONSE_NUM) OR (NULLIF(RESPONSE_TEXT, '') IS NULL
+               AND RESPONSE_NUM IS NULL)  THEN 0 ELSE 1 END) as resp_text_diff
+	  from ", pro_responses, "
+      group by pro_id, question_id"))
+
+
+tab18_order <- tab18[order(tab18$pro_id, tab18$question_id),]
+	  
+```
+
+```{r tab18_disp, echo = F, include=T, error=T}
+kable(tab18_order, col.names = c("PRO_ID", "QUESTION_ID", "Number of Records", "Minimum Value", "Maximum Value", "Response Number Null", "Response Text Null", "Different values for Response Number and Text"), row.names = F, align = 'c', format.args = list(big.mark = ","))
+```
+
+## Table 19: PHQ-2 Response Detail
+
+```{r tab19_res, echo = F, include=T, error=T}
+tab19 <- run_query(
         paste0("select question_id,
 	  count(distinct response_id) as nresponse,
 	  SUM(CASE WHEN RESPONSE_NUM IS NULL THEN 1 ELSE 0 END) as resp_num_null,
@@ -896,44 +924,17 @@ tab18 <- run_query(
 	  where pro_id = 'CHORDS-1'
       group by question_id"))
 
-
-	  
-tab18$pct_high_response <- round(100*tab18$n_high_scores/tab18$nresponse,1)
-```
-
-```{r tab18_disp, echo = F, include=T, error=T}
-kable(tab18, col.names = c("Question ID", "# of Responses", "# Null Responses", "# of Duplicates",  "# of Encounters", "# of Patients", "Minimum Response Value", "Maximum Response Value", "Average Response Value", "# High Responses", "% High Responses"), align = 'c', format.args = list(big.mark = ","))
-```
-
-## Table 19: PRO_Responses: Surveys and Questions included
-
-This table summarizes responses to the behavioral and social survey questions based on which screening surveys each data partner has included.
-
-```{r tab19_res,echo = F, include=T, error=T }
-tab19 <- run_query(
-    paste0("select pro_id, question_id,
-	  count(distinct response_id) as nresponse,
-	  min(response_num) as min_resval,
-	  max(response_num) as max_resval,
-	  SUM(CASE WHEN RESPONSE_NUM IS NULL THEN 1 ELSE 0 END) as resp_num_null,
-	  SUM(CASE WHEN RESPONSE_TEXT = '' THEN 1 ELSE 0 END) as resp_text_na,
-    SUM(CASE WHEN (TRY_CAST(RESPONSE_TEXT AS NUMERIC(8)) = RESPONSE_NUM) OR (NULLIF(RESPONSE_TEXT, '') IS NULL
-               AND RESPONSE_NUM IS NULL)  THEN 0 ELSE 1 END) as resp_text_diff
-	  from ", pro_responses, "
-      group by pro_id, question_id"))
-
-
-tab19_order <- tab19[order(tab19$pro_id, tab19$question_id),]
-	  
+tab19$pct_high_response <- round(100*tab19$n_high_scores/tab19$nresponse,1)
 ```
 
 ```{r tab19_disp, echo = F, include=T, error=T}
-kable(tab19_order, col.names = c("PRO_ID", "QUESTION_ID", "Number of Records", "Minimum Value", "Maximum Value", "Response Number Null", "Response Text Null", "Different values for Response Number and Text"), row.names = F, align = 'c', format.args = list(big.mark = ","))
+kable(tab19, col.names = c("Question ID", "# of Responses", "# Null Responses", "# of Duplicates",  "# of Encounters", "# of Patients", "Minimum Response Value", "Maximum Response Value", "Average Response Value", "# High Responses", "% High Responses"), align = 'c', format.args = list(big.mark = ","))
 ```
 
-```{r tab20a,echo = F, include=T, error=T }
 
-tab20_years_f <- function(){
+```{r tabScreenYear,echo = F, include=T, error=T}
+
+tabScreen_years_f <- function(){
   current_year <- as.numeric(format(Sys.Date() ,"%Y"))
   y1 <- as.character(current_year - 4)
   y2 <- as.character(current_year - 3)
@@ -942,26 +943,26 @@ tab20_years_f <- function(){
   y5 <- as.character(current_year)
   return (c(y1, y2, y3, y4, y5))
 }
-tab20_years <- tab20_years_f()
+
+tab_screen_years <- tabScreen_years_f()
 
 ```
 
-## Table 20: PHQ-2 Number of Encounters and Percent of Encounters Screened by Year - All Encounter Types (`r tab20_years[1]` - Present)
+```{r tabScreens,echo = F, include=T, error=T }
 
-```{r tab20_res,echo = F, include=T, error=T }
 #All encounters
-tab20_enc <- run_query( 
+tab_screen_enc <- run_query( 
         paste0("
         with cte_years as (
-          SELECT '",tab20_years[1] ,"' year
+          SELECT '",tab_screen_years[[1]] ,"' year
           union
-          SELECT '",tab20_years[2] ,"'
+          SELECT '",tab_screen_years[[2]] ,"'
           union
-          SELECT '",tab20_years[3] ,"'
+          SELECT '",tab_screen_years[[3]] ,"'
           union
-          SELECT '",tab20_years[4] ,"'
+          SELECT '",tab_screen_years[[4]] ,"'
           union
-          SELECT '",tab20_years[5] ,"'
+          SELECT '",tab_screen_years[[5]] ,"'
         )
         select cte_years.year,
             case when data.nenc is null then 0 else data.nenc end nenc
@@ -970,23 +971,109 @@ tab20_enc <- run_query(
           select year(adate) as year,
 	        count(distinct enc_id) as nenc
 	        from ", encounters,"
-	        where year(adate) in (", paste0("'", tab20_years[1],"', ", "'",tab20_years[2], "', ", "'", tab20_years[3], "', ", "'", tab20_years[4], "', ", "'", tab20_years[5], "'"), ")
+	        where year(adate) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
           group by year(adate)
 	      ) data on data.year = cte_years.year
 	      order by year asc;"))
 
+#All Ambulatory Encounters
+tab_screen_avenc <- run_query( 
+        paste0("
+        with cte_years as (
+          SELECT '",tab_screen_years[[1]] ,"' year
+          union
+          SELECT '",tab_screen_years[[2]] ,"'
+          union
+          SELECT '",tab_screen_years[[3]] ,"'
+          union
+          SELECT '",tab_screen_years[[4]] ,"'
+          union
+          SELECT '",tab_screen_years[[5]] ,"'
+        )
+        select cte_years.year,
+            case when data.nenc is null then 0 else data.nenc end nenc
+        from cte_years
+        left join(
+          select year(adate) as year,
+	        count(distinct enc_id) as nenc
+	        from ", encounters,"
+	        where year(adate) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
+	        and enctype = 'AV'
+          group by year(adate)
+	      ) data on data.year = cte_years.year
+	      order by year asc;"))
+
+#All encounters
+tab_screen_pers <- run_query( 
+        paste0("
+        with cte_years as (
+          SELECT '",tab_screen_years[[1]] ,"' year
+          union
+          SELECT '",tab_screen_years[[2]] ,"'
+          union
+          SELECT '",tab_screen_years[[3]] ,"'
+          union
+          SELECT '",tab_screen_years[[4]] ,"'
+          union
+          SELECT '",tab_screen_years[[5]] ,"'
+        )
+        select cte_years.year,
+            case when data.npeople is null then 0 else data.npeople end npeople
+        from cte_years
+        left join(
+          select year(adate) as year,
+	        count(distinct person_id) as npeople
+	        from ", encounters,"
+	        where year(adate) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
+          group by year(adate)
+	      ) data on data.year = cte_years.year
+	      order by year asc;"))
+
+#All encounters
+tab_screen_persav <- run_query( 
+        paste0("
+        with cte_years as (
+          SELECT '",tab_screen_years[[1]] ,"' year
+          union
+          SELECT '",tab_screen_years[[2]] ,"'
+          union
+          SELECT '",tab_screen_years[[3]] ,"'
+          union
+          SELECT '",tab_screen_years[[4]] ,"'
+          union
+          SELECT '",tab_screen_years[[5]] ,"'
+        )
+        select cte_years.year,
+            case when data.npeople is null then 0 else data.npeople end npeople
+        from cte_years
+        left join(
+          select year(adate) as year,
+	        count(distinct person_id) as npeople
+	        from ", encounters,"
+	        where year(adate) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
+	        and enctype = 'AV'
+          group by year(adate)
+	      ) data on data.year = cte_years.year
+	      order by year asc;"))
+
+```
+
+## Table 20: PHQ-2 Number of Encounters and Percent of Encounters Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
+
+```{r tab20_res, echo = F, include=T, error=T }
+
 tab20_screen <- run_query( 
         paste0("
         with cte_years as (
-          SELECT '",tab20_years[1] ,"' year
+          SELECT '",tab_screen_years[[1]] ,"' year
           union
-          SELECT '",tab20_years[2] ,"'
+          SELECT '",tab_screen_years[[2]] ,"'
           union
-          SELECT '",tab20_years[3] ,"'
+          SELECT '",tab_screen_years[[3]] ,"'
           union
-          SELECT '",tab20_years[4] ,"'
+          SELECT '",tab_screen_years[[4]] ,"'
           union
-          SELECT '",tab20_years[5] ,"'
+          SELECT '",tab_screen_years[[5]] ,"'
         )
         select cte_years.year,
             q.question_id,
@@ -995,16 +1082,14 @@ tab20_screen <- run_query(
         cross join (select 
 						          question_id 
 					          from ", pro_questions, "
-					          where pro_id = 'CHORDS-1'
-					          and question_id='3') q
+					          where pro_id = 'CHORDS-1') q
         left join(
           select question_id,
             year(response_date) as year,
 	          count(distinct enc_id) as nscreen
 	        from ", pro_responses," p
 	        where pro_id='CHORDS-1'
-	          and question_id='3'
-	          and year(response_date) in (", paste0("'", tab20_years[1],"', ", "'",tab20_years[2], "', ", "'", tab20_years[3], "', ", "'", tab20_years[4], "', ", "'", tab20_years[5], "'"), ")
+	          and year(response_date) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
           group by year(response_date), question_id
 	      ) data 
 	        on data.year = cte_years.year
@@ -1012,38 +1097,55 @@ tab20_screen <- run_query(
 	      order by year asc;
 	  "))
 
-tab20_total <- merge(tab20_enc, tab20_screen, by="year")
+tab20_total <- merge(tab_screen_enc, tab20_screen, by="year")
 tab20_total <- tab20_total[order(tab20_total$question_id, tab20_total$year),]
 
 tab20_total_wide <- reshape(tab20_total, v.names = c("nscreen", "nenc"), idvar = "question_id", timevar = "year", direction = "wide")
 
+nscreen <- "nscreen."
+nvar <- "nenc."
 #Year1
-tab20_total_wide$screen_1 <- with(tab20_total_wide, if (paste0("nscreen.", tab20_years[1]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nscreen.", tab20_years[1])] else 0 )
-tab20_total_wide$enc_1 <- with(tab20_total_wide, if (paste0("nenc.", tab20_years[1]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nenc.", tab20_years[1])]  else 0 )
+Year1 <- ifelse(
+  paste0(nscreen, tab_screen_years[[1]]) %in% colnames(tab20_total_wide), 
+  tab20_total_wide <- mutate(tab20_total_wide, screen_1 = !!as.name(paste0(nscreen, tab_screen_years[[1]])), enc_1=!!as.name(paste0(nvar, tab_screen_years[[1]]))),
+  mutate(tab20_total_wide, screen_1 = 0, enc_1=0)
+)
 
-tab20_total_wide$combined_1 <- paste0(format(tab20_total_wide$screen_1, big.mark = ","), " (", round(100* tab20_total_wide$screen_1/tab20_total_wide$enc_1,1), "%)")
+tab20_total_wide$combined_1 <- paste0(format(tab20_total_wide$screen_1, big.mark = ","), " (", round(100* (tab20_total_wide$screen_1/tab20_total_wide$enc_1),1), "%)")
 
 #Year2
-tab20_total_wide$screen_2 <- with(tab20_total_wide, if (paste0("nscreen.", tab20_years[2]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nscreen.", tab20_years[2])] else 0 )
-tab20_total_wide$enc_2 <- with(tab20_total_wide, if (paste0("nenc.", tab20_years[2]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nenc.", tab20_years[2])]  else 0 )
+Year2 <- ifelse(
+  paste0(nscreen, tab_screen_years[[2]]) %in% colnames(tab20_total_wide), 
+  tab20_total_wide <- mutate(tab20_total_wide, screen_2 = !!as.name(paste0(nscreen, tab_screen_years[[2]])), enc_2=!!as.name(paste0(nvar, tab_screen_years[[2]]))),
+  tab20_total_wide <- mutate(tab20_total_wide, screen_2 = 0, enc_2=0)
+)
 
 tab20_total_wide$combined_2 <- paste0(format(tab20_total_wide$screen_2, big.mark = ","), " (", round(100* tab20_total_wide$screen_2/tab20_total_wide$enc_2,1), "%)")
 
 #Year3
-tab20_total_wide$screen_3 <- with(tab20_total_wide, if (paste0("nscreen.", tab20_years[3]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nscreen.", tab20_years[3])] else 0 )
-tab20_total_wide$enc_3 <- with(tab20_total_wide, if (paste0("nenc.", tab20_years[3]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nenc.", tab20_years[3])]  else 0 )
+Year3 <- ifelse(
+  paste0(nscreen, tab_screen_years[[3]]) %in% colnames(tab20_total_wide), 
+  tab20_total_wide <- mutate(tab20_total_wide, screen_3 = !!as.name(paste0(nscreen, tab_screen_years[[3]])), enc_3=!!as.name(paste0(nvar, tab_screen_years[[3]]))),
+  tab20_total_wide <- mutate(tab20_total_wide, screen_3 = 0, enc_3=0)
+)
 
 tab20_total_wide$combined_3 <- paste0(format(tab20_total_wide$screen_3, big.mark = ","), " (", round(100* tab20_total_wide$screen_3/tab20_total_wide$enc_3,1), "%)")
 
 #Year4
-tab20_total_wide$screen_4 <- with(tab20_total_wide, if (paste0("nscreen.", tab20_years[4]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nscreen.", tab20_years[4])] else 0 )
-tab20_total_wide$enc_4 <- with(tab20_total_wide, if (paste0("nenc.", tab20_years[4]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nenc.", tab20_years[4])]  else 0 )
+Year4 <- ifelse(
+  paste0(nscreen, tab_screen_years[[4]]) %in% colnames(tab20_total_wide), 
+  tab20_total_wide <- mutate(tab20_total_wide, screen_4 = !!as.name(paste0(nscreen, tab_screen_years[[4]])), enc_4=!!as.name(paste0(nvar, tab_screen_years[[4]]))),
+  tab20_total_wide <- mutate(tab20_total_wide, screen_4 = 0, enc_4=0)
+)
 
 tab20_total_wide$combined_4 <- paste0(format(tab20_total_wide$screen_4, big.mark = ","), " (", round(100* tab20_total_wide$screen_4/tab20_total_wide$enc_4,1), "%)")
 
 #Year5
-tab20_total_wide$screen_5 <- with(tab20_total_wide, if (paste0("nscreen.", tab20_years[5]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nscreen.", tab20_years[5])] else 0 )
-tab20_total_wide$enc_5 <- with(tab20_total_wide, if (paste0("nenc.", tab20_years[5]) %in% colnames(tab20_total_wide)) tab20_total_wide[paste0("nenc.", tab20_years[5])]  else 0 )
+Year5 <- ifelse(
+  paste0(nscreen, tab_screen_years[[5]]) %in% colnames(tab20_total_wide), 
+  tab20_total_wide <- mutate(tab20_total_wide, screen_5 = !!as.name(paste0(nscreen, tab_screen_years[[5]])), enc_5=!!as.name(paste0(nvar, tab_screen_years[[5]]))),
+  tab20_total_wide <- mutate(tab20_total_wide, screen_5 = 0, enc_5=0)
+)
 
 tab20_total_wide$combined_5 <- paste0(format(tab20_total_wide$screen_5, big.mark = ","), " (", round(100* tab20_total_wide$screen_5/tab20_total_wide$enc_5,1), "%)")
 
@@ -1051,9 +1153,314 @@ tab20_final <- tab20_total_wide[c("question_id","combined_1", "combined_2", "com
 ```
 
 ```{r tab20_disp, echo = F, include=T, error=T}
-kable(tab20_final, col.names = c("Question ID", paste0("# (%) Screened ", tab20_years[1]), paste0("# (%) Screened ", tab20_years[2]), paste0("# (%) Screened ", tab20_years[3]),  paste0("# (%) Screened ", tab20_years[4]), paste0("# (%) Screened ", tab20_years[5])), row.names = F, align = 'c', format.args = list(big.mark = ","))
+kable(tab20_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
 ```
 
+
+## Table 21: PHQ-2 Number of Encounters and Percent of Encounters Screened by Year - Ambulatory Encounters Only (`r tab_screen_years[[1]]` - Present)
+
+```{r tab21_res, echo = F, include=T, error=T }
+
+tab21_screen <- run_query( 
+        paste0("
+        with cte_years as (
+          SELECT '",tab_screen_years[[1]] ,"' year
+          union
+          SELECT '",tab_screen_years[[2]] ,"'
+          union
+          SELECT '",tab_screen_years[[3]] ,"'
+          union
+          SELECT '",tab_screen_years[[4]] ,"'
+          union
+          SELECT '",tab_screen_years[[5]] ,"'
+        )
+        select cte_years.year,
+            q.question_id,
+            case when data.nscreen is null then 0 else data.nscreen end nscreen
+        from cte_years
+        cross join (select 
+						          question_id 
+					          from ", pro_questions, "
+					          where pro_id = 'CHORDS-1') q
+        left join(
+          select question_id,
+            year(response_date) as year,
+	          count(distinct e.enc_id) as nscreen
+	        from ", pro_responses," p
+	        join ", encounters ," e on
+	          e.ENC_ID = p.ENC_ID AND
+	          e.enctype = 'AV'
+	        where pro_id='CHORDS-1'
+	          and year(response_date) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
+          group by year(response_date), question_id
+	      ) data 
+	        on data.year = cte_years.year
+	        and data.question_id=q.question_id
+	      order by year asc;
+	  "))
+
+nscreen <- "nscreen."
+nvar <- "nenc."
+
+tab21_total <- merge(tab_screen_avenc, tab21_screen, by="year")
+tab21_total <- tab21_total[order(tab21_total$question_id, tab21_total$year),]
+
+tab21_total_wide <- reshape(tab21_total, v.names = c("nscreen", "nenc"), idvar = "question_id", timevar = "year", direction = "wide")
+
+#Year1
+Year1 <- ifelse(
+  paste0(nscreen, tab_screen_years[[1]]) %in% colnames(tab21_total_wide), 
+  tab21_total_wide <- mutate(tab21_total_wide, screen_1 = !!as.name(paste0(nscreen, tab_screen_years[[1]])), enc_1=!!as.name(paste0(nvar, tab_screen_years[[1]]))),
+  tab21_total_wide <- mutate(tab21_total_wide, screen_1 = 0, enc_1=0)
+)
+
+tab21_total_wide$combined_1 <- paste0(format(tab21_total_wide$screen_1, big.mark = ","), " (", round(100* tab21_total_wide$screen_1/tab21_total_wide$enc_1,1), "%)")
+
+#Year2
+Year2 <- ifelse(
+  paste0(nscreen, tab_screen_years[[2]]) %in% colnames(tab21_total_wide), 
+  tab21_total_wide <- mutate(tab21_total_wide, screen_2 = !!as.name(paste0(nscreen, tab_screen_years[[2]])), enc_2=!!as.name(paste0(nvar, tab_screen_years[[2]]))),
+  tab21_total_wide <- mutate(tab21_total_wide, screen_2 = 0, enc_2=0)
+)
+
+tab21_total_wide$combined_2 <- paste0(format(tab21_total_wide$screen_2, big.mark = ","), " (", round(100* tab21_total_wide$screen_2/tab21_total_wide$enc_2,1), "%)")
+
+#Year3
+Year3 <- ifelse(
+  paste0(nscreen, tab_screen_years[[3]]) %in% colnames(tab21_total_wide), 
+  tab21_total_wide <- mutate(tab21_total_wide, screen_3 = !!as.name(paste0(nscreen, tab_screen_years[[3]])), enc_3=!!as.name(paste0(nvar, tab_screen_years[[3]]))),
+  tab21_total_wide <- mutate(tab21_total_wide, screen_3 = 0, enc_3=0)
+)
+
+tab21_total_wide$combined_3 <- paste0(format(tab21_total_wide$screen_3, big.mark = ","), " (", round(100* tab21_total_wide$screen_3/tab21_total_wide$enc_3,1), "%)")
+
+#Year4
+Year4 <- ifelse(
+  paste0(nscreen, tab_screen_years[[4]]) %in% colnames(tab21_total_wide), 
+  tab21_total_wide <- mutate(tab21_total_wide, screen_4 = !!as.name(paste0(nscreen, tab_screen_years[[4]])), enc_4=!!as.name(paste0(nvar, tab_screen_years[[4]]))),
+  tab21_total_wide <- mutate(tab21_total_wide, screen_4 = 0, enc_4=0)
+)
+
+tab21_total_wide$combined_4 <- paste0(format(tab21_total_wide$screen_4, big.mark = ","), " (", round(100* tab21_total_wide$screen_4/tab21_total_wide$enc_4,1), "%)")
+
+#Year5
+Year5 <- ifelse(
+  paste0(nscreen, tab_screen_years[[5]]) %in% colnames(tab21_total_wide), 
+  tab21_total_wide <- mutate(tab21_total_wide, screen_5 = !!as.name(paste0(nscreen, tab_screen_years[[5]])), enc_5=!!as.name(paste0(nvar, tab_screen_years[[5]]))),
+  tab21_total_wide <- mutate(tab21_total_wide, screen_5 = 0, enc_5=0)
+)
+
+tab21_total_wide$combined_5 <- paste0(format(tab21_total_wide$screen_5, big.mark = ","), " (", round(100* tab21_total_wide$screen_5/tab21_total_wide$enc_5,1), "%)")
+
+tab21_final <- tab21_total_wide[c("question_id","combined_1", "combined_2", "combined_3", "combined_4", "combined_5")]
+```
+
+```{r tab21_disp, echo = F, include=T, error=T}
+kable(tab21_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
+```
+
+## Table 22: PHQ-2 Number of Patients and Percent of Patients Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
+
+```{r tab22_res, echo = F, include=T, error=T }
+
+tab22_screen <- run_query( 
+        paste0("
+        with cte_years as (
+          SELECT '",tab_screen_years[[1]] ,"' year
+          union
+          SELECT '",tab_screen_years[[2]] ,"'
+          union
+          SELECT '",tab_screen_years[[3]] ,"'
+          union
+          SELECT '",tab_screen_years[[4]] ,"'
+          union
+          SELECT '",tab_screen_years[[5]] ,"'
+        )
+        select cte_years.year,
+            q.question_id,
+            case when data.nscreen is null then 0 else data.nscreen end nscreen
+        from cte_years
+        cross join (select 
+						          question_id 
+					          from ", pro_questions, "
+					          where pro_id = 'CHORDS-1') q
+        left join(
+          select question_id,
+            year(response_date) as year,
+	          count(distinct p.person_id) as nscreen
+	        from ", pro_responses," p
+	        join ", encounters ," e on
+	          e.ENC_ID = p.ENC_ID AND
+	          e.enctype = 'AV'
+	        where pro_id='CHORDS-1'
+	          and year(response_date) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
+          group by year(response_date), question_id
+	      ) data 
+	        on data.year = cte_years.year
+	        and data.question_id=q.question_id
+	      order by year asc;
+	  "))
+
+nscreen <- "nscreen."
+nvar <- "npeople."
+
+tab22_total <- merge(tab_screen_pers, tab22_screen, by="year")
+tab22_total <- tab22_total[order(tab22_total$question_id, tab22_total$year),]
+
+tab22_total_wide <- reshape(tab22_total, v.names = c("nscreen", "npeople"), idvar = "question_id", timevar = "year", direction = "wide")
+
+#Year1
+Year1 <- ifelse(
+  paste0(nscreen, tab_screen_years[[1]]) %in% colnames(tab22_total_wide), 
+  tab22_total_wide <- mutate(tab22_total_wide, screen_1 = !!as.name(paste0(nscreen, tab_screen_years[[1]])), pat_1=!!as.name(paste0(nvar, tab_screen_years[[1]]))),
+  tab22_total_wide <- mutate(tab22_total_wide, screen_1 = 0, pat_1=0)
+)
+
+tab22_total_wide$combined_1 <- paste0(format(tab22_total_wide$screen_1, big.mark = ","), " (", round(100* tab22_total_wide$screen_1/tab22_total_wide$pat_1,1), "%)")
+
+
+#Year2
+Year2 <- ifelse(
+  paste0(nscreen, tab_screen_years[[2]]) %in% colnames(tab22_total_wide), 
+  tab22_total_wide <- mutate(tab22_total_wide, screen_2 = !!as.name(paste0(nscreen, tab_screen_years[[2]])), pat_2=!!as.name(paste0(nvar, tab_screen_years[[2]]))),
+  tab22_total_wide <- mutate(tab22_total_wide, screen_2 = 0, pat_2=0)
+)
+
+tab22_total_wide$combined_2 <- paste0(format(tab22_total_wide$screen_2, big.mark = ","), " (", round(100* tab22_total_wide$screen_2/tab22_total_wide$pat_2,1), "%)")
+
+
+#Year3
+Year3 <- ifelse(
+  paste0(nscreen, tab_screen_years[[3]]) %in% colnames(tab22_total_wide), 
+  tab22_total_wide <- mutate(tab22_total_wide, screen_3 = !!as.name(paste0(nscreen, tab_screen_years[[3]])), pat_3=!!as.name(paste0(nvar, tab_screen_years[[3]]))),
+  tab22_total_wide <- mutate(tab22_total_wide, screen_3 = 0, pat_3=0)
+)
+
+tab22_total_wide$combined_3 <- paste0(format(tab22_total_wide$screen_3, big.mark = ","), " (", round(100* tab22_total_wide$screen_3/tab22_total_wide$pat_3,1), "%)")
+
+#Year4
+Year4 <- ifelse(
+  paste0(nscreen, tab_screen_years[[4]]) %in% colnames(tab22_total_wide), 
+  tab22_total_wide <- mutate(tab22_total_wide, screen_4 = !!as.name(paste0(nscreen, tab_screen_years[[4]])), pat_4=!!as.name(paste0(nvar, tab_screen_years[[4]]))),
+  tab22_total_wide <- mutate(tab22_total_wide, screen_4 = 0, pat_4=0)
+)
+
+tab22_total_wide$combined_4 <- paste0(format(tab22_total_wide$screen_4, big.mark = ","), " (", round(100* tab22_total_wide$screen_4/tab22_total_wide$pat_4,1), "%)")
+
+#Year5
+Year5 <- ifelse(
+  paste0(nscreen, tab_screen_years[[5]]) %in% colnames(tab22_total_wide), 
+  tab22_total_wide <- mutate(tab22_total_wide, screen_5 = !!as.name(paste0(nscreen, tab_screen_years[[5]])), pat_5=!!as.name(paste0(nvar, tab_screen_years[[5]]))),
+  tab22_total_wide <- mutate(tab22_total_wide, screen_5 = 0, pat_5=0)
+)
+
+tab22_total_wide$combined_5 <- paste0(format(tab22_total_wide$screen_5, big.mark = ","), " (", round(100* tab22_total_wide$screen_5/tab22_total_wide$pat_5,1), "%)")
+
+
+tab22_final <- tab22_total_wide[c("question_id","combined_1", "combined_2", "combined_3", "combined_4", "combined_5")]
+```
+
+```{r tab22_disp, echo = F, include=T, error=T}
+
+kable(tab22_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
+```
+
+```{r tab23_res,echo = F, include=T, error=T }
+
+tab23_screen <- run_query( 
+        paste0("
+        with cte_years as (
+          SELECT '",tab_screen_years[[1]] ,"' year
+          union
+          SELECT '",tab_screen_years[[2]] ,"'
+          union
+          SELECT '",tab_screen_years[[3]] ,"'
+          union
+          SELECT '",tab_screen_years[[4]] ,"'
+          union
+          SELECT '",tab_screen_years[[5]] ,"'
+        )
+        select cte_years.year,
+            q.question_id,
+            case when data.nscreen is null then 0 else data.nscreen end nscreen
+        from cte_years
+        cross join (select 
+						          question_id 
+					          from ", pro_questions, "
+					          where pro_id = 'CHORDS-1') q
+        left join(
+          select question_id,
+            year(response_date) as year,
+	          count(distinct p.person_id) as nscreen
+	        from ", pro_responses," p
+	        where pro_id='CHORDS-1'
+	          and year(response_date) in ('", tab_screen_years[[1]],"', ", "'",tab_screen_years[[2]], "', ", "'", tab_screen_years[[3]], "', ", "'", tab_screen_years[[4]], "', ", "'", tab_screen_years[[5]], "')
+          group by year(response_date), question_id
+	      ) data 
+	        on data.year = cte_years.year
+	        and data.question_id=q.question_id
+	      order by year asc;
+	  "))
+
+nscreen <- "nscreen."
+nvar <- "npeople."
+
+tab23_total <- merge(tab_screen_persav, tab23_screen, by="year")
+tab23_total <- tab23_total[order(tab23_total$question_id, tab23_total$year),]
+
+tab23_total_wide <- reshape(tab23_total, v.names = c("nscreen", "npeople"), idvar = "question_id", timevar = "year", direction = "wide")
+
+#Year1
+Year1 <- ifelse(
+  paste0(nscreen, tab_screen_years[[1]]) %in% colnames(tab23_total_wide), 
+  tab23_total_wide <- mutate(tab23_total_wide, screen_1 = !!as.name(paste0(nscreen, tab_screen_years[[1]])), pat_1=!!as.name(paste0(nvar, tab_screen_years[[1]]))),
+  tab23_total_wide <- mutate(tab23_total_wide, screen_1 = 0, pat_1=0)
+)
+
+tab23_total_wide$combined_1 <- paste0(format(tab23_total_wide$screen_1, big.mark = ","), " (", round(100* tab23_total_wide$screen_1/tab23_total_wide$pat_1,1), "%)")
+
+
+#Year2
+Year2 <- ifelse(
+  paste0(nscreen, tab_screen_years[[2]]) %in% colnames(tab23_total_wide), 
+  tab23_total_wide <- mutate(tab23_total_wide, screen_2 = !!as.name(paste0(nscreen, tab_screen_years[[2]])), pat_2=!!as.name(paste0(nvar, tab_screen_years[[2]]))),
+  tab23_total_wide <- mutate(tab23_total_wide, screen_2 = 0, pat_2=0)
+)
+
+tab23_total_wide$combined_2 <- paste0(format(tab23_total_wide$screen_2, big.mark = ","), " (", round(100* tab23_total_wide$screen_2/tab23_total_wide$pat_2,1), "%)")
+
+
+#Year3
+Year3 <- ifelse(
+  paste0(nscreen, tab_screen_years[[3]]) %in% colnames(tab23_total_wide), 
+  tab23_total_wide <- mutate(tab23_total_wide, screen_3 = !!as.name(paste0(nscreen, tab_screen_years[[3]])), pat_3=!!as.name(paste0(nvar, tab_screen_years[[3]]))),
+  tab23_total_wide <- mutate(tab23_total_wide, screen_3 = 0, pat_3=0)
+)
+
+tab23_total_wide$combined_3 <- paste0(format(tab23_total_wide$screen_3, big.mark = ","), " (", round(100* tab23_total_wide$screen_3/tab23_total_wide$pat_3,1), "%)")
+
+#Year4
+Year4 <- ifelse(
+  paste0(nscreen, tab_screen_years[[4]]) %in% colnames(tab23_total_wide), 
+  tab23_total_wide <- mutate(tab23_total_wide, screen_4 = !!as.name(paste0(nscreen, tab_screen_years[[4]])), pat_4=!!as.name(paste0(nvar, tab_screen_years[[4]]))),
+  tab23_total_wide <- mutate(tab23_total_wide, screen_4 = 0, pat_4=0)
+)
+
+tab23_total_wide$combined_4 <- paste0(format(tab23_total_wide$screen_4, big.mark = ","), " (", round(100* tab23_total_wide$screen_4/tab23_total_wide$pat_4,1), "%)")
+
+#Year5
+Year5 <- ifelse(
+  paste0(nscreen, tab_screen_years[[5]]) %in% colnames(tab23_total_wide), 
+  tab23_total_wide <- mutate(tab23_total_wide, screen_5 = !!as.name(paste0(nscreen, tab_screen_years[[5]])), pat_5=!!as.name(paste0(nvar, tab_screen_years[[5]]))),
+  tab23_total_wide <- mutate(tab23_total_wide, screen_5 = 0, pat_5=0)
+)
+
+tab23_total_wide$combined_5 <- paste0(format(tab23_total_wide$screen_5, big.mark = ","), " (", round(100* tab23_total_wide$screen_5/tab23_total_wide$pat_5,1), "%)")
+
+
+tab23_final <- tab23_total_wide[c("question_id","combined_1", "combined_2", "combined_3", "combined_4", "combined_5")]
+
+```
 
 ####Total program run time:
 ```{r calc_runtime, echo=FALSE}
