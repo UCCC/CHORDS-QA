@@ -818,6 +818,7 @@ tab15$unknown <- paste0(format(tab15$unknown, big.mark = ","), " (", round(100* 
 tab15$year <- as.character(tab15$year)
 
 ```
+
 ```{r tab15_disp, echo = F, include=T, error=T}
 kable(tab15, col.names = c("Year", "Records", "Yes/Current (%)", "Infrequent(%) ", "Quit/Former (%)", "Passive/Second Hand Smoke Exposure (%)", "Never (%)", "Not Asked/Unknown (%)", "Null"), align = 'c', format.args = list(big.mark = ","))
 ```
@@ -1058,10 +1059,150 @@ tab_screen_persav <- run_query(
 
 ```
 
+```{r tableQuestionsExists, echo = F, include=T, error= T}
+tableQuestionsExists <- run_query(paste0("
+BEGIN TRY
+	EXEC sp_executesql N'SELECT TOP 1 ''Y'' Result FROM , ", pro_questions, "a';
+END TRY
+BEGIN CATCH
+END CATCH;"))
+
+if (!is.data.frame(df) || nrow(df)==0) {
+  pro_questions_table <- paste0("("," 
+  SELECT	'CHORDS-1' PRO_ID, 1 QUESTION_ID, 1 QUESTION_VER, CAST('1999-01-01' AS DATE) QUESTION_DATE, 'Little interest or pleasure in doing things' QUESTION_TEXT, '44250-9' QUESTION_LOINC,   'BEHAVIORAL_HEALTH' QUESTION_DOMAIN
+  UNION ALL
+  SELECT 'CHORDS-1', 2, 1, CAST('1999-01-01' AS DATE), 'Feeling down, depressed, or hopeless', '44255-8', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-1', 3, 1, CAST('1999-01-01' AS DATE), 'PHQ-2 Total Score', '55758-7', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-2', 1, 1, CAST('2009-01-01' AS DATE), 'Feeling nervous, anxious,  or on edge', '69725-0', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-2', 2, 1, CAST('2009-01-01' AS DATE), 'Not being able to stop or control worrying', '68509-9',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-2', 3, 1, CAST('2009-01-01' AS DATE), 'Little interest or pleasure in doing things', '44250-9',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-2', 4, 1, CAST('2009-01-01' AS DATE), 'Feeling down, depressed, or hopeless', '44255-8', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-2', 5, 1, CAST('2009-01-01' AS DATE), 'PHQ-4 Total Score', '70272-0', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 1, 1, CAST('1999-01-01' AS DATE), 'Little interest or pleasure in doing things', '44250-9',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 2, 1, CAST('1999-01-01' AS DATE), 'Feeling down, depressed, or hopeless', '44255-8', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 3, 1, CAST('1999-01-01' AS DATE), 'Trouble falling or staying asleep, or sleeping too much', '44259-0',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 4, 1, CAST('1999-01-01' AS DATE), 'Feeling tired or having little energy', '44254-1', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 5, 1, CAST('1999-01-01' AS DATE), 'Poor appetite or overeating', '44251-7', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 6, 1, CAST('1999-01-01' AS DATE), 'Feeling bad about yourself - or that you are a failure or have let   yourself or your family down', '44258-2', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 7, 1, CAST('1999-01-01' AS DATE), 'Trouble concentrating on things, such as reading the newspaper or   watching television', '44252-5', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 8, 1, CAST('1999-01-01' AS DATE), 'Moving or speaking so slowly that other people could have noticed.    Or, the opposite - being so fidgety or restless that you have been moving around a lot more than usual', '44253-3',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 9, 1, CAST('1999-01-01' AS DATE), 'Thoughts that you would be better off dead or of hurting yourself in   some way', '44260-8', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 10, 1, CAST('1999-01-01' AS DATE), 'PHQ-9 Total Score', '44261-6', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-3', 11, 1, CAST('1999-01-01' AS DATE), 'If you checked off any problems, how difficult have those problems   made it for you to do your work, take care of things at home, or get along with other people?', '69722-7',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 1, 1, CAST('2002-01-01' AS DATE), 'Feeling down, depressed, irritable, or hopeless?', NULL,   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 2, 1, CAST('2002-01-01' AS DATE), 'Little interest or pleasure in doing things?', NULL,   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 3, 1, CAST('2002-01-01' AS DATE), 'Trouble falling or staying asleep, or sleeping too much?', NULL,   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 4, 1, CAST('2002-01-01' AS DATE), 'Poor appetite, weight loss, or overeating?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 5, 1, CAST('2002-01-01' AS DATE), 'Feeling tired, or having little energy?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 6, 1, CAST('2002-01-01' AS DATE), 'Feeling bad about yourself - or that you are a failure or have let   yourself or your family down?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 7, 1, CAST('2002-01-01' AS DATE), 'Trouble concentrating on things like school work, reading, or watching   TV?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 8, 1, CAST('2002-01-01' AS DATE), 'Moving or speaking so slowly that other people could have noticed? Or,   the opposite - being so fidgety or restless that you have been moving around a lot more than usual?', NULL,   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 9, 1, CAST('2002-01-01' AS DATE), 'Thoughts that you would be better off dead, or of hurting yourself in   some way?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 10, 1, CAST('2002-01-01' AS DATE), 'In the past year have you felt depressed or sad most days, even if   you felt okay sometimes?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 11, 1, CAST('2002-01-01' AS DATE), 'If you are experiencing any of the problems on this form, how   difficult have these problems made it for you to do your work, take care of things at home or get along with other people?',   NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 12, 1, CAST('2002-01-01' AS DATE), 'Has there been a time in the past month when you have had serious   thoughts about ending your life?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 13, 1, CAST('2002-01-01' AS DATE), 'Have you EVER, in your WHOLE LIFE, tried to kill yourself or made a   suicide attempt?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-4', 14, 1, CAST('2002-01-01' AS DATE), 'PHQ-A Total Score', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-5', 1, 1, NULL, 'Feeling nervous, anxious,  or on edge', '69725-0', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-5', 2, 1, NULL, 'Not being able to stop or control worrying', '68509-9', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-5', 3, 1, NULL, 'GAD-2 Total Score', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 1, 1, NULL, 'Feeling nervous, anxious,  or on edge', '69725-0', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 2, 1, NULL, 'Not being able to stop or control worrying', '68509-9', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 3, 1, NULL, 'Worrying too much about different things', '69733-4', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 4, 1, NULL, 'Trouble relaxing', '69734-2', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 5, 1, NULL, 'Being so restless that it''s hard to sit still', '69735-9', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 6, 1, NULL, 'Becoming easily annoyed or irritable', '69689-8', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 7, 1, NULL, 'Feeling afraid as if something awful might happen', '69736-7', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 8, 1, NULL, 'GAD-7 Total Score', '70274-6', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-6', 9, 1, NULL, 'If you checked off any problems, how difficult have these made it for you to do your work,   take care of things at home, or get along with other people?', NULL, 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-7', 7, 1, CAST('2016-09-02' AS DATE), 'What is your housing situation today?', NULL, 'HOUSING_INSTABILITY'
+  UNION ALL
+  SELECT 'CHORDS-7', 8, 1, CAST('2016-09-02' AS DATE), 'Are you worried about losing your housing?', NULL,   'HOUSING_INSTABILITY'
+  UNION ALL
+  SELECT 'CHORDS-7', 14, 1, CAST('2016-09-02' AS DATE), 'During the past year, have you or any family members you live with   been unable to get any of the following when it was really needed? Check all that apply (food).', NULL, 'FOOD_INSECURITY'
+  UNION ALL
+  SELECT 'CHORDS-8', 1, 1, CAST('2017-01-01' AS DATE), 'What is your living situation today?', NULL, 'HOUSING_INSTABILITY'
+  UNION ALL
+  SELECT 'CHORDS-8', 3, 1, CAST('2010-01-01' AS DATE), 'Within the past 12 months, you worried that your food would run out   before you got money to buy more.', NULL, 'FOOD_INSECURITY'
+  UNION ALL
+  SELECT 'CHORDS-8', 4, 1, CAST('2010-01-01' AS DATE), 'Within the past 12 months, the food you bought just didn''t last and   you didn''t have money to get more.', NULL, 'FOOD_INSECURITY'
+  UNION ALL
+  SELECT 'CHORDS-9', 1, 1, CAST('1987-01-01' AS DATE), 'I have been able to laugh and see the funny side of things',   '71344-6', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 2, 1, CAST('1987-01-01' AS DATE), 'I have looked forward with enjoyment to things', '71345-3',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 3, 1, CAST('1987-01-01' AS DATE), 'I have blamed myself unnecessarily when things went wrong', '71346-1',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 4, 1, CAST('1987-01-01' AS DATE), 'I have been anxious or worried for no good reason', '71347-9',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 5, 1, CAST('1987-01-01' AS DATE), 'I have felt scared or panicky for no very good reason', '71348-7',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 6, 1, CAST('1987-01-01' AS DATE), 'Things have been getting on top of me', '71349-5', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 7, 1, CAST('1987-01-01' AS DATE), 'I have been so unhappy that I have had difficulty sleeping',   '71350-3', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 8, 1, CAST('1987-01-01' AS DATE), 'I have felt sad or miserable', '71351-1', 'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 9, 1, CAST('1987-01-01' AS DATE), 'I have been so unhappy that I have been crying', '71352-9',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 10, 1, CAST('1987-01-01' AS DATE), 'The thought of harming myself has occurred to me', '71353-7',   'BEHAVIORAL_HEALTH'
+  UNION ALL
+  SELECT 'CHORDS-9', 11, 1, CAST('1987-01-01' AS DATE), 'EPDS Total Score', NULL, 'BEHAVIORAL_HEALTH'
+  ", ")")
+} else {
+  pro_questions_table <- pro_questions
+}
+
+
+```
+
 ## Table 20: PHQ-2 Number of Encounters and Percent of Encounters Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
 
 ```{r tab20_res, echo = F, include=T, error=T }
-
 tab20_screen <- run_query( 
         paste0("
         with cte_years as (
@@ -1081,7 +1222,7 @@ tab20_screen <- run_query(
         from cte_years
         cross join (select 
 						          question_id 
-					          from ", pro_questions, "
+					          from ", pro_questions_table, " e
 					          where pro_id = 'CHORDS-1') q
         left join(
           select question_id,
@@ -1180,7 +1321,7 @@ tab21_screen <- run_query(
         from cte_years
         cross join (select 
 						          question_id 
-					          from ", pro_questions, "
+					          from ", pro_questions_table, " e
 					          where pro_id = 'CHORDS-1') q
         left join(
           select question_id,
@@ -1282,7 +1423,7 @@ tab22_screen <- run_query(
         from cte_years
         cross join (select 
 						          question_id 
-					          from ", pro_questions, "
+					          from ", pro_questions_table, " e
 					          where pro_id = 'CHORDS-1') q
         left join(
           select question_id,
@@ -1386,8 +1527,8 @@ tab23_screen <- run_query(
         from cte_years
         cross join (select 
 						          question_id 
-					          from ", pro_questions, "
-					          where pro_id = 'CHORDS-1') q
+					          from ", pro_questions_table, " e
+					          where e.pro_id = 'CHORDS-1') q
         left join(
           select question_id,
             year(response_date) as year,
