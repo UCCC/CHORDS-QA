@@ -1506,6 +1506,8 @@ tab22_final <- tab22_total_wide[c("question_id","combined_1", "combined_2", "com
 kable(tab22_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
 ```
 
+## Table 23: PHQ-2 Number of Patients and Percent of Patients Screened by Year - Ambulatory Encounters Only (`r tab_screen_years[[1]]` - Present)
+
 ```{r tab23_res,echo = F, include=T, error=T }
 
 tab23_screen <- run_query( 
