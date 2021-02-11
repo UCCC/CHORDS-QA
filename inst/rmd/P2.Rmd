@@ -357,9 +357,7 @@ kable(tab4 [c("test_type", "nrows", "pct_rec", "npats", "pct_pat", "avg_resval",
 ## Figures 1a-1i: Temporal Trends in the Number of CHORDS Priority Lab Tests, by Select TEST_TYPE Values
 
 These figures shows temporal trends in the number of records for CHORDS priority lab tests.
-
-
-```{r fig1_res, fig.height=3.5, fig.width=7, echo = F, include=T, error=T, dpi=500}
+```{r fig1_res, fig.height=3.22, fig.width=7, echo = F, include=T, error=T, dpi=500}
 fig1 <- run_query(
   paste0("select test_type, 
     month(result_dt) as month,
@@ -585,7 +583,7 @@ tab9_all <- tab9_enct1 %>%
     pct_enct = round(nrows_enct / tab9_enct2$enct_tot * 100,1),
     pct_diag = round(nrows_diag /tab9_diag2$diag_tot *100,1),
     pct_px   = round(nrows_px / tab9_px2$px_tot * 100,1),
-    enctype  = recode(enctype, "IP" = "Acute In Patient", "ED" = "Emergency Department", "AV" = "Ambulatory Visit", "TE" = "Telephone Encounter", "EM" = "E-mail Encounter", "IS" = "Non-acute Inpatient", "OE" = "Other Encounters", "LO" = "Lab Only Encounter", "RO" = "Radiology Only Encounter")
+    enctype  = recode(enctype, "IP" = "Acute In Patient", "ED" = "Emergency Department", "AV" = "Ambulatory Visit", "TE" = "Telephone Encounter", "EM" = "E-mail Encounter", "TV" = "Telehealth Encounter", "TO" = "Other Synchronous Telehealth",  "IS" = "Non-acute Inpatient", "OE" = "Other Encounters", "LO" = "Lab Only Encounter", "RO" = "Radiology Only Encounter")
   ) %>% 
   bind_rows(., tab9_tot)  
 ```
@@ -593,6 +591,244 @@ tab9_all <- tab9_enct1 %>%
 ```{r tab9_disp, echo = F, include=T, error=T}
 kable(tab9_all[1:7, c( "enctype", "nrows_enct", "pct_enct", "nrows_enct", "pct_diag", "nrows_px", "pct_px")], col.names = c("Encounter Type", "Number of Encounters", "Percent of Total Encounters", "Number of Diagnoses", "Percent of Total Diagnoses", "Number of Procedures", "Percent of Total Procedures"), digits = 2, format.args = list(big.mark = ","))
 ```
+
+\pagebreak
+
+## Fig 9a: Summary of Encounters Types
+
+```{r fig9a_data, echo = F, include=T, error=T}
+fig9a <- run_query(
+    paste0("
+SET NOCOUNT ON;
+DECLARE @MinDate DATE = '20190101'
+	,@MaxDate DATE = DATEADD(m, -1, getdate());
+
+DROP TABLE IF EXISTS #base_data;
+WITH cte_EncTypes as (
+	SELECT 'IP' AS EncType, 'Acute In Patient' AS EncTypeName
+	UNION ALL
+	SELECT 'ED', 'Emergency Department'
+	UNION ALL
+	SELECT 'AV', 'Ambulatory Visit'
+	UNION ALL
+	SELECT 'TE', 'Telephone Encounter'
+	UNION ALL
+	SELECT 'EM', 'E-mail Encounter'
+	UNION ALL
+	SELECT 'TV', 'Telehealth Encounter'
+	UNION ALL
+	SELECT 'TO', 'Other Synchronous Telehealth'
+	UNION ALL
+	SELECT 'IS', 'Non-acute Inpatient'
+	UNION ALL
+	SELECT 'OE', 'Other Encounters'
+	UNION ALL
+	SELECT 'LO', 'Lab Only Encounter'
+	UNION ALL
+	SELECT 'RO', 'Radiology Only Encounter'
+	),
+cte_dates AS (
+	SELECT TOP (DATEDIFF(DAY, @MinDate, @MaxDate) + 1) DATE = DATEADD(DAY, ROW_NUMBER() OVER (
+				ORDER BY a.object_id
+				) - 1, @MinDate)
+	FROM sys.all_objects a
+	CROSS JOIN sys.all_objects b
+	)
+SELECT *
+INTO #base_data
+FROM (
+	SELECT DISTINCT DATEFROMPARTS(YEAR(DATE), MONTH(DATE), 1) DATE
+		,EncType
+		,EncTypeName
+	FROM cte_dates
+	CROSS JOIN cte_EncTypes
+	) data
+ORDER BY DATE ASC;
+
+DROP TABLE IF EXISTS #enc_data;
+SELECT *
+INTO #enc_data
+FROM (
+	SELECT DATE
+		,EncType
+		,COUNT(ENC_ID) Count
+	FROM (
+		SELECT DATEFROMPARTS(YEAR(e.ADATE), MONTH(e.ADATE), 1) DATE
+			,e.ENCTYPE
+			,e.ENC_ID
+		FROM ", encounters, " e
+		WHERE e.ADATE >= @MinDate
+		) data
+	GROUP BY DATE
+		,EncType
+	) data;
+
+SELECT b.EncTypeName + ' ('+ b.EncType + ')' as EncTypeName
+	,Month(b.DATE) Month
+	,Year(b.DATE) Year
+	,IIF(e.Count IS NULL, 0, e.Count) Count
+FROM #base_data b
+LEFT JOIN #enc_data e ON b.DATE = e.DATE
+	AND e.EncType = b.EncType
+ORDER BY b.DATE
+	,b.EncType;
+"))
+```
+
+```{r fig9a_dist, fig.height=3.5, fig.width=7, echo = F, include=T, error=T, dpi=500}
+
+fig9a_sub <- fig9a %>% 
+  arrange(Year, Month, EncTypeName) %>% 
+  mutate(
+    date = as.Date(paste(Year, Month, "01", sep = "-"))
+  ) %>% 
+  select(-Month, -Year)
+fig9a_wide <- spread(fig9a_sub, key = EncTypeName, value = Count)
+fig9aFigures <-lapply(2:ncol(fig9a_wide), function(x) {
+  ggplot(data = fig9a_wide, aes(x = date, y = fig9a_wide[[x]])) +
+         geom_line() +
+    ggtitle(names(fig9a_wide)[x]) +
+    scale_x_date(date_labels = "%b %y",date_breaks='2 months', date_minor_breaks ="1 month", ) +
+    xlab("Date") + ylab("Number of Encounters") +
+    theme(
+        #panel.grid.major = element_blank(), 
+        #panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        panel.grid.major.x = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey"),
+        panel.grid.minor.x = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey"),
+        panel.grid.major.y = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey"),
+        axis.text.x = element_text(angle =45, hjust=1),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 11, face = "bold"),
+        plot.title = element_text(hjust = 0.3, size = 16))
+   })
+
+suppressWarnings(invisible(lapply(fig9aFigures, print)))
+
+```
+
+\pagebreak
+
+## Fig 9b: Summary of Diagnosis Encounter Types
+
+```{r fig9b_data, echo = F, include=T, error=T}
+fig9b <- run_query(
+    paste0("
+SET NOCOUNT ON;
+DECLARE @MinDate DATE = '20190101'
+	,@MaxDate DATE = DATEADD(m, -1, getdate());
+
+DROP TABLE IF EXISTS #base_data;
+WITH cte_EncTypes as (
+	SELECT 'IP' AS EncType, 'Acute In Patient' AS EncTypeName
+	UNION ALL
+	SELECT 'ED', 'Emergency Department'
+	UNION ALL
+	SELECT 'AV', 'Ambulatory Visit'
+	UNION ALL
+	SELECT 'TE', 'Telephone Encounter'
+	UNION ALL
+	SELECT 'EM', 'E-mail Encounter'
+	UNION ALL
+	SELECT 'TV', 'Telehealth Encounter'
+	UNION ALL
+	SELECT 'TO', 'Other Synchronous Telehealth'
+	UNION ALL
+	SELECT 'IS', 'Non-acute Inpatient'
+	UNION ALL
+	SELECT 'OE', 'Other Encounters'
+	UNION ALL
+	SELECT 'LO', 'Lab Only Encounter'
+	UNION ALL
+	SELECT 'RO', 'Radiology Only Encounter'
+	),
+cte_dates AS (
+	SELECT TOP (DATEDIFF(DAY, @MinDate, @MaxDate) + 1) DATE = DATEADD(DAY, ROW_NUMBER() OVER (
+				ORDER BY a.object_id
+				) - 1, @MinDate)
+	FROM sys.all_objects a
+	CROSS JOIN sys.all_objects b
+	)
+SELECT *
+INTO #base_data
+FROM (
+	SELECT DISTINCT DATEFROMPARTS(YEAR(DATE), MONTH(DATE), 1) DATE
+		,EncType
+		,EncTypeName
+	FROM cte_dates
+	CROSS JOIN cte_EncTypes
+	) data
+ORDER BY DATE ASC;
+
+DROP TABLE IF EXISTS #enc_data;
+SELECT *
+INTO #enc_data
+FROM (
+	SELECT DATE
+		,EncType
+		,COUNT(DIAGNOSES_ID) Count
+	FROM (
+		SELECT DATEFROMPARTS(YEAR(d.ADATE), MONTH(d.ADATE), 1) DATE
+			,d.ENCTYPE
+			,d.DIAGNOSES_ID
+		FROM ", diagnoses ," d
+		WHERE d.ADATE >= @MinDate
+		) data
+	GROUP BY DATE
+		,EncType
+	) data;
+
+SELECT b.EncTypeName + ' ('+ b.EncType + ')' as DiagnosisEncTypeName
+	,Month(b.DATE) Month
+	,Year(b.DATE) Year
+	,IIF(e.Count IS NULL, 0, e.Count) Count
+FROM #base_data b
+LEFT JOIN #enc_data e ON b.DATE = e.DATE
+	AND e.EncType = b.EncType
+ORDER BY b.DATE
+	,b.EncType;
+"))
+```
+
+```{r fig9b_dist, fig.height=3.25, fig.width=7, echo = F, include=T, error=T, dpi=500}
+
+fig9b_sub <- fig9b %>% 
+  arrange(Year, Month, DiagnosisEncTypeName) %>% 
+  mutate(
+    date = as.Date(paste(Year, Month, "01", sep = "-"))
+  ) %>% 
+  select(-Month, -Year)
+fig9b_wide <- spread(fig9b_sub, key = DiagnosisEncTypeName, value = Count)
+fig9bFigures <-lapply(2:ncol(fig9b_wide), function(x) {
+  ggplot(data = fig9b_wide, aes(x = date, y = fig9b_wide[[x]])) +
+         geom_line() +
+    ggtitle(names(fig9b_wide)[x]) +
+    scale_x_date(date_labels = "%b %y",date_breaks='2 months', date_minor_breaks ="1 month", ) +
+    xlab("Date") + ylab("Number of Diagnoses") +
+    theme(
+        panel.background = element_blank(),
+        panel.grid.major.x = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey"),
+        panel.grid.minor.x = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey"),
+        panel.grid.major.y = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey"),
+        axis.text.x = element_text(angle =45, hjust=1),
+        axis.line = element_line(colour = "black"),
+        axis.title = element_text(size = 14, face = "bold"),
+        axis.text = element_text(size = 11, face = "bold"),
+        plot.title = element_text(hjust = 0.3, size = 16))
+   })
+
+suppressWarnings(invisible(lapply(fig9bFigures, print)))
+
+```
+
+\pagebreak
 
 ## Table 10: Summary of the Ten Most Common Procedures - Procedure Code, Procedure Type, Total Number of Recorded Procedures and Total Number of Recorded Patients, by All or Ambulatory Encounter Type 
 
@@ -657,7 +893,7 @@ tab11_px_oth <- run_query(
 ```
 
 ```{r tab11_disp, echo = F, include=T, error=T}
-#if and else statements are used to determine if the respecitvie table has any
+#if and else statements are used to determine if the respective table has any
 #rows. If not, then an error message is written indicating so.
 if (nrow(tab11_pxc4) != 0){
   kable(tab11_pxc4, col.names = c("Procedure", "Records", "Patients"), caption = "Procedure Code Type = C4", format.args = list(big.mark = ","))
@@ -801,7 +1037,7 @@ tab15 <- run_query(
     SUM(CASE WHEN TOBACCO_USER = 'P' THEN 1 ELSE 0 END) as passive,
     SUM(CASE WHEN TOBACCO_USER = 'N' THEN 1 ELSE 0 END) as never,
     SUM(CASE WHEN TOBACCO_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
-    SUM(CASE WHEN TOBACCO_USER IS NULL THEN 1 ELSE 0 END) as t_null
+    SUM(CASE WHEN (TOBACCO_USER NOT IN ('X', 'U', 'Y', 'Q', 'Y') OR TOBACCO_USER IS NULL) THEN 1 ELSE 0 END) as t_null
       from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
@@ -820,13 +1056,12 @@ tab15$year <- as.character(tab15$year)
 ```
 
 ```{r tab15_disp, echo = F, include=T, error=T}
-kable(tab15, col.names = c("Year", "Records", "Yes/Current (%)", "Infrequent(%) ", "Quit/Former (%)", "Passive/Second Hand Smoke Exposure (%)", "Never (%)", "Not Asked/Unknown (%)", "Null"), align = 'c', format.args = list(big.mark = ","))
+kable(tab15, col.names = c("Year", "Records", "Yes/Current (%)", "Infrequent(%) ", "Quit/Former (%)", "Passive/Second Hand Smoke Exposure (%)", "Never (%)", "Not Asked/Unknown (%)", "Null or Uncategorized"), align = 'c', format.args = list(big.mark = ","))
 ```
 
 ## Table 16: Annual Trends in Self-Reported Alcohol Use
 
 This table includes information on the distribution of SOCIAL_HISTORY records by ALCOHOL_USER value.
-
 
 ```{r tab16_res, echo = F, include=T, error=T}
 tab16 <- run_query(
@@ -836,7 +1071,7 @@ tab16 <- run_query(
     SUM(CASE WHEN ALCOHOL_USER = 'Q' THEN 1 ELSE 0 END) as former,
     SUM(CASE WHEN ALCOHOL_USER = 'N' THEN 1 ELSE 0 END) as never,
     SUM(CASE WHEN ALCOHOL_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
-    SUM(CASE WHEN ALCOHOL_USER IS NULL THEN 1 ELSE 0 END) as t_null
+    SUM(CASE WHEN (ALCOHOL_USER NOT IN ('X', 'U', 'Y', 'Q', 'Y') OR ALCOHOL_USER IS NULL) THEN 1 ELSE 0 END) as t_null
      from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
@@ -849,7 +1084,7 @@ tab16$year <- as.character(tab16$year)
 ```
 
 ```{r tab16_disp, echo = F, include=T, error=T}
-kable(tab16, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), align = 'c', format.args = list(big.mark = ","))
+kable(tab16, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null or Uncategorized"), align = 'c', format.args = list(big.mark = ","))
 ```
 
 ## Table 17: Annual Trends in Self-Reported Illicit Drug Use
@@ -864,7 +1099,7 @@ tab17 <- run_query(
     SUM(CASE WHEN ILL_DRUG_USER = 'Q' THEN 1 ELSE 0 END) as former,
     SUM(CASE WHEN ILL_DRUG_USER = 'N' THEN 1 ELSE 0 END) as never,
     SUM(CASE WHEN ILL_DRUG_USER IN ('X', 'U') THEN 1 ELSE 0 END) as unknown,
-    SUM(CASE WHEN ILL_DRUG_USER IS NULL THEN 1 ELSE 0 END) as t_null
+    SUM(CASE WHEN (ILL_DRUG_USER NOT IN ('X', 'U', 'Y', 'Q', 'Y') OR ILL_DRUG_USER IS NULL) THEN 1 ELSE 0 END) as t_null
      from ", social_history, "
        group by year(contact_date)
        order by year(contact_date)"))
@@ -876,7 +1111,7 @@ tab17$year <- as.character(tab17$year)
 ```
 
 ```{r tab17_disp, echo = F, include=T, error=T}
-kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null"), align = 'c', format.args = list(big.mark = ","))
+kable(tab17, col.names = c("Year", "Records", "Yes/Current", "Quit/Former",  "Never", "Not Asked/Unknown", "Null or Uncategorized"), align = 'c', format.args = list(big.mark = ","))
 ```
 
 ## Table 18: PRO_Responses: Surveys and Questions included

@@ -3081,18 +3081,20 @@ tab16_add$year <- as.character(tab16_add$year)
 kable(tab16_add, col.names = c("Year", "Total Number of Recorded Vitals", "Percent Change from Previous Year", "Total Number of Encounters with Vital_Signs", "Total Number of Patients with Vitals", "Median Number of Vitals per Encounter (Min, Max)", "Median Number of Vitals per Patient (Min, Max)"), format.args = list(big.mark = ","))
 ```
 
+\newpage
 
 ## Figure 5. Count of Vital Signs by Year and Month
 
-```{r Count of vital signs by year and month, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
+```{r Count of vital signs by year and month, echo=F, error=T, dpi=500, include=T, fig.show="hold", fig.height=3.25, fig.width=4.75, fig.align='center', out.width="50%"}
 vitalsByMonYr <- run_query(
-                 paste('SELECT year(measure_date) as year, month(measure_date) as month',
-                       ', sum(case when ht>0 then 1 else 0 end) as height',
-                       ', sum(case when wt>0 then 1 else 0 end) as weight',
-                       ', sum(case when systolic>0 then 1 else 0 end) as systolic',
-                       ', sum(case when diastolic>0 then 1 else 0 end) as diastolic',
-                       'FROM  ',vital_signs,
-                       'GROUP BY year(measure_date), month(measure_date)',
+                 paste0("SELECT year(measure_date) as year
+                       ,month(measure_date) as month
+                       ,sum(case when ht>0 then 1 else 0 end) as height
+                       ,sum(case when wt>0 then 1 else 0 end) as weight
+                       ,sum(case when systolic>0 then 1 else 0 end) as systolic
+                       ,sum(case when diastolic>0 then 1 else 0 end) as diastolic
+                       FROM  ",vital_signs, "
+                       GROUP BY year(measure_date), month(measure_date)",
                        sep=" "
                        ),
                  max=maxQryRows
@@ -3101,8 +3103,48 @@ vitalsByMonYr <- within(vitalsByMonYr,{
   monYr <- as.Date(paste(as.character(year),as.character(month),'01', sep='-'))
 }) %>% subset(select=-c(month,year))
 vitalsByMonYrTx <- gather(vitalsByMonYr, 'Vital_record','Count', 1:4)
-ggplot(vitalsByMonYrTx, aes(monYr, Count, colour=Vital_record)) + geom_line() +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Vital type')
+
+ggplot(subset(vitalsByMonYrTx, Vital_record=="height"), 
+    aes(monYr, Count, colour=Vital_record)) + 
+      geom_line() +
+      ggtitle("Height") +
+      scale_x_date(date_labels = "%b %y",date_breaks='1 year') +
+      xlab("Month of encounter") +
+      ylab("Frequency") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(color='Vital type') +
+      theme(legend.position='none')
+
+ggplot(subset(vitalsByMonYrTx, Vital_record=="weight"), 
+    aes(monYr, Count, colour=Vital_record)) + 
+      geom_line() + 
+      ggtitle("Weight") + 
+      scale_x_date(date_labels = "%b %y",date_breaks='1 year') + 
+      xlab("Month of encounter") + 
+      ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(color='Vital type') +
+      theme(legend.position='none')
+
+ggplot(subset(vitalsByMonYrTx, Vital_record=="systolic"), 
+    aes(monYr, Count, colour=Vital_record)) +
+      geom_line() +
+      ggtitle("Systolic") +
+      scale_x_date(date_labels = "%b %y",date_breaks='1 year') +
+      xlab("Month of encounter") +
+      ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(color='Vital type') +
+      theme(legend.position='none')
+
+ggplot(subset(vitalsByMonYrTx, Vital_record=="diastolic"), 
+    aes(monYr, Count, colour=Vital_record)) +
+      geom_line() +
+      ggtitle("Diastolic") +
+      scale_x_date(date_labels = "%b %y",date_breaks='1 year') +
+      xlab("Month of encounter") +
+      ylab("Frequency") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      labs(color='Vital type') +
+      theme(legend.position='none')
 ```
 
 ## Table 17. BENEFIT Table Information
