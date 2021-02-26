@@ -2610,19 +2610,30 @@ encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode,
 ```
 
 
+```{r time test for fig 3, echo = F}
+fig3_timeTest <-  timeTest(time=as.Date(encTypeBymonYr$adate_YM), 
+                           Freq=encTypeBymonYr$Freq, 
+                           outcome=encTypeBymonYr$encType )
+fig3_timeTest <- merge(fig3_timeTest,encLabels, by.x='outcome', by.y='code', all.x=TRUE) 
+fig3_timeTest <- within(fig3_timeTest,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(encType), 'Missing', 'Invalid'))})
+
+```
+
 
 ## Figure 3a. Ambulatory Encounters by Year and Month
 
 ```{r fig3a, echo = F, include=T, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
 ggplot(subset(encTypeBymonYr,encType == 'AV'), aes(adate_YM, rowCnt)) + geom_line() +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_point(data=subset(fig3_timeTest, iqrTest==T & outcome=='AV') %>% rename(adate_YM=testMonth, rowCnt=Freq2), aes(adate_YM, rowCnt))
 ```
 
 ## Figure 3b. Other Encounter Types by Year and Month
 
 ```{r fig3b, echo = F, include=T, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
 ggplot(subset(encTypeBymonYr,encType != 'AV'), aes(adate_YM, rowCnt, colour=decode)) + geom_line() +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')
+  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1))+labs(color='Encounter type')+
+  geom_point(data=subset(fig3_timeTest, iqrTest==T & outcome !='AV') %>% rename(adate_YM=testMonth, rowCnt=Freq2), aes(adate_YM, rowCnt, colour=decode))
 #,legend.position="bottom" "
 ```
 
@@ -2907,18 +2918,30 @@ dxByMonEncTp <- merge(dxByMonEncTp,encLabels, by.x='enctype', by.y='code', all.x
 dxByMonEncTp <- within(dxByMonEncTp,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(enctype), 'Missing', 'Invalid'))})
 ```
 
+
+```{r time test for fig 4, echo = F}
+fig4_timeTest <-  timeTest(time=as.Date(dxByMonEncTp$monYr), 
+                           Freq=dxByMonEncTp$Freq, 
+                           outcome=dxByMonEncTp$encType )
+fig4_timeTest <- merge(fig4_timeTest,encLabels, by.x='outcome', by.y='code', all.x=TRUE) 
+fig4_timeTest <- within(fig4_timeTest,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(encType), 'Missing', 'Invalid'))})
+
+```
+
 ## Figure 4a. Count of Diagnoses by Year and Month in Ambulatory Encounters 
 
 ```{r Count of diagnoses by year and month in ambulatory encounters, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
 ggplot(subset(dxByMonEncTp,enctype == 'AV'), aes(monYr, Freq)) + geom_line(size=.75) +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  scale_color_brewer(palette ="Paired")
+  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  scale_color_brewer(palette ="Paired") +
+  geom_point(data=subset(fig4_timeTest, iqrTest==T & outcome=='AV') %>% rename(monYr=testMonth, rowCnt=Freq2), aes(monYr, rowCnt))
 ```
 
 ## Figure 4b. Count of Diagnoses by Year and Month, other Encounter Types
 
 ```{r Count of diagnoses by year and month other encounter types, echo = F, include=T, error=T, dpi=500, fig.height=5, fig.width=8.5}
 ggplot(subset(dxByMonEncTp,enctype != 'AV'), aes(monYr, Freq, colour=decode)) + geom_line(size=.75) +
-  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="bottom")+labs(color='Encounter type') + scale_color_brewer(palette ="Paired")
+  scale_x_date(date_labels = "%b %y",date_breaks='1 year') + xlab("Month of encounter") + ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="bottom")+labs(color='Encounter type') + scale_color_brewer(palette ="Paired") +
+  geom_point(data=subset(fig4_timeTest, iqrTest==T & outcome !='AV') %>% rename(monYr=testMonth, rowCnt=Freq2), aes(monYr, rowCnt, colour=decode))
 
 ```
 
@@ -3104,6 +3127,11 @@ vitalsByMonYr <- within(vitalsByMonYr,{
 }) %>% subset(select=-c(month,year))
 vitalsByMonYrTx <- gather(vitalsByMonYr, 'Vital_record','Count', 1:4)
 
+# time test
+fig5_timeTest <-  timeTest(time=as.Date(vitalsByMonYrTx$monYr), 
+                           Freq=vitalsByMonYrTx$Count, 
+                           outcome=vitalsByMonYrTx$Vital_record)
+
 ggplot(subset(vitalsByMonYrTx, Vital_record=="height"), 
     aes(monYr, Count, colour=Vital_record)) + 
       geom_line() +
@@ -3113,7 +3141,8 @@ ggplot(subset(vitalsByMonYrTx, Vital_record=="height"),
       ylab("Frequency") +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(color='Vital type') +
-      theme(legend.position='none')
+      theme(legend.position='none') +
+  geom_point(data=subset(fig5_timeTest, iqrTest==T & outcome=="height" ) %>% rename(monYr=testMonth, Count=Freq2, Vital_record = outcome), aes(monYr, Count, colour=Vital_record))
 
 ggplot(subset(vitalsByMonYrTx, Vital_record=="weight"), 
     aes(monYr, Count, colour=Vital_record)) + 
@@ -3123,7 +3152,8 @@ ggplot(subset(vitalsByMonYrTx, Vital_record=="weight"),
       xlab("Month of encounter") + 
       ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(color='Vital type') +
-      theme(legend.position='none')
+      theme(legend.position='none') +
+  geom_point(data=subset(fig5_timeTest, iqrTest==T & outcome=="weight" ) %>% rename(monYr=testMonth, Count=Freq2, Vital_record = outcome), aes(monYr, Count, colour=Vital_record))
 
 ggplot(subset(vitalsByMonYrTx, Vital_record=="systolic"), 
     aes(monYr, Count, colour=Vital_record)) +
@@ -3133,7 +3163,8 @@ ggplot(subset(vitalsByMonYrTx, Vital_record=="systolic"),
       xlab("Month of encounter") +
       ylab("Frequency")+theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(color='Vital type') +
-      theme(legend.position='none')
+      theme(legend.position='none') +
+  geom_point(data=subset(fig5_timeTest, iqrTest==T & outcome=="systolic" ) %>% rename(monYr=testMonth, Count=Freq2, Vital_record = outcome), aes(monYr, Count, colour=Vital_record))
 
 ggplot(subset(vitalsByMonYrTx, Vital_record=="diastolic"), 
     aes(monYr, Count, colour=Vital_record)) +
@@ -3144,7 +3175,8 @@ ggplot(subset(vitalsByMonYrTx, Vital_record=="diastolic"),
       ylab("Frequency") +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(color='Vital type') +
-      theme(legend.position='none')
+      theme(legend.position='none') +
+  geom_point(data=subset(fig5_timeTest, iqrTest==T & outcome=="diastolic" ) %>% rename(monYr=testMonth, Count=Freq2, Vital_record = outcome), aes(monYr, Count, colour=Vital_record))
 ```
 
 ## Table 17. BENEFIT Table Information
