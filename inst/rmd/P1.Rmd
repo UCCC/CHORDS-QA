@@ -2817,7 +2817,7 @@ tab_2_Last_Recent_Years <- tab_2_Last_Recent_Years_f()
 ```
 
 
-## Table 13. Summary  of the Ten Most Common Diagnosis Codes, by All or Ambulatory Encounter Type ( `r paste0(tab_2_Last_Recent_Years_f[0], " & ",tab_2_Last_Recent_Years_f[1])`)
+## Table 13. Summary  of the Ten Most Common Diagnosis Codes, by All or Ambulatory Encounter Type ( `r paste0(tab_2_Last_Recent_Years[0], " & ", tab_2_Last_Recent_Years[1])`)
 
 These tables include information on the ten most common diagnoses recorded in your DIAGNOSES table. Data on diagnosis codes, types, counts and patients are presented for all encounters and for ambulatory only encounters (ENCTYPE=AV).
 
