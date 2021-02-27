@@ -150,8 +150,15 @@ tab1_sh <- run_query(paste0("select count(*) as nrows,
 	cast(min(contact_date) as varchar) as mindt,
 	cast(max(contact_date) as varchar) as maxdt
   from ", social_history))
+tab1_proresp <- run_query(paste0("select count(*) as nrows,
+  count(distinct PERSON_ID) as npats,
+  'RESPONSE_DATE' as fieldname,
+  count(distinct ENC_ID) as nencts,
+  cast(min(response_date) as varchar) as mindt,
+  cast(max(response_date) as varchar) as maxdt
+  from ", pro_responses))
 tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh) %>% 
-  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY"), .)
+  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY", "PRO_RESPONSES"), .)
 
 ```
 
@@ -220,17 +227,40 @@ tab2_sh_null <- run_query(
 tab2_sh_null2 <- data.frame(table = rep("SOCIAL_HISTORY", ncol(tab2_sh_null)), var = names(tab2_sh_null), records_null = t(tab2_sh_null)[,1])
 row.names(tab2_sh_null2) <- NULL
 
+tab2_proresp_null <- run_query(
+  paste0("SELECT SUM(CASE WHEN PRO_ID IS NULL THEN 1 ELSE 0 END) as PRO_ID,
+   SUM(CASE WHEN QUESTION_ID IS NULL THEN 1 ELSE 0 END) as QUESTION_ID,
+   SUM(CASE WHEN PERSON_ID IS NULL THEN 1 ELSE 0 END) as PERSON_ID,
+   SUM(CASE WHEN RESPONSE_DATE IS NULL THEN 1 ELSE 0 END) as RESPONSE_DATE,
+   SUM(CASE WHEN RESPONSE_TIME IS NULL THEN 1 ELSE 0 END) as RESPONSE_TIME,
+   SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
+      FROM ", pro_responses))
+tab2_proresp_null2 <- data.frame(table = rep("PRO_RESPONSES", ncol(tab2_proresp_null)), var = names(tab2_proresp_null), records_null = t(tab2_proresp_null)[,1])
+row.names(tab2_proresp_null2) <- NULL
+
 tab1_ps <- run_query("select count(*) as nrows
 	from provider_specialty")
 tab1_ps <- data.frame(nrows = tab1_ps$nrows, npats = NA, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
 
-tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_null2, tab2_sh_null2) %>% 
+tab2_proresp_null <- run_query(
+  paste0("SELECT SUM(CASE WHEN BENEFIT_ID IS NULL THEN 1 ELSE 0 END) as BENEFIT_ID,
+   SUM(CASE WHEN QUESTION_ID IS NULL THEN 1 ELSE 0 END) as QUESTION_ID,
+   SUM(CASE WHEN PERSON_ID IS NULL THEN 1 ELSE 0 END) as PERSON_ID,
+   SUM(CASE WHEN RESPONSE_DATE IS NULL THEN 1 ELSE 0 END) as RESPONSE_DATE,
+   SUM(CASE WHEN RESPONSE_TIME IS NULL THEN 1 ELSE 0 END) as RESPONSE_TIME,
+   SUM(CASE WHEN ENC_ID IS NULL THEN 1 ELSE 0 END) as ENC_ID,
+      FROM ", benefit))
+tab2_proresp_null2 <- data.frame(table = rep("PRO_RESPONSES", ncol(tab2_proresp_null)), var = names(tab2_proresp_null), records_null = t(tab2_proresp_null)[,1])
+row.names(tab2_proresp_null2) <- NULL
+
+tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_null2, tab2_sh_null2, tab2_proresp_null) %>% 
   mutate(
     pct_rec = ifelse(table == "LAB_RESULTS", (records_null / tab1_lab$nrows * 100), 
                      ifelse(table == "PRESCRIBING", (records_null / tab1_rx$nrows * 100), 
                              ifelse(table == "PROCEDURES", (records_null / tab1_px$nrows * 100), 
                                      ifelse(table == "PROVIDER_SPECIALTY", (records_null / tab1_ps$nrows * 100), 
-                                             ifelse(table == "SOCIAL_HISTORY", (records_null / tab1_sh$nrows * 100), NA)))))
+                                             ifelse(table == "SOCIAL_HISTORY", (records_null / tab1_sh$nrows * 100),
+                                                    ifelse(table == "PRO_RESPONSES", (records_null / tab1_proresp$nrows * 100),NA))))))
   )
 tab2_lab_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN TEST_TYPE = 'Unknown' THEN 1 ELSE 0 END) as TEST_TYPE,
@@ -240,11 +270,6 @@ tab2_lab_uk <- run_query(
 tab2_lab_uk2 <- data.frame(table = rep("LAB_RESULTS", ncol(tab2_lab_uk)), var = names(tab2_lab_uk), records_uk = t(tab2_lab_uk)[,1])
 row.names(tab2_lab_uk2) <- NULL
 tab2_px_uk <- run_query( 
-  paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNK' THEN 1 ELSE 0 END) as PROVIDER
-      FROM ", procedures))
-tab2_px_uk2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_uk)), var = names(tab2_px_uk), records_uk = t(tab2_px_uk)[,1])
-row.names(tab2_px_uk2) <- NULL
-tab2_px_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN PROVIDER = 'UNK' THEN 1 ELSE 0 END) as PROVIDER
       FROM ", procedures))
 tab2_px_uk2 <- data.frame(table = rep("PROCEDURES", ncol(tab2_px_uk)), var = names(tab2_px_uk), records_uk = t(tab2_px_uk)[,1])
@@ -271,7 +296,6 @@ tab2_sh_uk <- run_query(
       FROM ", social_history))
 tab2_sh_uk2 <- data.frame(table = rep("SOCIAL_HISTORY", ncol(tab2_sh_uk)), var = names(tab2_sh_uk), records_uk = t(tab2_sh_uk)[,1])
 row.names(tab2_sh_uk2) <- NULL
-
 
 tab2_uk <- bind_rows(tab2_lab_uk2, tab2_rx_uk2, tab2_px_uk2, tab2_ps_uk2, tab2_sh_uk2) %>% 
   mutate(
