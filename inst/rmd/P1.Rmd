@@ -2803,17 +2803,33 @@ tab12_add$year <- as.character(tab12_add$year)
 kable(tab12_add, col.names = c("Year", "Total Number of Recorded Diagnoses", "Percent Change from Previous Year", "Total Number of Encounters with 1+ Diagnosis", "Total Number of Unique Patients with 1+ Diagnosis", "Median Number of Diagnoses per Encounter (Min, Max)", "Median Number of Diagnoses per Patient (Min, Max)"), format.args = list(big.mark = ","))
 ```
 
-## Table 13. Summary  of the Ten Most Common Diagnosis Codes, by All or Ambulatory Encounter Type
+
+```{r tab13_years, echo = F, include=T, error=T}
+
+tab_2_Last_Recent_Years_f <- function(){
+  current_year <- as.numeric(format(Sys.Date() ,"%Y"))
+  y1 <- as.character(current_year - 1)
+  y2 <- as.character(current_year - 2)
+  return (c(y1, y2))
+}
+
+tab_2_Last_Recent_Years <- tab_2_Last_Recent_Years_f()
+```
+
+
+## Table 13. Summary  of the Ten Most Common Diagnosis Codes, by All or Ambulatory Encounter Type ( `r paste0(tab_2_Last_Recent_Years_f[0], " & ",tab_2_Last_Recent_Years_f[1])`)
 
 These tables include information on the ten most common diagnoses recorded in your DIAGNOSES table. Data on diagnosis codes, types, counts and patients are presented for all encounters and for ambulatory only encounters (ENCTYPE=AV).
 
 ```{r tab13_res, echo = F, include=T, error=T}
+
 tab13_dxall <- run_query( 
   paste0("select dx,
     dx_codetype,
     count(*) as nrows_all,
     count(distinct person_id) as npats
 	  from ", diagnoses, "
+	  where YEAR(ADATE) IN (", tab_2_Last_Recent_Years_f[0],", ",tab_2_Last_Recent_Years_f[2], " )
 	    group by dx, dx_codetype")) %>% 
   arrange(desc(nrows_all)) %>% 
   head(., 10) %>% 
@@ -2829,6 +2845,7 @@ tab13_dxav <- run_query(
     count(distinct person_id) as npats_av
 	  from ", diagnoses, "
       where ENCTYPE = 'AV'
+      YEAR(ADATE) IN (", tab_2_Last_Recent_Years_f[0],", ",tab_2_Last_Recent_Years_f[2], " )
 	    group by dx, dx_codetype")) %>% 
   arrange(desc(nrows_av)) %>% 
   head(., 10) %>% 
