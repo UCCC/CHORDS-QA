@@ -2786,7 +2786,7 @@ tab34_final <- tab34_total_wide[c("question_id","combined_1", "combined_2", "com
 kable(tab34_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
 ```
 
-## Table 35: PREPARE Response Detail
+## Table 35: PRAPARE Response Detail
 
 ```{r tab35_res, echo = F, include=T}
 tab35 <- run_query(
@@ -2806,7 +2806,7 @@ tab35 <- run_query(
 kable(tab35, col.names = c("Question ID", "# of Responses", "# Null Responses", "# of Duplicates",  "# of Encounters", "# of Patients"), align = 'c', format.args = list(big.mark = ","))
 ```
 
-## Table 36: PREPARENumber of Encounters and Percent of Encounters Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
+## Table 36: PRAPARE Number of Encounters and Percent of Encounters Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
 
 ```{r tab36_res, echo = F, include=T }
 tab36_screen <- run_query( 
@@ -2905,7 +2905,7 @@ kable(tab36_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_sc
 ```
 
 
-## Table 37: PREPARENumber of Encounters and Percent of Encounters Screened by Year - Ambulatory Encounters Only (`r tab_screen_years[[1]]` - Present)
+## Table 37: PRAPARE Number of Encounters and Percent of Encounters Screened by Year - Ambulatory Encounters Only (`r tab_screen_years[[1]]` - Present)
 
 ```{r tab37_res, echo = F, include=T }
 
@@ -3007,7 +3007,7 @@ tab37_final <- tab37_total_wide[c("question_id","combined_1", "combined_2", "com
 kable(tab37_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
 ```
 
-## Table 38: PREPARENumber of Patients and Percent of Patients Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
+## Table 38: PRAPARE Number of Patients and Percent of Patients Screened by Year - All Encounter Types (`r tab_screen_years[[1]]` - Present)
 
 ```{r tab38_res, echo = F, include=T }
 
@@ -3113,7 +3113,7 @@ tab38_final <- tab38_total_wide[c("question_id","combined_1", "combined_2", "com
 kable(tab38_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
 ```
 
-## Table 39: PREPARENumber of Patients and Percent of Patients Screened by Year - Ambulatory Encounters Only (`r tab_screen_years[[1]]` - Present)
+## Table 39: PRAPARE Number of Patients and Percent of Patients Screened by Year - Ambulatory Encounters Only (`r tab_screen_years[[1]]` - Present)
 
 ```{r tab39_res,echo = F, include=T }
 
@@ -3217,7 +3217,7 @@ tab39_final <- tab39_total_wide[c("question_id","combined_1", "combined_2", "com
 kable(tab39_final, col.names = c("Question ID", paste0("# (%) Screened ", tab_screen_years[[1]]), paste0("# (%) Screened ", tab_screen_years[[2]]), paste0("# (%) Screened ", tab_screen_years[[3]]),  paste0("# (%) Screened ", tab_screen_years[[4]]), paste0("# (%) Screened ", tab_screen_years[[5]])), row.names = F, align = 'c', format.args = list(big.mark = ","))
 ```
 
-## Table 40: PREPAREQuestion 7 Text Table
+## Table 40: PRAPARE Question 7 Text Table
 
 ```{r tab40, echo = F, include=T }
 tab40 <- run_query( 
@@ -3250,7 +3250,7 @@ knitr::kable(tab40_total,
              format.args = list(big.mark = ","))
 ```
 
-## Table 41: PREPAREQuestion 8 Text Table
+## Table 41: PRAPARE Question 8 Text Table
 
 ```{r tab41, echo = F, include=T }
 tab41 <- run_query( 
@@ -3283,7 +3283,7 @@ knitr::kable(tab41_total,
              format.args = list(big.mark = ","))
 ```
 
-## Table 42: PREPAREQuestion 14 Text Table
+## Table 42: PRAPARE Question 14 Text Table
 
 ```{r tab42, echo = F, include=T }
 tab42 <- run_query( 
