@@ -2613,7 +2613,7 @@ encTypeBymonYr <- within(encTypeBymonYr,{decode <- ifelse(!is.na(decode),decode,
 
 ```{r time test for fig 3, echo = F}
 fig3_timeTest <-  timeTest(time=as.Date(encTypeBymonYr$adate_YM), 
-                           Freq=encTypeBymonYr$Freq, 
+                           Freq=encTypeBymonYr$rowCnt, 
                            outcome=encTypeBymonYr$encType )
 fig3_timeTest <- merge(fig3_timeTest,encLabels, by.x='outcome', by.y='code', all.x=TRUE) 
 fig3_timeTest <- within(fig3_timeTest,{decode <- ifelse(!is.na(decode),decode, ifelse(is.na(encType), 'Missing', 'Invalid'))})
