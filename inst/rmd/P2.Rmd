@@ -44,7 +44,9 @@ library(tidyr)
 library(ggplot2)
 library(flextable)
 library(officer)
-
+#Set opts_chunk error = FALSE to debug.  It will force the app to stop on an error.
+#error can also be overridden at each individual chunk
+#Be sure this opts_chunk error is set to TRUE before pushing to Github
 knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE,
@@ -157,15 +159,8 @@ tab1_proresp <- run_query(paste0("select count(*) as nrows,
   cast(min(response_date) as varchar) as mindt,
   cast(max(response_date) as varchar) as maxdt
   from ", pro_responses))
-tab1_benefit <- run_query(paste0("select count(*) as nrows,
-  count(distinct PERSON_ID) as npats,
-  'BENEFIT_DATE' as fieldname,
-  count(distinct ENC_ID) as nencts,
-  cast(min(benefit_date) as varchar) as mindt,
-  cast(max(benefit_date) as varchar) as maxdt
-  from ", benefit))
-tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh, tab1_proresp, tab1_benefit) %>% 
-  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY", "PRO_RESPONSES", "BENEFIT"), .)
+tab1_all <- bind_rows(tab1_lab, tab1_rx, tab1_px, tab1_sh, tab1_proresp) %>% 
+  bind_cols(Table = c("LAB_RESULTS", "PRESCRIBING", "PROCEDURES", "SOCIAL_HISTORY", "PRO_RESPONSES"), .)
 
 ```
 
@@ -248,27 +243,15 @@ row.names(tab2_proresp_null2) <- NULL
 tab1_ps <- run_query("select count(*) as nrows
 	from provider_specialty")
 tab1_ps <- data.frame(nrows = tab1_ps$nrows, npats = NA, nencts = NA, fieldname = NA, mindt = NA, maxdt = NA)
-browser()
-tab2_benefits_null <- run_query(
-  paste0("SELECT SUM(CASE WHEN BENEFIT_ID IS NULL THEN 1 ELSE 0 END) as BENEFIT_ID,
-   SUM(CASE WHEN LOAD_DATE IS NULL THEN 1 ELSE 0 END) as LOAD_DATE,
-   SUM(CASE WHEN PERSON_ID IS NULL THEN 1 ELSE 0 END) as PERSON_ID,
-   SUM(CASE WHEN BENEFIT_TYPE IS NULL THEN 1 ELSE 0 END) as BENEFIT_TYPE,
-   SUM(CASE WHEN BENEFIT_CAT IS NULL THEN 1 ELSE 0 END) as BENEFIT_CAT,
-   SUM(CASE WHEN BENEFIT_DATE IS NULL THEN 1 ELSE 0 END) as BENEFIT_DATE
-      FROM ", benefit))
-tab2_benefits_null2 <- data.frame(table = rep("BENEFIT", ncol(tab2_benefits_null)), var = names(tab2_benefits_null), records_null = t(tab2_benefits_null)[,1])
-row.names(tab2_benefits_null2) <- NULL
 
-tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_null2, tab2_sh_null2, tab2_proresp_null2, tab2_benefits_null2) %>% 
+tab2_null <- bind_rows(tab2_lab_null2, tab2_rx_null2, tab2_px_null2, tab2_ps_null2, tab2_sh_null2, tab2_proresp_null2) %>% 
   mutate(
     pct_rec = ifelse(table == "LAB_RESULTS", (records_null / tab1_lab$nrows * 100), 
                      ifelse(table == "PRESCRIBING", (records_null / tab1_rx$nrows * 100), 
                              ifelse(table == "PROCEDURES", (records_null / tab1_px$nrows * 100), 
                                      ifelse(table == "PROVIDER_SPECIALTY", (records_null / tab1_ps$nrows * 100), 
                                              ifelse(table == "SOCIAL_HISTORY", (records_null / tab1_sh$nrows * 100),
-                                                    ifelse(table == "PRO_RESPONSES", (records_null / tab1_proresp$nrows * 100),
-                                                          ifelse(table == "BENEFIT", (records_null / tab1_benefit$nrows * 100),NA))))))))
+                                                    ifelse(table == "PRO_RESPONSES", (records_null / tab1_proresp$nrows * 100),NA)))))))
   
 tab2_lab_uk <- run_query(
   paste0("SELECT SUM(CASE WHEN TEST_TYPE = 'Unknown' THEN 1 ELSE 0 END) as TEST_TYPE,
@@ -1018,8 +1001,6 @@ kable(tab13, col.names = c("Specialty Abbreviation", "Specialty", "Number of Pro
 This table includes information on the distribution of providers by type.
 
 ```{r tab14_res, echo = F, include=T}
-##debug code
-
 tab12_ps <- run_query(
     paste0("select 'PROVIDER_SPECIALTY' as from_tab,
     count(distinct provider) as num_prov
@@ -1033,7 +1014,6 @@ tab2_ps_null <- run_query(
    SUM(CASE WHEN PROVIDER_RACE IS NULL THEN 1 ELSE 0 END) as PROVIDER_RACE,
    SUM(CASE WHEN PROVIDER_HISPANIC = '' THEN 1 ELSE 0 END) as PROVIDER_HISPANIC
     FROM ", provider_specialty))
-##
 
 tab14 <- run_query(
     paste0("select cast(provider_type as varchar) as prov_type,
