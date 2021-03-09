@@ -30,16 +30,16 @@
 
 run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
   time_id <- format(Sys.time(), "%Y%m%d_%H%M")
-  if(is.null(dbuser)){
+  if(is.null(dbuser) || is.na(dbuser)){
     dbuser <- ""
   }
-  if(is.null(dbpassword)){
+  if(is.null(dbpassword) || is.na(dbpassword)){
     dbpassword <- ""
   }
-  if(is.null(dbport)){
+  if(is.null(dbport) || is.na(dbport)){
     dbport <- ""
   }
-  if(is.null(dbencrypt)){
+  if(is.null(dbencrypt) || is.na(dbencrypt)){
     dbencrypt = ""
   }
   if (is.null(outputdir) || outputdir == ''){
@@ -123,10 +123,8 @@ getConnectionString <- function(params){
     connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(NAorNullorEmpty(params$DBPort), "", paste(",",params$DBPort, sep="")),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
 
-  if (!is.na(params$DBEncrypt)){
-    if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
-      connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
-      }
+  if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
+    connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
   }
   return(connectionString)
 }
@@ -353,13 +351,7 @@ ageCatCalc <- function(age){
 #' @export
 #' @rdname run_report
 NAorNullorEmpty <- function(variable){
-  if (is.null(variable)){
-    return(T)
-  }
-  else if (!is.logical(variable)){
-    return(T)
-  }
-  else if (is.na(variable)){
+  if (is.null(variable) || is.na(variable)){
     return(T)
   }
   else if(nchar(variable) == 0 || variable == ""){
