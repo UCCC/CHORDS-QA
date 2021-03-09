@@ -123,8 +123,10 @@ getConnectionString <- function(params){
     connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(NAorNullorEmpty(params$DBPort), "", paste(",",params$DBPort, sep="")),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
 
-  if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
-    connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
+  if (!is.na(params$DBEncrypt)){
+    if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
+      connectionString <- paste(connectionString, ";Encrypt=True;TrustServerCertificate=False;")
+      }
   }
   return(connectionString)
 }
@@ -384,12 +386,12 @@ NAorNullorEmpty <- function(variable){
 
 timeTest <- function(time, Freq, outcome, nmons=24) {
   dat <- data.frame(time=time, Freq=Freq, outcome = outcome)
-  
+
   minDate <- min(time)
   maxDate <- max(time)
-  
+
   startDate <- minDate
-  
+
   res <- list()
   k    <- 1
   repeat{
@@ -401,7 +403,7 @@ timeTest <- function(time, Freq, outcome, nmons=24) {
       dplyr::group_by(testMonth) %>%
       dplyr::mutate(p2 = Freq2/sum(Freq2)) %>%
       dplyr::ungroup()
-    
+
     tmpDat <- subset(dat, dateRange[1] <= time & time <= dateRange[nmons])
     tmpDat <- within(tmpDat,{
       time <- factor(time)
@@ -424,9 +426,9 @@ timeTest <- function(time, Freq, outcome, nmons=24) {
         iqrCrit_high = q3 + 1.5*iqr,
         iqrTest = !(iqrCrit_low <= p2 & p2 <= iqrCrit_high)
       )
-    
+
     res[[k]] <- tmpDat
-      
+
     k <- k+1
     startDate <- dateRange[2]
   }
