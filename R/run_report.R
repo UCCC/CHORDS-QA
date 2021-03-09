@@ -356,7 +356,7 @@ NAorNullorEmpty <- function(variable){
   if (is.null(variable)){
     return(T)
   }
-  else if (!is.logical()){
+  else if (!is.logical(variable)){
     return(T)
   }
   else if (is.na(variable)){
