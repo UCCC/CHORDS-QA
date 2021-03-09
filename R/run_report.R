@@ -30,19 +30,19 @@
 
 run_report <- function(priority, dbserver = NA, dbname = NA, dbuser = NA, dbpassword = NA, outputdir = NA, batchmode = FALSE, dbport = NA, dbencrypt = NA, ...) {
   time_id <- format(Sys.time(), "%Y%m%d_%H%M")
-  if(is.na(dbuser)){
+  if(length(dbuser) == 0 || is.null(dbuser)){
     dbuser <- ""
   }
-  if(is.na(dbpassword)){
+  if(length(dbpassword) == 0 || is.null(dbpassword)){
     dbpassword <- ""
   }
-  if(is.na(dbport)){
+  if(length(dbport) == 0 || is.null(dbport)){
     dbport <- ""
   }
-  if(is.na(dbencrypt)){
+  if(length(dbencrypt) == 0 || is.null(dbencrypt)){
     dbencrypt = ""
   }
-  if (is.na(outputdir) || outputdir == ''){
+  if (length(outputdir) == 0 || is.null(outputdir) || outputdir == ''){
     assign("outputdir", value = paste0("C:/Users/", Sys.info()["login"], "/Documents"), envir = .GlobalEnv)
     outputdir <- get("outputdir", envir = .GlobalEnv)
   }
