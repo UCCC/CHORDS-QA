@@ -353,10 +353,10 @@ ageCatCalc <- function(age){
 #' @export
 #' @rdname run_report
 NAorNullorEmpty <- function(variable){
-  if (is.na(variable)){
+  if (is.null(variable)){
     return(T)
   }
-  else if (is.null(variable)){
+  else if (is.na(variable)){
     return(T)
   }
   else if(nchar(variable) == 0 || variable == ""){
