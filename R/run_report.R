@@ -23,11 +23,13 @@
 #' @importFrom utils read.csv2
 #' @import knitr
 #' @import shiny
+#' @import flextable
+#' @import officer
 #' @rdname run_report
 #' @export
 
 run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
-
+  time_id <- format(Sys.time(), "%Y%m%d_%H%M")
   if(is.null(dbuser)){
     dbuser <- ""
   }
@@ -58,7 +60,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                           DBPort = dbport,
                           DBEncrypt = dbencrypt
                         ),
-                        output_dir = outputdir)
+                        output_dir = outputdir, output_file = paste0(priority,"_",time_id,".docx", sep=""))
     } else{
       rmarkdown::render(input = system.file("rmd/P1.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
     }
@@ -74,7 +76,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                           DBPort = dbport,
                           DBEncrypt = dbencrypt
                         ),
-                        output_dir = outputdir)
+                        output_dir = outputdir, output_file = paste(priority,"_",time_id,".docx", sep=""))
     } else {
       rmarkdown::render(input = system.file("rmd/P2.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
     }
@@ -90,7 +92,7 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
                           DBPort = dbport,
                           DBEncrypt = dbencrypt
                         ),
-                        output_dir = outputdir)
+                        output_dir = outputdir, output_file = paste0(priority,"_",time_id,".docx", sep=""))
     } else {
       rmarkdown::render(input = system.file("rmd/P3.Rmd", package = "chordsTables"), params = "ask", output_dir = outputdir)
     }
@@ -114,11 +116,11 @@ run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, 
 #' @export
 
 getConnectionString <- function(params){
-  if (notNAorNullorEmpty(params$DBUser)) {
-    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(notNAorNullorEmpty(params$DBPort), paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000", sep="")
+  if (NAorNullorEmpty(params$DBUser)) {
+    connectionString <- paste('driver={SQL Server};server=',params$DBServerName,ifelse(NAorNullorEmpty(params$DBPort), "", paste(",",params$DBPort, sep="")),';database=',params$DBName, ";Connection Timeout=2000", sep="")
 
   }else{
-    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(notNAorNullorEmpty(params$DBPort), paste(",",params$DBPort, sep=""), ""),';database=',params$DBName, ";Connection Timeout=2000",sep="")
+    connectionString <- paste('driver={SQL Server};uid=',params$DBUser,';pwd=',params$DBPassword,';server=',params$DBServerName, ifelse(NAorNullorEmpty(params$DBPort), "", paste(",",params$DBPort, sep="")),';database=',params$DBName, ";Connection Timeout=2000",sep="")
   }
 
   if (params$DBEncrypt == "TRUE" ||params$DBEncrypt == TRUE){
@@ -140,11 +142,12 @@ getConnectionString <- function(params){
 #' @rdname run_report
 #' @export
 
-run_db_query <- function(Connection_String, query_text) {
+run_db_query <- function(Connection_String, query_text, ...) {
   tryCatch(
     {
+      #ifelse(exists("as.is"),as.is <- as.is, as.is <- FALSE)
       db_conn <- get_new_connection(Connection_String)
-      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, as.is = TRUE), timeout = 2100)
+      result <- R.utils::withTimeout(sqlQuery(channel = db_conn, query = query_text, ...), timeout = 2100)
       return(result)
     },
     error = function(cond){
@@ -338,20 +341,95 @@ ageCatCalc <- function(age){
   return(ageCat)
 }
 
-#' Variable Not NA or Null or Empty
+#' Variable NA or Null or Empty
 #'
 #' @param variable A variable
 #' @examples
 #' \dontrun{
-#' notNAorNullorEmpty(variable)
+#' NAorNullorEmpty(variable)
 #' }
 #' @export
 #' @rdname run_report
-notNAorNullorEmpty <- function(variable){
-  if (!is.null(variable) && !is.na(variable) && length(variable) > 0 && variable != ""){
-    return (T)
+NAorNullorEmpty <- function(variable){
+  if (is.null(variable) || is.na(variable)){
+    return(T)
+  }
+  else if(nchar(variable) == 0 || variable == ""){
+      return (T)
   }
   else{
     return (F)
   }
+}
+
+
+# INPUT:
+## time = a vector of times, with each value being the first day of the month represented by the element
+## outcome  = a vector of ourcomes for study (ie. encounter type)
+## Freq = A vector of frequencies alinged with the month-outcome value
+## nmons = the number of months of history to include prior to the month being tested
+
+# OUTPUT:
+## a dataframe :
+### outcome - the outcome value being tested in that row
+### testMonth = the month being tested
+### q1 = the first quartile of proportions of the outcome value in the months of history
+### q3 = the third quartile of proportions of the outcome value in the months of history
+### p2 = the proportion of the outcome category for the month being tested
+### Freq2 = the frequency of the outcome category for the month being tested
+### iqr   = q3 - q1
+### iqrCrit_low = q1 - 1.5*iqr
+### iqrCrit_hogh = q3 + 1.5*iqr
+### iqrTest = test whether p2 is contained in the iqr critical interval (T/F)
+
+timeTest <- function(time, Freq, outcome, nmons=24) {
+  dat <- data.frame(time=time, Freq=Freq, outcome = outcome)
+  
+  minDate <- min(time)
+  maxDate <- max(time)
+  
+  startDate <- minDate
+  
+  res <- list()
+  k    <- 1
+  repeat{
+
+    dateRange <- seq(startDate, length.out=nmons+1, by='1 month')
+    if(dateRange[nmons+1] > maxDate) {break}
+
+    testMon <- subset(dat, subset=time==dateRange[nmons+1], select=c(outcome, time, Freq)) %>% rename(Freq2 = Freq, testMonth = time) %>%
+      dplyr::group_by(testMonth) %>%
+      dplyr::mutate(p2 = Freq2/sum(Freq2)) %>%
+      dplyr::ungroup()
+    
+    tmpDat <- subset(dat, dateRange[1] <= time & time <= dateRange[nmons])
+    tmpDat <- within(tmpDat,{
+      time <- factor(time)
+    }) %>%
+      dplyr::group_by(time) %>%
+      dplyr::mutate(p = Freq/sum(Freq)) %>%
+      dplyr::ungroup() %>%
+      dplyr::group_by(outcome) %>%
+      dplyr::mutate(n_cats = n(),
+             q1 = quantile(p, probs = 0.25, type = 3),
+             q3 = quantile(p, probs = 0.75, type = 3)
+             ) %>%
+      dplyr::filter(n_cats == nmons) %>%
+      dplyr::ungroup() %>%
+      merge(testMon, by='outcome') %>%
+      subset(select=c(outcome, testMonth, q1, q3, p2, Freq2)) %>% unique() %>%
+      dplyr::mutate(
+        iqr = q3-q1,
+        iqrCrit_low = q1 - 1.5*iqr,
+        iqrCrit_high = q3 + 1.5*iqr,
+        iqrTest = !(iqrCrit_low <= p2 & p2 <= iqrCrit_high)
+      )
+    
+    res[[k]] <- tmpDat
+      
+    k <- k+1
+    startDate <- dateRange[2]
+  }
+
+  return(do.call('rbind', res))
 }

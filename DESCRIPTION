@@ -1,6 +1,6 @@
 Package: chordsTables
 Title: Package for generating CHORDS priority tables
-Version: 0.4.3
+Version: 0.4.4
 Authors@R: c(
     person("Will", "Carter", email = "William.A.Carter@cuanschutz.edu", role = c("aut", "ctb", "cre")),
     person("Emily", "Bacon", email = "baconanalyticsco@gmail.com", role = c("aut", "ctb")),
@@ -18,10 +18,12 @@ Imports:
     dplyr,
     ggplot2,
     R.utils,
-    shiny
+    shiny,
+    flextable,
+    officer
 License: What license is it under?
 URL: http://github.com/UCC/CHORDS-QA
 BugReports: http://github.com/UCC/CHORDS-QA/issues
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.1

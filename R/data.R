@@ -1,43 +1,30 @@
-#' @title ccsMDxI10
+#' @title ICD10CM
 #'
-#' @description This table contains the CCS Medical Diagnosis for ICD 10 from 19jun17.
+#' @description This table contains the CCS Medical Diagnosis for ICD9 from https://www.cms.gov/medicare/icd-10/2021-icd-10-cm
 #'
-#' @format a \code{data.frame} with 9 variables
+#' @format a \code{data.frame} with 3 variables
 #' \describe{
-#'   \item{dxCode}{(chr) Diagnosis code}
-#'   \item{ccss}{(int) Identifies the sequence of line level data pertaining to a claim.}
-#'   \item{ccssName}{(chr) Code value to lookup the patient's ICD code and description.}
-#'   \item{dxDesc}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm1}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm1Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
+#'   \item{dxCode}{(chr) CHORDS version of code to combine ICD version with code }
+#'   \item{Code}{(chr) }
+#'   \item{Description}{(chr) }
 #'}
 #' @rdname datasets
-#' @source ccsMDxI10.Rda
-"ccsMDxI10"
-#' @title ccsMDxI9
+#' @source ICD10CM.rda
+"ICD10CM"
+#' @title ICD9CM
 #'
-#' @description This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
+#' @description This table contains the CCS Medical Diagnosis for ICD9 from https://www.cms.gov/Medicare/Coding/ICD9ProviderDiagnosticCodes/codes
 #'
-#' @format a \code{data.frame} with 10 variables
+#' @format a \code{data.frame} with 3 variables
 #' \describe{
-#'   \item{dxCode}{(chr) Diagnosis code}
-#'   \item{ccsm1}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm1Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2}{(num) Indicates diagnosis was present at time of admission.}
-#'   \item{ccsm2Name}{(chr) Indicates diagnosis was present at time of admission.}
-#'   \item{dxCdTp}{(chr) Indicates diagnosis was present at time of admission.}
+#'   \item{dxCode}{(chr) CHORDS version of code to combine ICD version with code }
+#'   \item{Code}{(chr) }
+#'   \item{Description}{(chr) }
 #'}
 #' @rdname datasets
-#' @source ccsMDxI9.Rda
-"ccsMDxI9"
-#' @title ccsSDxI9
+#' @source ICD9CM.rda
+"ICD9CM"
+#'   \item{X.CCSR.CATEGORY.3.DESCRIPTION.}{(chr) Indicates diagnosis was present at time of admission.}#' @title ccsSDxI9
 #'
 #' @description This table contains the CCS Medical Diagnosis for ICD 9 from 19jun17.
 #'
@@ -75,8 +62,8 @@
 #'
 #' @format a \code{data.frame} with 2 variables
 #' \describe{
-#'   \item{V1}{(int) Provider category (from CHORDS_VDW_V3.1_DataModelManual)}
-#'   \item{V2}{(chr) Provider type description.}
+#'   \item{Provider_Type}{(int) Provider category (from CHORDS_VDW_V3.4_DataModelManual)}
+#'   \item{Description}{(chr) Provider type description.}
 #'}
 #' @rdname datasets
 #' @source prov_type.rda
@@ -124,3 +111,4 @@
 #' @rdname datasets
 #' @source valSets.Rda
 "valSets"
+NULL

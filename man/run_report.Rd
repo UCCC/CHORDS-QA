@@ -10,7 +10,7 @@
 \alias{charVars}
 \alias{trimChrVars}
 \alias{ageCatCalc}
-\alias{notNAorNullorEmpty}
+\alias{NAorNullorEmpty}
 \title{Run code to generate priority tables.}
 \usage{
 run_report(
@@ -28,7 +28,7 @@ run_report(
 
 getConnectionString(params)
 
-run_db_query(Connection_String, query_text)
+run_db_query(Connection_String, query_text, ...)
 
 get_new_connection(Connection_String)
 
@@ -42,7 +42,7 @@ trimChrVars(df)
 
 ageCatCalc(age)
 
-notNAorNullorEmpty(variable)
+NAorNullorEmpty(variable)
 }
 \arguments{
 \item{priority}{A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".}
@@ -104,7 +104,7 @@ trims all character variables in a dataframe, sets blank to NA
 
 age category calculator
 
-Variable Not NA or Null or Empty
+Variable NA or Null or Empty
 }
 \examples{
 \dontrun{
@@ -135,6 +135,6 @@ charVars(df)
 ageCatCalc(age)
 }
 \dontrun{
-notNAorNullorEmpty(variable)
+NAorNullorEmpty(variable)
 }
 }

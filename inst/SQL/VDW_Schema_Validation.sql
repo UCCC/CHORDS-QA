@@ -2,9 +2,9 @@
 /*****************************************************************************
 Script for validating the VDW.  It will create a shadow VDW in the temporary
 tables and then pull out the validation data from that and use it to compare
-to the actual VDW tables.  The reason this is done is to avoid typos from 
+to the actual VDW tables.  The reason this is done is to avoid typos from
 manually trying to validate each column.  It will validate:
-    - Table Names, 
+    - Table Names,
     - Column Names on those Tables
     - Data length for characters, numeric, and date types
     - Precision  for numeric  and date types
@@ -12,7 +12,7 @@ manually trying to validate each column.  It will validate:
 
 Script should ignore differences between Unicode  or non-Unicode fields.  Does
 not validate exact data types because of equivalences in certain types (
-e.g.: numeric(11, 10) is structurally the same as decimal(11, 10).  
+e.g.: numeric(11, 10) is structurally the same as decimal(11, 10).
 
 Could add default values to columns but some partners may do default values
 through their own ETL process rather than having SQL Server doing that.
@@ -20,8 +20,8 @@ through their own ETL process rather than having SQL Server doing that.
 FOR DEVELOPERS:
 To Update the script for partner use:
 
-1) Copy the Create statements for the primary priority tables from the DDL 
-into this document and update the table names to temporary table names, 
+1) Copy the Create statements for the primary priority tables from the DDL
+into this document and update the table names to temporary table names,
 e.g.: from Demographics to #Demographics
 
 2) Update the #TableNameList variable for all of the added tables that
@@ -31,11 +31,11 @@ Examples below
 
 Output:
     Two result output
-    1) The first output is a list of mismatches.  The result field will display 
+    1) The first output is a list of mismatches.  The result field will display
 	   an error about the column there may be a problem.  Column and table name
 	   mismatches must be addressed.  Data Type mismatches should be reviewed
 	   if they could cause a problem returning data.
-    2) Second output is a full list of all results.  
+    2) Second output is a full list of all results.
 *****************************************************************************/
 
 /*****************************************************************************
@@ -51,12 +51,12 @@ BEGIN
     BEGIN
     	   DROP TABLE #CHORDSTEMPRESULT;
     END;
-    
+
     IF OBJECT_ID('tempdb..#DATAVALIDATION') IS NOT NULL
     BEGIN
 	   DROP TABLE #DATAVALIDATION;
     END;
-    
+
     CREATE TABLE #DATAVALIDATION (
                  TableName      VARCHAR(250) ,
                  ColumnName     VARCHAR(250) ,
@@ -66,11 +66,11 @@ BEGIN
                  [Scale]        INT ,
                  DT_Preceision  INT
                 );
-				
+
     CREATE TABLE #TableNameList (
                  TableNames VARCHAR(1000)
             );
-	
+
 END;
 /*****************************************************************************
 END TempTable Clearing and Creation
@@ -81,8 +81,8 @@ END TempTable Clearing and Creation
 BEGIN Table Create Section: Copy Table statements from the DDL and change table names to the temporary equivalent
 *****************************************************************************/
 
- BEGIN   
-/*	 
+ BEGIN
+/*
 CREATE TABLE #CENSUS_DEMOG (
              CENSUS_YEAR           INT NOT NULL ,
              GEOCODE               NVARCHAR(15) NOT NULL ,
@@ -211,7 +211,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  AHFS7      nvarchar(8)
 	);
 	INSERT INTO #TableNameList VALUES  ('EVERNDC');
-	 
+
 	CREATE TABLE #PROVIDER_SPECIALTY
 	(
 					  [PROVIDER]             nvarchar(36) NOT NULL,
@@ -227,8 +227,8 @@ CREATE TABLE #CENSUS_DEMOG (
 					  YEAR_GRADUATED         numeric(4)
 	);
 	INSERT INTO #TableNameList VALUES  ('PROVIDER_SPECIALTY');
-	
-/*	
+
+/*
 	CREATE TABLE #DEATH
 	(
 			PERSON_ID     nvarchar(36) NOT NULL,
@@ -238,7 +238,7 @@ CREATE TABLE #CENSUS_DEMOG (
 			CONFIDENCE    nchar NULL
 	);
 	INSERT INTO #TableNameList VALUES  ('DEATH');
-	
+
 	CREATE TABLE #CAUSE_OF_DEATH
 	(
 			PERSON_ID      nvarchar(36) NOT NULL,
@@ -268,16 +268,16 @@ CREATE TABLE #CENSUS_DEMOG (
 					  GENDER_IDENTITY       nvarchar(2) DEFAULT 'UN'
 	);
 	INSERT INTO #TableNameList VALUES  ('DEMOGRAPHICS');
-	
+
 	CREATE TABLE #LINKAGE
 	(
-					  LINK_ID       nvarchar(50) NOT NULL,
+					  CID       nvarchar(50) NOT NULL,
 					  PERSON_ID		nvarchar(36) NOT NULL,
 					  LINE			smallint NOT NULL,
 					  LINK_SRC_ID   nvarchar(12) NOT NULL
 	);
 	INSERT INTO #TableNameList VALUES  ('LINKAGE');
-	 
+
 	CREATE TABLE #BENEFIT
 	(
 					  BENEFIT_ID		    int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -294,7 +294,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  [END_DATE]		    datetime
 	);
 	INSERT INTO #TableNameList VALUES  ('BENEFIT');
-	 
+
 	CREATE TABLE #ENCOUNTERS
 	(
 					  ENC_ID                   nvarchar(36) NOT NULL,
@@ -314,7 +314,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  DEPARTMENT               nvarchar(4)	DEFAULT 'UNK'
 	);
 	INSERT INTO #TableNameList VALUES  ('ENCOUNTERS');
-	 
+
 	CREATE TABLE #DIAGNOSES
 	(
 					  DIAGNOSES_ID	  int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -334,7 +334,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  PRIMARY_DX      nchar NOT NULL	DEFAULT 'X'
 	);
 	INSERT INTO #TableNameList VALUES  ('DIAGNOSES');
-	 
+
 	CREATE TABLE #ENROLLMENT
 	(
 					  PERSON_ID              nvarchar(36) NOT NULL,
@@ -363,7 +363,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  PCP                    nvarchar(36)
 	);
 	INSERT INTO #TableNameList VALUES  ('ENROLLMENT');
-	
+
 	CREATE TABLE #LAB_RESULTS
 	(
 					  LAB_RESULTS_ID INT IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -400,7 +400,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  ROW_ID             nvarchar(8)
 	);
 	INSERT INTO #TableNameList VALUES  ('LAB_RESULTS');
-	
+
 	CREATE TABLE #PRO_SURVEYS
 	(
 		PRO_ID nvarchar(15) NOT NULL PRIMARY KEY CLUSTERED,
@@ -412,7 +412,7 @@ CREATE TABLE #CENSUS_DEMOG (
 		PRO_SURVEY_TYPE_LOINC nvarchar(18) NULL
 	);
 	INSERT INTO #TableNameList VALUES  ('PRO_SURVEYS');
-	
+
 	CREATE TABLE #PRO_QUESTIONS
 	(
 		PRO_ID nvarchar(15) NOT NULL,
@@ -424,7 +424,7 @@ CREATE TABLE #CENSUS_DEMOG (
 		QUESTION_DOMAIN nvarchar(36) NULL
 	);
 	INSERT INTO #TableNameList VALUES  ('PRO_QUESTIONS');
-	
+
 	CREATE TABLE #PRO_RESPONSES
 	(
 		RESPONSE_ID int IDENTITY(1,1) NOT NULL PRIMARY KEY NONCLUSTERED,
@@ -442,7 +442,7 @@ CREATE TABLE #CENSUS_DEMOG (
 		SURVEY_MEDIUM nvarchar(2) NULL
 	);
 	INSERT INTO #TableNameList VALUES  ('PRO_RESPONSES');
-	
+
 	CREATE TABLE #PHARMACY
 	(
 					  PHARMACY_ID int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -454,7 +454,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  RXMD         nvarchar(36) NOT NULL DEFAULT 'UNKNOWN'
 	);
 	INSERT INTO #TableNameList VALUES  ('PHARMACY');
-	
+
 	CREATE TABLE #PRESCRIBING
 	(
 					  PRESCRIBING_ID      INT IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -479,7 +479,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  RX_DOSE_ORDERED_UNIT	nvarchar(20)
 	);
 	INSERT INTO #TableNameList VALUES  ('PRESCRIBING');
-	
+
 	CREATE TABLE #PROCEDURES
 	(
 					  PROCEDURES_ID		    int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -499,7 +499,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  CPTMOD3               nvarchar(2)
 	);
 	INSERT INTO #TableNameList VALUES  ('PROCEDURES');
-	
+
 	CREATE TABLE #SOCIAL_HISTORY
 	(
 					  SOCIAL_HISTORY_ID		  int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -545,7 +545,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  SEXUALLY_ACTV           nchar DEFAULT 'U'
 	);
 	INSERT INTO #TableNameList VALUES  ('SOCIAL_HISTORY');
-	
+
 	CREATE TABLE #VITAL_SIGNS
 	(
 					  VITAL_SIGNS_ID   int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -570,8 +570,8 @@ CREATE TABLE #CENSUS_DEMOG (
 					  TEMP_RAW         nvarchar(6),
 					  PULSE_RAW        nvarchar(6)
 	);
-	INSERT INTO #TableNameList VALUES  ('VITAL_SIGNS');	
-/*	
+	INSERT INTO #TableNameList VALUES  ('VITAL_SIGNS');
+/*
 	CREATE TABLE #TUMOR
 	(
 					  TUMOR_ID	    int IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
@@ -695,8 +695,8 @@ CREATE TABLE #CENSUS_DEMOG (
 					  RECUR_FL         nvarchar(2),
 					  [DATA_SOURCE]    nvarchar(4)
 	);
-	INSERT INTO #TableNameList VALUES  ('TUMOR');	
-*/	
+	INSERT INTO #TableNameList VALUES  ('TUMOR');
+
 	CREATE TABLE #LANGUAGES
 	(
 					  PERSON_ID       nvarchar(36) NOT NULL,
@@ -704,8 +704,8 @@ CREATE TABLE #CENSUS_DEMOG (
 					  LANG_USAGE      nchar	DEFAULT 'U',
 					  LANG_PRIMARY    nchar DEFAULT 'U'
 	);
-	INSERT INTO #TableNameList VALUES  ('LANGUAGES');	
-    
+	INSERT INTO #TableNameList VALUES  ('LANGUAGES');
+*/
 	CREATE TABLE #CENSUS_LOCATION
 	(
 					  PERSON_ID                nvarchar(36) NOT NULL,
@@ -722,7 +722,7 @@ CREATE TABLE #CENSUS_DEMOG (
 					  GEOCODE_COUNTY		   nvarchar(35) NOT NULL,
 					  ADDRESS_TYPE_CODE		   nchar(2)
 	);
-	INSERT INTO #TableNameList VALUES  ('CENSUS_LOCATION');	
+	INSERT INTO #TableNameList VALUES  ('CENSUS_LOCATION');
 END
 /*****************************************************************************
 END Table Create Section
@@ -733,23 +733,23 @@ BEGIN Table Name List: Add or update any table names created or added to #TableN
 Example below
 *****************************************************************************/
 BEGIN
-    
+
     DECLARE @SQL NVARCHAR(3000);
     DECLARE @NAME VARCHAR(100);
-    
+
     DECLARE CUR CURSOR
     FOR SELECT
                TableNames
         FROM
              #TableNameList;
-    
+
     OPEN CUR;
-    
+
     FETCH NEXT FROM CUR INTO @NAME;
-    
+
     WHILE @@FETCH_STATUS = 0
         BEGIN
-    
+
         SET @SQL =	 'INSERT INTO #datavalidation
     			  SELECT
     	             ''' + @NAME + ''',
@@ -766,22 +766,22 @@ BEGIN
 					AND b.object_id = OBJECT_ID(''tempdb..#' + @NAME + ''')
     	      WHERE  a.TABLE_NAME LIKE ''#' + @NAME + '%''
 				AND  a.TABLE_NAME NOT LIKE ''#' + @NAME + '%_LU_%''';
-    
+
             EXEC Sp_executesql
                  @SQL;
             FETCH NEXT FROM CUR INTO @NAME;
         END;
-    
+
     CLOSE CUR;
-    
-    DEALLOCATE CUR; 
+
+    DEALLOCATE CUR;
 END
 /*****************************************************************************
 END Table Name List
 *****************************************************************************/
 
 /*****************************************************************************
-BEGIN Table Name Replacement: If a TableName replacement table exists, it will swap out the 
+BEGIN Table Name Replacement: If a TableName replacement table exists, it will swap out the
 names in the tables for the correct ones based on how it's mapped in their table.
 *****************************************************************************/
 BEGIN
@@ -837,13 +837,76 @@ BEGIN
                   ON a.TableName = b.TABLE_NAME
                      AND a.ColumnName = b.COLUMN_NAME
     ) A;
-      END;  
+      END;
     --Mis-Matches
-    SELECT
-           *
-    FROM
-         #CHORDSTEMPRESULT Z
-    WHERE  Z.Result != 'OK'; 
+
+SELECT DISTINCT
+       z.TableName,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN '[ALL]'
+           ELSE z.ColumnName
+       END AS ColumnName,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN 'TABLE SYNONYM FOUND; CANNOT AUTOMATICALLY VALIDATE COLUMNS'
+           ELSE z.Result
+       END AS Result,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedNumberPrecision
+       END AS ExpectedNumberPrecision,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundNumberPrecision
+       END AS FoundNumberPrecision,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedNumberScale
+       END AS ExpectedNumberScale,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundNumberScale
+       END AS FoundNumberScale,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedCharLength
+       END AS ExpectedCharLength,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundCharLength
+       END AS FoundCharLength,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedIsNullable
+       END AS ExpectedIsNullable,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundIsNullable
+       END AS FoundIsNullable,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.ExpectedDatePrecision
+       END AS ExpectedDatePrecision,
+       CASE
+           WHEN y.name IS NOT NULL
+           THEN NULL
+           ELSE z.FoundDatePrecision
+       END AS FoundDatePrecision
+FROM
+     #CHORDSTEMPRESULT Z
+     LEFT JOIN sys.synonyms y
+          ON y.name = z.TableName
+WHERE  Z.Result != 'OK';
 /*****************************************************************************
 END Analysis Section
 *****************************************************************************/

@@ -37,16 +37,33 @@ params:
         value: TRUE
 ---
 ```{r setup, include=FALSE}
-#library(RODBC)
-#library(knitr)
-#library(chordsTables)
 library(tidyr)
 library(dplyr)
 knitr::opts_chunk$set(echo = FALSE,
                 message = FALSE,
                 warning = FALSE,
-                error= TRUE)
+                error= TRUE,
+                time_it = TRUE)
 startTime <- Sys.time()
+
+all_times <- list()
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      now <<- Sys.time()
+    } else {
+      res <- difftime(Sys.time(), now)
+  
+      all_times[[options$label]] <<- c(options$label, format(round(res, 3)))
+      
+      #Only prints times greater than 5 minutes.  
+      if(res > as.difftime("00:05", format="%H:%M")){
+        paste("Time for the chunk", options$label, "to run:", format(round(res, 3)))
+      }
+    }
+  }
+}))
 ```
 
 ```{r connection strings, include=FALSE, error=FALSE}
@@ -89,11 +106,22 @@ Query Run Date:  `r Sys.Date()`
 
 ```{r 1.01, echo = F, include=T}
 # Table to check for quality
-tableCheckList <- c(lab_results,   encounters, prescribing,procedures  , social_history  , provider_specialty,diagnoses ,vital_signs  , census_location, demographics  , pro_surveys   ,  pro_questions ,pro_responses)
+tableCheckList <- c(lab_results, encounters, prescribing, procedures, social_history, provider_specialty, diagnoses, vital_signs, census_location, demographics, pro_surveys,  pro_questions, pro_responses, benefit, linkage, death, pharmacy)
 # table list in DB
-sqlConnection <- get_connection()
-dbTables <- sqlTables(get_connection(), catalog = params$DBName)  
-RODBC::odbcClose(sqlConnection)
+#sqlConnection <- get_connection()
+#dbTables <- sqlTables(get_connection(), catalog = params$DBName)
+dbTables <- run_query(query_text = 
+    "SELECT 
+        TABLE_NAME
+     FROM     
+        INFORMATION_SCHEMA.TABLES
+     UNION ALL
+     SELECT 
+        name AS TABLE_NAME
+     FROM   
+        sys.synonyms;")
+#dbTables <- merge(dbTables, dbSynonyms, by="TABLE_NAME")
+#RODBC::odbcClose(sqlConnection)
 tabledChecked <- vector(length=length(tableCheckList))
 for (i in 1:length(tableCheckList)){
   tabledChecked[i] <- sum(grepl(tableCheckList[i], dbTables$TABLE_NAME, ignore.case = T))>0
@@ -179,34 +207,6 @@ if (params$QAAlert == TRUE & nrow(invalid_specs) > 0){
 
 ```{r 1.05 Data PrimaryKeyChecks Data, echo = F, include=T}
 primary_key_data <- run_query("
-/*TABLEREPLACEMENTINFILE*/
-/*****************************************************************************
-Script for validating the VDW Primary Keys.  It will create two lists.  One of
-the Expected Tables and their primary keys and another of all the tables currently in
-the partner VDW.  It will validate:
-    - Compare the expected primary key to the primary key of each
-	table in a partner's VDW
-	- The number of records that currently violate the exepcted primary key
-FOR DEVELOPERS:
-To Update the script for partner use:
-1) Edit the #PKVALIDATION table insertion if the primary keys of the VDW have
-changed or add new entires for new tables.  One row per primary key column.
-Examples below:
-Output:
-    One output table
-    1) 	Shows the Table name, the expected primary key, the found primary key,
-	and the result of the comparision between the expected and found primary keys.
-	KeyMatchResultValues:
-		- OK: Expected primary key matches the found primary key
-		- KEY MISMATCH: Expected Primary Key does not matc the found primary key
-		- TABLE OR KEYS NOT FOUND: No table in the VDW matches the expected table
-		- UNKNOWN: An unknow error occured
-	ViolationCount:
-		- The number of records that that appear to violate the expected primary key.
-*****************************************************************************/
-/*****************************************************************************
-BEGIN TempTable Clearing and Creation
-*****************************************************************************/
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET NOCOUNT ON;
@@ -232,7 +232,8 @@ BEGIN
     
 	CREATE TABLE #PKVIOLATIONS (
 		Table_Name      VARCHAR(250) ,
-        Violation_Count BIGINT
+    Violation_Count BIGINT,
+		ErrorMessage varchar(500) DEFAULT NULL
     );
 END;
 /*****************************************************************************
@@ -252,7 +253,7 @@ VALUES      (
        'CAUSE_OF_DEATH', 'PERSON_ID'), (
        'CAUSE_OF_DEATH', 'COD'), (
        'DEMOGRAPHICS', 'PERSON_ID'), (
-       'LINKAGE', 'LINK_ID'), (
+       'LINKAGE', 'CID'), (
        'LINKAGE', 'LINE'), (
        'BENEFIT', 'BENEFIT_ID'), (
        'ENCOUNTERS', 'ENC_ID'), (
@@ -367,7 +368,7 @@ BEGIN
     
     DECLARE @SQL NVARCHAR(3000);
     DECLARE @Table_Name VARCHAR(100);
-	DECLARE @Key_Columns VARCHAR(100);
+	  DECLARE @Key_Columns VARCHAR(100);
     
     DECLARE CUR CURSOR
     FOR SELECT
@@ -393,34 +394,57 @@ BEGIN
 				AS (SELECT COUNT(*) TABTOT
 					FROM ' + @Table_Name + ')
 			INSERT INTO #PKVIOLATIONS
-			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT
+			SELECT  ''' + @Table_Name + ''', CTETOT.TABTOT - CTEKEY.KEYTOT, NULL
 			FROM CTETOT, CTEKEY;'
-            EXEC Sp_executesql
-                 @SQL;
-            FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
+			BEGIN TRY
+				EXEC Sp_executesql
+				     @SQL;
+			END TRY
+			BEGIN CATCH
+				Declare @ErrorMessageRef as varchar(max);
+				SELECT @ErrorMessageRef = ERROR_MESSAGE();
+				INSERT INTO #PKVIOLATIONS
+			    	VALUES(@Table_Name, NULL, @ErrorMessageRef)
+		    END CATCH
+        FETCH NEXT FROM CUR INTO @Table_Name, @Key_Columns;
         END;
-    
     CLOSE CUR;
-    
     DEALLOCATE CUR; 
-END
-SELECT 
-       m.*, 
-       v.Violation_Count
-FROM   
-     #KeyMatchResult m
-     LEFT JOIN #PKVIOLATIONS v
-          ON v.Table_Name = m.TABLE_NAME;
-/*****************************************************************************
-END Analysis Section
-*****************************************************************************/")
+END;
+SELECT DISTINCT 
+       z.Table_Name, 
+       z.Expected_Primary_Key, 
+       z.Found_Primary_Key,
+       CASE
+		   WHEN z.ErrorMessage IS NOT NULL THEN	
+				z.ErrorMessage
+           WHEN z.Key_Match_Result = 'TABLE/VIEW OR KEYS NOT FOUND'
+                AND y.name IS NOT NULL
+				AND z.ErrorMessage IS NULL
+           THEN 'TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE'
+           ELSE z.Key_Match_Result
+       END AS Key_Match_Result, 
+       z.Violation_Count
+FROM       
+(
+    SELECT 
+           m.*, 
+           v.Violation_Count,
+		   v.ErrorMessage
+    FROM   
+         #KeyMatchResult m
+         LEFT JOIN #PKVIOLATIONS v
+              ON v.Table_Name = m.TABLE_NAME
+) z
+LEFT JOIN sys.synonyms y
+     ON y.name = z.TABLE_NAME;")
 ```
 
 ```{r 1.05 Data PrimaryKeyChecks Result, echo = F, include=T}
 violated_primary_keys <- subset(primary_key_data, Key_Match_Result != "OK")
 if (params$QAAlert == TRUE & nrow(violated_primary_keys) > 0){
-  violated_primary_keys_table <- subset(violated_primary_keys, (Violation_Count > 0 & Key_Match_Result == "VIEW FOUND") | (Key_Match_Result != "VIEW FOUND")) 
-  violated_primary_keys_table$message <- paste0(violated_primary_keys_table$TABLE_NAME, sep="")
+  violated_primary_keys_table <- subset(violated_primary_keys, (Violation_Count > 0 & Key_Match_Result == "VIEW FOUND") | (Violation_Count > 0 & Key_Match_Result == "TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE") |  (Key_Match_Result != "VIEW FOUND" & Key_Match_Result != "TABLE SYNONYM FOUND; UNABLE TO AUTOMATICALLY VALIDATE"))
+  violated_primary_keys_table$message <- paste0(violated_primary_keys_table$Table_Name, sep="")
   QA_Alert_Message_105_items <- paste0(violated_primary_keys_table$message, collapse = ', ')
   QA_Alert_Message_105 <- paste0("The following tables have primary key definition errors:  ",
                                   QA_Alert_Message_105_items)
@@ -435,7 +459,13 @@ connection106 <- get_connection()
 results <- sqlQuery(connection106, data_validation_query, as.is=TRUE)
 data_validation <- sqlQuery(connection106, "
   SELECT
-       *
+       TargetTable,
+       TargetColumn,
+       CASE 
+          WHEN UnexpectedValue = '' THEN '(blank)'
+          ELSE UnexpectedValue
+        END AS UnexpectedValue,
+       Message
   FROM
      #CHORDSDataValueResults
   ORDER BY TargetTable;
@@ -460,9 +490,10 @@ if (params$QAAlert == TRUE & nrow(data_validation) > 0){
 
 
 ```{r 1.07, echo=F, include=T}
-nullableValues = subset(misconfig, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable != FoundIsNullable))
-nullableValues_Table <- select(nullableValues, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
-if (params$QAAlert == TRUE & nrow(nullableValues_Table) > 0){
+nullableValues = subset(schema_validation, (Result == "CONFIG-MISMATCH" & ExpectedIsNullable != FoundIsNullable))
+nullableValues <- select(nullableValues, c("TableName", "ColumnName", "ExpectedIsNullable", "FoundIsNullable"))
+if (params$QAAlert == TRUE & nrow(nullableValues) > 0){
+  nullableValues_Table <- data.frame(nullableValues, stringsAsFactors = FALSE)
   nullableValues_Table$message <- paste0(nullableValues_Table$TableName, ".", nullableValues_Table$ColumnName, sep="")
   QA_Alert_Message_107_items <- paste0(nullableValues_Table$message, collapse = ', ')
   QA_Alert_Message_107 <- paste0("The following required fields have non-permissible missing values: ",
@@ -571,7 +602,7 @@ orphan_provider_ids <- subset(ref_integrity, ((TargetColumn %in% c("RXMD", "PROV
 orphan_provider_ids_table <- select(orphan_provider_ids, c("TargetTable", "TargetColumn", "ReferenceTable", "ReferenceColumn", "ValuesNotFound", "TargetTableDistinctCount", "PercentOfDistinctTargetColumnMissing"))
 if (params$QAAlert == TRUE & nrow(orphan_provider_ids_table) > 0){
   orphan_provider_ids_sub_table <- data.frame(orphan_provider_ids_table, stringsAsFactors = FALSE)
-  orphan_provider_ids_sub_table$message <- paste0(orphan_provider_ids_sub_table$TargetTable, sep="")
+  orphan_provider_ids_sub_table$message <- paste0(orphan_provider_ids_sub_table$TargetTable, ".", orphan_provider_ids_sub_table$TargetColumn, sep="")
   QA_Alert_Message_112_items <- paste0(orphan_provider_ids_sub_table$message, collapse = ', ')
   QA_Alert_Message_112 <- paste0("The following tables contain orphan PROVIDER_IDs: ",
                                   QA_Alert_Message_112_items)
@@ -799,7 +830,7 @@ WITH CTE_CodeCounts
             b.CodeType, 
             cc.CountAll, 
             b.CountInvalid AS CountInvalid, 
-            ROUND(CAST(b.CountInvalid AS DECIMAL) / CAST(cc.CountAll AS DECIMAL) * CAST(100.0 AS DECIMAL), 2)
+            ROUND(CAST(b.CountInvalid AS FLOAT) / CAST(cc.CountAll AS FLOAT) * CAST(100.0 AS FLOAT), 3)
             AS PercentInvalid
      FROM       
      (
@@ -824,7 +855,10 @@ top_50_invalid <- sqlQuery(connection113, "
 SELECT 
 		TableName, 
     CodeType, 
-    Code, 
+    CASE 
+      WHEN Code = '' THEN '(blank)'
+      ELSE Code
+    END AS Code, 
     ValidResult, 
 		CountInvalid
 FROM       
@@ -862,7 +896,7 @@ odbcClose(connection113)
 if (params$QAAlert == TRUE){
   code_conform_table_counts_table <- subset(code_conform_table_counts, PercentInvalid > 5.0)
   if (!(length(code_conform_table_counts_table)==0)){
-    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, sep="")
+    code_conform_table_counts_table$message <- paste0(code_conform_table_counts_table$TableName, "-", code_conform_table_counts_table$CodeType, " (",code_conform_table_counts_table$PercentInvalid , "%)", sep="")
     QA_Alert_Message_113_items <- paste0(code_conform_table_counts_table$message, collapse = ', ')
     QA_Alert_Message_113 <- paste0("More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content: ",
                                   QA_Alert_Message_113_items)
@@ -871,29 +905,55 @@ if (params$QAAlert == TRUE){
 }
 ```
  
-```{r 2.01, echo = F, include=T}
+```{r 2.01, echo = F, include=T, error=T}
 # DC 2.01
+
 tabDates <- run_query("
 SELECT DISTINCT 
-       a.name AS tabname, 
+       case 
+			when s.name is not null then s.name else a.name end AS tabname, 
        b.name AS colname
 FROM   
      sys.objects a
      INNER JOIN sys.columns b
           ON a.object_id = b.object_id
-WHERE  type IN('U', 'V')
+     left join sys.synonyms s on 
+		replace(replace( s.base_object_name, '[', ''), ']', '') = a.name
+WHERE a.type IN('U', 'V')
+and b.name like '%date%'
 ORDER BY 
-         a.name;") %>% 
-  subset(grepl('date',colname, ignore.case = T))
-  
-modDates <- run_query("select name, modify_date from sys.objects WHERE  type IN('U', 'V')")
+        tabname;")
+
+modDates <- run_query("
+SELECT  DISTINCT
+       case 
+			when s.name is not null then s.name else a.name end AS name, 
+      a.modify_date
+FROM   
+     sys.objects a
+     INNER JOIN sys.columns b
+          ON a.object_id = b.object_id
+     left join sys.synonyms s on 
+		replace(replace( s.base_object_name, '[', ''), ']', '') = a.name
+WHERE a.type IN('U', 'V')")
+
 futureDateCode <- merge(tabDates, modDates, by.x='tabname', by.y='name') %>%
   within({
-    sqlcode <- paste0("select '",tabname, "' as tableName, '", colname,"' as dateName ,count(*) as nrows, sum(case when a.",colname,">b.modify_date then 1 else 0 end) as futureDate from ",
-tabname, " as a , (select modify_date from sys.objects where type IN('U', 'V') AND name ='",tabname,"') as b"
+    sqlcode <- paste0("
+                      select '",tabname, "' as tableName, '", colname,"' as dateName ,count(*) as nrows, sum(case when a.",colname,">b.modify_date then 1 else 0 end) as futureDate from ",
+tabname, " as a , (select modify_date from (SELECT  
+       case 
+			when s.name is not null then s.name else a.name end AS name, 
+       a.modify_date
+FROM   
+     sys.objects a
+     INNER JOIN sys.columns b
+          ON a.object_id = b.object_id
+     left join sys.synonyms s on 
+		replace(replace( s.base_object_name, '[', ''), ']', '') = a.name
+WHERE a.type IN('U', 'V')) a  WHERE a.name ='",tabname,"') as b"
 )
   })
-#test <- run_query(futureDateCode[1, "sqlcode"])
 fdatelst <- list()
 for (i in 1:nrow(futureDateCode)){
   fdatelst[[i]] <- run_query(futureDateCode[i, "sqlcode"])
@@ -902,11 +962,13 @@ fdatesdone <- do.call('rbind', fdatelst) %>%
   within(.,{
     pctFuture <- round(100*futureDate/nrows, 4)
   })
-#params$QAAlert<-F
+
 ### add message if no table is a problem 
 futureDataMsg <- NULL
 futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0  ){
-paste("The follosing tables exceeded the 5% limit on future dates:", subset(fdatesdone, pctFuture>=5)$tableName, sep = ' ')
+  futureDataMsgTable <- subset(fdatesdone, pctFuture>=5)
+  paste("The following tables exceeded the 5% limit on future dates:",
+        paste0(futureDataMsgTable$tableName, futureDataMsgTable$dateName, sep="."), sep = ', ')
 } else if(nrow(subset(fdatesdone, pctFuture>=5))==0  ) {
                    "No table exceeds the 5% limit on future dates."
 }  
@@ -1000,9 +1062,6 @@ outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 ){
   QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("2.02",futureDataMsg)
 
 ```
-
-
-
 
  
 ```{r 2.03, echo = F, include=T}
@@ -1209,18 +1268,18 @@ illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0){
 # where = a valid where clause to subset the table, be sure to start with "WHERE", see example for ddate
 check3.03 <-
 rbind( 
-  data.frame(table='demographics',   var='birth_date',            condition='is null', where=' '),
-  data.frame(table='demographics',   var='gender',                condition="not in ('M','F','O')", where=' '),
-  data.frame(table='encounters',     var='discharge_disposition', condition="not in ('A','E')", where=' '),
-  data.frame(table='encounters',     var='ddate',                 condition="is null", where="where enctype = 'IP'"),
-  data.frame(table='procedures',     var='procdate',              condition='is null', where=' '),
-  data.frame(table='prescribing',    var='rx_order_date',         condition='is null', where=' '),
-  data.frame(table='pharmacy',       var='not(rxsup>1 or rxamt>1)',       condition=' ', where=' '), # compicated by it depending on two variables
+  data.frame(table='demographics', disp='birth_date',   var='birth_date',            condition='is null', where=' '),
+  data.frame(table='demographics', disp='gender',   var='gender',                condition="not in ('M','F','O')", where=' '),
+  data.frame(table='encounters', disp='discharge_disposition',     var='discharge_disposition', condition="not in ('A','E')", where=' '),
+  data.frame(table='encounters', disp='ddate',    var='ddate',                 condition="is null", where="where enctype = 'IP'"),
+  data.frame(table='procedures', disp='procdate',    var='procdate',              condition='is null', where=' '),
+  data.frame(table='prescribing',disp='rx_order_date',   var='rx_order_date',         condition='is null', where=' '),
+  data.frame(table='pharmacy', disp='rxsup and/or rxamt', var='not(rxsup>1 or rxamt>1)',       condition=' ', where=' '), # compicated by it depending on two variables
   #data.frame(table='cause_of_death', var='source',                condition="not in ('S', 'N', 'T', 'B', 'L', 'U', 'O')"),
-  data.frame(table='diagnoses',      var='dx_origin',             condition="not in ('OD', 'BI', 'CL', 'PR', 'NI', 'OT')", where=' '),
-  data.frame(table='diagnoses',      var='enc_id',                condition="is null", where=' '),
-  data.frame(table='procedures',     var='enc_id',                condition="is null", where=' '),
-  data.frame(table='vital_signs',    var='enc_id',                condition="is null", where=' ')
+  data.frame(table='diagnoses',disp='dx_origin',      var='dx_origin',             condition="not in ('OD', 'BI', 'CL', 'PR', 'NI', 'OT')", where=' '),
+  data.frame(table='diagnoses', disp='enc_id',      var='enc_id',                condition="is null", where=' '),
+  data.frame(table='procedures', disp='enc_id',     var='enc_id',                condition="is null", where=' '),
+  data.frame(table='vital_signs', disp='enc_id',    var='enc_id',                condition="is null", where=' ')
   
 )
 res3.03 <- list()
@@ -1228,7 +1287,7 @@ for(i in 1:nrow(check3.03)){
   
   
   res3.03[[i]] <- with(check3.03, {run_query( 
-                                            paste("select '",table[i],"' as dataTable,'",var[i],"' as variable, count(*) as N_rows, sum(case when ",var[i],condition[i],"then 1 else 0 end) as N_bad",
+                                            paste("select '",table[i],"' as dataTable,'",var[i],"' as variable, '",disp[i],"' as display, count(*) as N_rows, sum(case when ",var[i],condition[i],"then 1 else 0 end) as N_bad",
                                                   "from",eval(as.name(tolower(table[i]))), where[i]
                                                   ,
                                                   sep=' '
@@ -1242,8 +1301,10 @@ result3.03 <- do.call('rbind', res3.03) %>%
   })
 check3.03Msg <- NULL
 check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0){
-  paste("More than 10% of records have missing or unknown values for the following fields Alert:",subset(result3.03, pctBad>=10)$variable , sep = ' ' )
-} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 ) {
+  result3.03gt10 <- subset(result3.03, pctBad>=10)
+  paste("More than 10% of records have missing or unknown values for the following table fields:  ",
+        paste(paste(trimws(result3.03gt10$dataTable), ": ", trimws(result3.03gt10$display), sep=''), sep = ", "), sep="")
+} else if(nrow(subset(result3.03, pctFuture>=10))==0 ) {
                    "No check exceeds the 10% limit on bad values."
 }
 
@@ -1256,25 +1317,43 @@ check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0){
 
 
 ```{r 3.05, echo = F, include=T}
-patsWithEncs <- run_query(paste0("select count(*) as nrows, sum(patsWEncDiag) as patsWEncDiag, sum(patsWEncProc) as patsWEncProc from ( select  case when person_id in (select person_id from ", diagnoses, ") then 1 else 0 end as patsWEncDiag",
- ",case when person_id in (select person_id from ", procedures, ") then 1 else 0 end as patsWEncProc",
- "       from ", demographics, " where person_id in (select person_id from ", encounters, ") ) as q") )
+patsWithEncs <- run_query(paste0("WITH cte_patWEncDiag AS (
+	SELECT count(DISTINCT di.person_id) patsWEncDiag
+	FROM ", demographics, " de
+	JOIN ", encounters ," e on e.person_id = de.person_id
+	JOIN ", diagnoses ," di ON de.person_id = di.person_id
+	),
+cte_patWEncProc AS (
+	SELECT count(DISTINCT p.person_id) AS patsWEncProc
+	FROM ", demographics, " de
+	JOIN ", encounters, " e on e.person_id = de.person_id
+	JOIN ", procedures, " p ON de.person_id = p.person_id
+	),
+cte_pats AS (
+	SELECT count(DISTINCT de.person_id) nrows
+	FROM ", demographics, " de
+	JOIN ", encounters, " e on e.person_id = de.person_id
+	)
+SELECT nrows, patsWEncDiag, patsWEncProc
+FROM cte_patWEncDiag
+	,cte_patWEncProc
+	,cte_pats") )
 patsWithEncs <- within(patsWithEncs, {
-  pctWEncDiag <- 100* patsWEncDiag/nrows
-  pctWEncproc <- 100* patsWEncProc/nrows
+  pctWEncDiag <- 100.0* patsWEncDiag/nrows
+  pctWEncProc <- 100.0* patsWEncProc/nrows
 })
 patDiagMsg <- with (patsWithEncs,{
-  if(pctWEncDiag<50 ){
+  if(pctWEncDiag<50.0 ){
   paste0('WARNING: Only ',round(pctWEncDiag,1),'% of patients with encounters have diagnoses') 
 } else { 
   paste0('NOTE: ',round(pctWEncDiag,1),'% of patients with encounters have diagnoses') 
 }
 })
 patProcMsg <- with (patsWithEncs,{
-  if(pctWEncproc<50 ){
-  paste0('WARNING: Only ',round(pctWEncproc,1),'% of patients with encounters have procedures') 
+  if(pctWEncProc<50.0 ){
+  paste0('WARNING: Only ',round(pctWEncProc,1),'% of patients with encounters have procedures') 
 } else { 
-  paste0('NOTE: ',round(pctWEncproc,1),'% of patients with encounters have procedures') 
+  paste0('NOTE: ',round(pctWEncProc,1),'% of patients with encounters have procedures') 
 }
 })
 
@@ -1351,7 +1430,7 @@ data_result_75_complete <- run_query(gsub( "@BenchmarkStartDate", paste0('\'', b
          FORMAT(ADATE, 'MM-MMM') Month, 
          @BenchmarkPriorYearAvg AS BenchmarkCount, 
          COUNT(1) PriorMonthCount, 
-         CAST(ROUND((CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0), 2) as DECIMAL(5,2))  AS PercentofBenchMark
+         IIF(@BenchmarkPriorYearAvg <> 0, CAST(ROUND((CAST(COUNT(1) AS FLOAT) / @BenchmarkPriorYearAvg * 100.0), 2) as DECIMAL(5,2)), 0)  AS PercentofBenchMark
   FROM ",  
        encounters, " e
   WHERE  e.ENCTYPE IN('IP', 'AV', 'ED', 'EI')
@@ -1371,6 +1450,8 @@ data_result_75_complete$PercentofBenchMark <- as.numeric(as.character(data_resul
 knitr::kable(QA_Alert_Messages, row.names = FALSE)
 ```
 
+\pagebreak
+
 ## Data Check 1.03: Required fields are not present
 ```{r echo=F}
 knitr::kable(missing_columnsTables, row.names = FALSE, col.names = c("Table Name", "Column Name"))
@@ -1378,82 +1459,89 @@ knitr::kable(missing_columnsTables, row.names = FALSE, col.names = c("Table Name
 
 ## Data Check 1.04: Required fields do not conform to data model specifications for data type, length, or name
 ```{r echo=F}
+invalid_specs[is.na(invalid_specs)] = ""
 knitr::kable(invalid_specs, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Number Precision", "Found Number Precision", "Expected Number Scale", "Found Number Scale", "Expected Char Length", "Found Char Length", "Expected Date Precision", "Found Date Precision"))
 ```
 
 ## Data Check 1.05: Tables have primary key definition errors
 ```{r echo=F}
-knitr::kable(violated_primary_keys, row.names = FALSE)
+violated_primary_keys[is.na(violated_primary_keys)] = ""
+knitr::kable(violated_primary_keys, row.names = FALSE, digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.06: Required fields contain values outside of data model specifications
 ```{r echo=F}
-knitr::kable(data_validation)
+data_validation[is.na(data_validation)] = ""
+knitr::kable(data_validation, digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.07: Required fields have non-permissible missing values
 ```{r echo=F}
-knitr::kable(nullableValues_Table, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows-Null Value", "Found Field Allows -Null Value"))
+knitr::kable(nullableValues, row.names = FALSE, col.names = c("Table Name", "Column Name", "Expected Field Allows Null Value", "Found Field Allows Null Value"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.08: Tables contain orphan PERSON_IDs 
 ```{r echo=F}
-knitr::kable(orphan_person_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
+knitr::kable(orphan_person_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.09: Tables contain orphan ENCOUNTER_IDs 
 ```{r echo=F}
-knitr::kable(orphan_enc_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
+knitr::kable(orphan_enc_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.10: Replication errors between the ENCOUNTER, PROCEDURES and DIAGNOSIS tables 
 ```{r echo=F}
 knitr::kable(subset(repErrors_tx, select=c(tablename, nrows, field, NP_bad)),
-             col.names = c('Table','N','Field','Errors N(%)'))
+             col.names = c('Table','N','Field','Errors N(%)'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
+```
+
+## Data Check 1.11: Encounters assigned to more than one person_id in ENCOUNTERS table
+```{r echo=F}
+knitr::kable(GR1Person, col.names = c('Table','Number of Encounters','Encounters Assinged to More Than One Person', "Percentage"), row.names = FALSE, digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 1.12: Tables contain orphan PROVIDER_IDs
 ```{r echo=F}
-knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"))
+knitr::kable(orphan_provider_ids_table, row.names = FALSE, col.names = c("Target Table", "Target Column", "Reference Table", "Reference Column", "Count of Values Not Found", "Distinct Total in Target Table", "Percentage of Missing to Distinct Total"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 
 ## Data Check 1.13: More than 5% of ICD, CPT, LOINC, RXCUI, or NDC codes do not conform to the expected length or content
 
 ```{r echo=F }
+knitr::kable(code_conform_table_counts, row.names = FALSE, col.names = c("Table Name", "Code Type", "Total Codes in Table", "Total Invalid Codes", "Percent Invalid"), digits = 3, format.args = list(big.mark = ",", scientific = FALSE))
+cat(" \n")  
 cat("Top 50 Invalid Codes")
-knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"))
+top_50_invalid$Code[top_50_invalid$Code==""] <- "\'blank\'"
+knitr::kable(top_50_invalid, row.names = FALSE, col.names = c("Table Name", "Code Type", "Code", "Valid Result", "Count Invalid"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ## Data Check 2.01: More than 5% of records have future dates
 ```{r echo=F}
   futureDataMsg <- if(nrow(subset(fdatesdone, pctFuture>=5))>0 & params$QAAlert==F){
-                 knitr::kable(subset(fdatesdone, pctFuture>=5), col.names = c('Table','Date name','Total rows','N future dates','%'))
+    knitr::kable(subset(fdatesdone, pctFuture>=5), col.names = c('Table','Date name','Total rows','N future dates','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 } else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
-                   "No table exceeds the 5% limit on future dates."
+  "No table exceeds the 5% limit on future dates."
 } else if ( params$QAAlert==T) {
-                   knitr::kable(fdatesdone, col.names = c('Table','Date name','Total rows','N future dates','%'))
+  knitr::kable(fdatesdone, col.names = c('Table','Date name','Total rows','N future dates','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 }
 
 futureDataMsg
 ```
 
-## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic
-## blood pressure, systolic blood pressure, or dispensed days supply
+## Data Check 2.02: More than 10% of records fall into the lowest or highest categories of age, height, weight, diastolic bp, systolic bp, or dispensed days supply
 ```{r echo=F}
 outOfRangeMsg <- NULL
 outOfRangeMsg <- if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))>0 & params$QAAlert==F){
-   knitr::kable(
-   subset(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1), select=c(table,item, low, high, nrows, NP_low, NP_high)),
-   col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
-)
+  allOutOfRange <-  subset(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1), select=c(table,item, low, high, nrows, NP_low, NP_high))
+  knitr::kable(allOutOfRange, col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
+, digits = 2, format.args = list(big.mark = ",", scientific = FALSE)) 
 } else if(nrow(subset(allOutOfRange, (N_low+N_high)/nrows>=0.1))==0 & params$QAAlert==F) {
-                   "No table exceeds the 5% limit."
+                   "No table exceeds the 10% limit."
 } else if ( params$QAAlert==T) {
-  knitr::kable(
-  subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high)),
-  col.names = c('Table','Field','Check Low','High','N','Low values N (%)','High values N (%)')
-)
+  allOutOfRange <- subset(allOutOfRange, select=c(table,item, low, high, nrows, NP_low, NP_high))
+  knitr::kable(allOutOfRange, col.names = c('Table','Field','Check Low','High','N','Low values N(%)','High values N (%)'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 }
 outOfRangeMsg
 ```
@@ -1462,38 +1550,57 @@ outOfRangeMsg
 ```{r echo=F}
 illogicalDatesMsg <- NULL
 illogicalDatesMsg <- if(nrow(subset(table2.03_tx, pct>=5))>0 & params$QAAlert==F){
-        knitr::kable(subset(table2.03_tx, pct>=5)[,c('ord','comp','n','pct', 'srctab')], 
-                    col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
-} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
-                   "No table exceeds the 5% limit on illogical dates."
+  knitr::kable(subset(table2.03_tx, pct>=5)[,c('ord','comp','n','pct', 'srctab')], 
+               col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+} else if(nrow(subset(table2.03_tx, pct>=5))==0 & params$QAAlert==F) {
+  "No table exceeds the 5% limit on illogical dates."
 } else if ( params$QAAlert==T) {
-        knitr::kable(table2.03_tx[,c('ord','comp','n','pct', 'srctab')], 
-                    col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
-                 }
+  knitr::kable(table2.03_tx[,c('ord','comp','n','pct', 'srctab')], 
+               col.names = c(' ','Date comparison','N Patients','% of unique patients in the encounter table','Source table'))
+}
+illogicalDatesMsg
 ```
 
 ## Data Check 3.03: More than 10% of records have missing or unknown values for the following fields:
 ```{r echo=F}
   check3.03Msg <- NULL
-check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10))>0 & params$QAAlert==F){
-        knitr::kable(subset(result3.03, pctBad>=10)[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
-                    col.names = c('Table','Variable','N Rows','N with bad values','%'))
-} else if(nrow(subset(fdatesdone, pctFuture>=5))==0 & params$QAAlert==F) {
-                   "No check exceeds the 10% limit on bad values."
+check3.03Msg <- if(nrow(subset(result3.03, pctBad>=10.0))>0 & params$QAAlert==F){
+  knitr::kable(subset(result3.03, pctBad>=10.0)[,c('dataTable','display','N_rows','N_bad', 'pctBad')],
+               col.names = c('Table','Variable','N Rows','N with bad values','%'))
+} else if(nrow(subset(result3.03, pctBad>=10.0))==0 & params$QAAlert==F) {
+  "No check exceeds the 10% limit on bad values."
 } else if ( params$QAAlert==T) {
-        knitr::kable(result3.03[,c('dataTable','variable','N_rows','N_bad', 'pctBad')], 
-                    col.names = c('Table','Variable','N Rows','N with bad values','%'))}
+  knitr::kable(result3.03[,c('dataTable','display','N_rows','N_bad', 'pctBad')], 
+               col.names = c('Table','Variable','N Rows','N with bad values','%'), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
+}
+check3.03Msg
+```
+
+## Data Check 3.04 Patients with Encounters and Diagnoses
+```{r echo=F}
+check3.04 <- data.frame(patsWithEncs[,c('nrows','patsWEncDiag','pctWEncDiag')]) %>% format(digits = 2, big.mark = "," )
+check3.04$patsWEncDiag <- paste(check3.04$patsWEncDiag," (",check3.04$pctWEncDiag, "%)", sep="")
+
+knitr::kable(check3.04[,c('nrows','patsWEncDiag')], row.names = FALSE, col.names = c("Patients w/ Encounters", "Patients with Encounters and Diagnosis Records"))
+```
+
+## Data Check 3.05 Patients with Encounters and Procedures
+```{r echo=F}
+check3.05 <- data.frame(patsWithEncs[,c('nrows','patsWEncProc','pctWEncProc')]) %>% format(digits = 2, big.mark = "," )
+check3.05$patsWEncProc <- paste(check3.05$patsWEncDiag," (",check3.05$pctWEncProc, "%)")
+
+knitr::kable(check3.05[,c('nrows','patsWEncProc')], row.names = FALSE, col.names = c("Patients w/ Encounters", "Patients with Encounters and Procedure Records"))
 ```
 
 ## Data Check 3.06: More than 10% of IP (inpatient) or ED to inpatient (EI) encounters with any diagnosis don't have a principal diagnosis
 ```{r echo=F}
-knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Patient Type Encounters", "In-Patient Encounters W/O Principal Diagnoses", "% of In-Patient Type Encounters W/O Principal Diagnoses"))
+knitr::kable(ipedei_no_principal_diag, row.names = FALSE, col.names = c("In-Patient Type Encounters", "In-Patient Encounters W/O Principal Diagnoses", "% of In-Patient Type Encounters W/O Principal Diagnoses"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 
 ## Data Check 3.07: Encounters, diagnoses, or procedures in an ambulatory (AV), emergency department (ED), ED to inpatient (EI), or inpatient (IP) setting are less than 75% complete three months prior to the current month
 
-```{r 3.07 Output, error=FALSE, include=TRUE}
+```{r 3.07 Output, include=TRUE}
 cat(paste0('Benchmark Start Date: ', benchmark_start[1,1]))
 if (params$QAAlert == TRUE){
   data_result_75_complete_table <- subset(data_result_75_complete, PercentofBenchMark < 75 )
@@ -1502,7 +1609,7 @@ if (params$QAAlert == TRUE){
     QA_Alert_Messages[nrow(QA_Alert_Messages) + 1,] = c("3.07",QA_Alert_Message_307)
   }
 }
-knitr::kable(data_result_75_complete,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "% of Benchmark"))
+knitr::kable(data_result_75_complete,row.names = FALSE, col.names = c("Month", "Benchnmark Count", "Prior Month Count", "% of Benchmark"), digits = 2, format.args = list(big.mark = ",", scientific = FALSE))
 ```
 
 ####Total program run time:
