@@ -28,21 +28,21 @@
 #' @rdname run_report
 #' @export
 
-run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
+run_report <- function(priority, dbserver = NA, dbname = NA, dbuser = NA, dbpassword = NA, outputdir = NA, batchmode = FALSE, dbport = NA, dbencrypt = NA, ...) {
   time_id <- format(Sys.time(), "%Y%m%d_%H%M")
-  if(is.null(dbuser) || is.na(dbuser)){
+  if(is.na(dbuser)){
     dbuser <- ""
   }
-  if(is.null(dbpassword) || is.na(dbpassword)){
+  if(is.na(dbpassword)){
     dbpassword <- ""
   }
-  if(is.null(dbport) || is.na(dbport)){
+  if(is.na(dbport)){
     dbport <- ""
   }
-  if(is.null(dbencrypt) || is.na(dbencrypt)){
+  if(is.na(dbencrypt)){
     dbencrypt = ""
   }
-  if (is.null(outputdir) || outputdir == ''){
+  if (is.na(outputdir) || outputdir == ''){
     assign("outputdir", value = paste0("C:/Users/", Sys.info()["login"], "/Documents"), envir = .GlobalEnv)
     outputdir <- get("outputdir", envir = .GlobalEnv)
   }
