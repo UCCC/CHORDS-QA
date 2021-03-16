@@ -2,6 +2,15 @@
 % Please edit documentation in R/run_report.R
 \name{run_report}
 \alias{run_report}
+\alias{getConnectionString}
+\alias{run_db_query}
+\alias{get_new_connection}
+\alias{close_conection}
+\alias{runTableReplacements}
+\alias{charVars}
+\alias{trimChrVars}
+\alias{ageCatCalc}
+\alias{NAorNullorEmpty}
 \title{Run code to generate priority tables.}
 \usage{
 run_report(
@@ -12,8 +21,28 @@ run_report(
   dbpassword = NULL,
   outputdir = NULL,
   batchmode = FALSE,
-  dbport = NULL
+  dbport = NULL,
+  dbencrypt = NULL,
+  ...
 )
+
+getConnectionString(params)
+
+run_db_query(Connection_String, query_text, ...)
+
+get_new_connection(Connection_String)
+
+close_conection(db_conn)
+
+runTableReplacements(ConnectionString)
+
+charVars(df)
+
+trimChrVars(df)
+
+ageCatCalc(age)
+
+NAorNullorEmpty(variable)
 }
 \arguments{
 \item{priority}{A character vector.  This is the priority table for which you want to generate the report. Options are "P1", "P2", or "P3".}
@@ -29,15 +58,83 @@ run_report(
 \item{outputdir}{A string vector.  The directory for the output document.  If none is specified, default is \code{C:/Users/<username>/Documents}}
 
 \item{batchmode}{A boolean value.  Parameter to help determine if the code is being run via batch mode or requires the UI for input parameters}
+
+\item{dbport}{A string value.  Optional parameter to specify the server port to use.}
+
+\item{dbencrypt}{A string value.  Parameter to establish if the encryption configurations should be added to the connection string.}
+
+\item{...}{Extra arguments.}
+
+\item{params}{R Shiny params object}
+
+\item{Connection_String}{A string vector. A pre-formated connection string to a database}
+
+\item{query_text}{A string vector.  A pre-formated query to execute}
+
+\item{db_conn}{Closes a RODBC Open Connection}
+
+\item{ConnectionString}{A preformated connection string}
+
+\item{df}{A dataframe}
+
+\item{age}{An integer value}
+
+\item{variable}{A variable}
 }
 \value{
 Creates a word document generated from an .Rmd file. The file is located in \code{C:/Users/<username>/Documents} folder (the My Documents folder for the user who generated the report) and the name of the file is the value of the priority argument (e.g., P1.docx)
 }
 \description{
 Run code to generate priority tables.
+
+Get Connection String Functions
+
+Runs a query with RODBC sqlQuery.  Takes a connections string and exectues a query
+
+opens a new connection to a database with a supplied connection string.
+
+Closes an open RODBC database connection
+
+Sets the table names to be used in QA quereis.  Replaces any table names with those
+in CHORDS_TableNames VDW table or tablereplace.csv from the working directory.
+
+Returns a vector with the column numbers of character variables in the data frame
+
+trims all character variables in a dataframe, sets blank to NA
+
+age category calculator
+
+Variable NA or Null or Empty
 }
 \examples{
 \dontrun{
 run_report("P1")
+}
+\dontrun{
+getConnectionString(params)
+}
+\dontrun{
+run_db_query(Connection_String, query_text)
+}
+\dontrun{
+get_new_connection(Connection_String)
+}
+\dontrun{
+close_conection(db_conn)
+}
+\dontrun{
+runTableReplacements(ConnectionString)
+}
+\dontrun{
+charVars(df)
+}
+\dontrun{
+charVars(df)
+}
+\dontrun{
+ageCatCalc(age)
+}
+\dontrun{
+NAorNullorEmpty(variable)
 }
 }
