@@ -28,7 +28,7 @@
 #' @rdname run_report
 #' @export
 
-run_report <- function(priority, dbserver = NA, dbname = NA, dbuser = NA, dbpassword = NA, outputdir = NA, batchmode = FALSE, dbport = NA, dbencrypt = NA, ...) {
+run_report <- function(priority, dbserver = NULL, dbname = NULL, dbuser = NULL, dbpassword = NULL, outputdir = NULL, batchmode = FALSE, dbport = NULL, dbencrypt = NULL, ...) {
   time_id <- format(Sys.time(), "%Y%m%d_%H%M")
   if(length(dbuser) == 0 || is.null(dbuser)){
     dbuser <- ""

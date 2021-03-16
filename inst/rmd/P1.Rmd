@@ -79,16 +79,16 @@ knitr::knit_hooks$set(time_it = local({
 }))
 
 # supporting look up tables
-stateCnty <- chordsTables::stateCnty
+stateCnty <- data.frame(lapply(chordsTables::stateCnty, as.character), stringsAsFactors=FALSE)
 
 # ISO language lookup
-isoLang <- chordsTables::isoLang
+isoLang <- data.frame(lapply(chordsTables::isoLang, as.character), stringsAsFactors=FALSE)
 
 # VDW value sets
-valSets <- chordsTables::valSets
+valSets <- data.frame(lapply(chordsTables::valSets, as.character), stringsAsFactors=FALSE)
 
-ICD10CM <- chordsTables::ICD10CM
-ICD9CM <- chordsTables::ICD9CM
+ICD10CM <- data.frame(lapply(chordsTables::ICD10CM, as.character), stringsAsFactors=FALSE)
+ICD9CM <- data.frame(lapply(chordsTables::ICD9CM, as.character), stringsAsFactors=FALSE)
 icdLU <- rbind(ICD10CM[c('dxCode','Description')],ICD9CM[c('dxCode','Description')]) 
 maxQryRows = 0
 
