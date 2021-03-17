@@ -510,9 +510,7 @@
       "Package": "utf8",
       "Version": "1.2.1.9000",
       "Source": "Local",
-      "RemoteType": "local",
-      "RemoteUrl": "C:/Users/cartwill/Downloads/utf8_1.2.1.9000.zip",
-      "Hash": "fa87df303268f3da6a525d28b264f957"
+      "Hash": "85d96b50e2a88399d0f68310939d68ff"
     },
     "uuid": {
       "Package": "uuid",
