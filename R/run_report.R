@@ -155,6 +155,7 @@ run_db_query <- function(Connection_String, query_text, ...) {
       return(result)
     },
     error = function(cond){
+      queryError <- cond
       stop(cond)
       return(NA)
     },

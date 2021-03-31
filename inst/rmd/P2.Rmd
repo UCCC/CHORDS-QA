@@ -51,8 +51,11 @@ knitr::opts_chunk$set(echo = TRUE,
                 message = FALSE,
                 warning = FALSE,
                 error = TRUE,
-                time_it = TRUE)
+                time_it = TRUE,
+                capture_error = TRUE)
+
 startTime <- Sys.time()
+queryError <- NULL
 
 all_times <- list()
 knitr::knit_hooks$set(time_it = local({
@@ -68,6 +71,18 @@ knitr::knit_hooks$set(time_it = local({
       #Only prints times greater than 5 minutes.  
       if(res > as.difftime("00:05", format="%H:%M")){
         paste("Time for the chunk", options$label, "to run:", format(round(res, 3)))
+      }
+    }
+  }
+}))
+
+knitr::knit_hooks$set(capture_error = local({
+  function(before, options) {
+    if (before) {
+      queryError <- NULL
+    } else {
+      if(!is.null(queryError)){
+        paste("Query Error: ", queryError)
       }
     }
   }
