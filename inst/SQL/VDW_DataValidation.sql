@@ -2062,7 +2062,7 @@ SELECT
 FROM
      #dataintegvalidation;
 
-WHILE @counter < @max
+WHILE @counter <= @max
     BEGIN
 	   SELECT @TargetTable = TargetTable from #dataintegvalidation where PK = @counter;
 	   SELECT  @TargetColumn = TargetColumn from #dataintegvalidation where PK = @counter;
@@ -2130,7 +2130,7 @@ SELECT
 FROM
      #datavaluevalidation;
 
-WHILE @counter < @max
+WHILE @counter <= @max
     BEGIN
 	   SELECT @TargetTable = TargetTable from #datavaluevalidation where PK = @counter;
 	   SELECT  @TargetColumn = TargetColumn from #datavaluevalidation where PK = @counter;
