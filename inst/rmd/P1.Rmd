@@ -101,6 +101,18 @@ knitr::knit_hooks$set(capture_error = local({
   }
 }))
 
+knitr::knit_hooks$set(capture_error = local({
+  function(before, options) {
+    if (before) {
+      queryError <- NULL
+    } else {
+      if(!is.null(queryError)){
+        paste("Query Error: ", queryError)
+      }
+    }
+  }
+}))
+
 # supporting look up tables
 stateCnty <- data.frame(lapply(chordsTables::stateCnty, as.character), stringsAsFactors=FALSE)
 

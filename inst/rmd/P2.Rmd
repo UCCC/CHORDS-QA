@@ -96,6 +96,18 @@ knitr::knit_hooks$set(capture_error = local({
   }
 }))
 
+knitr::knit_hooks$set(capture_error = local({
+  function(before, options) {
+    if (before) {
+      queryError <- NULL
+    } else {
+      if(!is.null(queryError)){
+        paste("Query Error: ", queryError)
+      }
+    }
+  }
+}))
+
 # supporting look up tables
 specialties <- data.frame(lapply(chordsTables::specialties, as.character), stringsAsFactors=FALSE)
 prov_type <- data.frame(lapply(chordsTables::prov_type, as.character), stringsAsFactors=FALSE)

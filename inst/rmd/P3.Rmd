@@ -45,6 +45,7 @@ knitr::opts_chunk$set(echo = FALSE,
                 error= FALSE,
                 time_it = TRUE,
                 capture_sql_error = TRUE)
+
 startTime <- Sys.time()
 queryError <- NULL
 
@@ -88,7 +89,6 @@ knitr::knit_hooks$set(capture_sql_error = local({
     }
   }
 }))
-
 ```
 
 ```{r connection strings, include=FALSE, error=FALSE}
